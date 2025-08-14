@@ -15,9 +15,9 @@ from gemini_helper import generate_metadata_gemini
 from metadata_operation import write_metadata_pyexiv2
 from metadata_operation import ImageTeaGeneratorThread, write_metadata_pyexiv2
 
-
-
 from db_operation import ImageTeaDB, DB_PATH
+
+from setup_ui import setup_ui
 
 
 
@@ -48,69 +48,8 @@ class ImageTeaMainWindow(QMainWindow):
         self.setWindowIcon(qta.icon('fa5s.magic'))
         self.db = ImageTeaDB()
         self.api_key = self.db.get_api_key('gemini')
-        self._setup_ui()
+        setup_ui(self)
         self.refresh_table()
-
-    def _setup_ui(self):
-        central = QWidget()
-        layout = QVBoxLayout()
-        # API Key controls
-        api_layout = QHBoxLayout()
-        self.api_key_edit = QLineEdit()
-        self.api_key_edit.setPlaceholderText("Enter Gemini API Key")
-        if self.api_key:
-            self.api_key_edit.setText(self.api_key)
-        api_save_btn = QPushButton(qta.icon('fa5s.save'), "Save API Key")
-        api_save_btn.clicked.connect(self.save_api_key)
-        # Icon label fix
-        icon_label = QLabel(" ")
-        icon = qta.icon('fa5s.key')
-        pixmap = icon.pixmap(16, 16)
-        icon_label.setPixmap(pixmap)
-        api_layout.addWidget(icon_label)
-        api_layout.addWidget(QLabel("Gemini API Key:"))
-        api_layout.addWidget(self.api_key_edit)
-        api_layout.addWidget(api_save_btn)
-        layout.addLayout(api_layout)
-        # Progress Bar
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(100)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setTextVisible(True)
-        self.progress_bar.setFormat('')
-        self.progress_bar.setVisible(False)
-        layout.addWidget(self.progress_bar)
-        # Drag and drop
-        self.dnd_widget = DragDropWidget(self)
-        layout.addWidget(self.dnd_widget)
-        # Table
-        self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(["ID", "Filepath", "Filename", "Title", "Description", "Tags"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.table)
-        # Buttons
-        btn_layout = QHBoxLayout()
-        import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Files")
-        import_btn.clicked.connect(self.import_images)
-        gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata (Batch)")
-        gen_btn.clicked.connect(self.batch_generate_metadata)
-        write_btn = QPushButton(qta.icon('fa5s.save'), "Write Metadata to Images")
-        write_btn.clicked.connect(self.write_metadata_to_images)
-        del_btn = QPushButton(qta.icon('fa5s.trash'), "Delete Selected")
-        del_btn.clicked.connect(self.delete_selected)
-        clear_btn = QPushButton(qta.icon('fa5s.broom'), "Clear All")
-        clear_btn.clicked.connect(self.clear_all)
-        btn_layout.addWidget(import_btn)
-        btn_layout.addWidget(gen_btn)
-        btn_layout.addWidget(write_btn)
-        btn_layout.addWidget(del_btn)
-        btn_layout.addWidget(clear_btn)
-        layout.addLayout(btn_layout)
-        central.setLayout(layout)
-        self.setCentralWidget(central)
 
     def save_api_key(self):
         key = self.api_key_edit.text().strip()
