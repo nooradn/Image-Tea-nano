@@ -267,7 +267,7 @@ class MetaGenMainWindow(QMainWindow):
         layout.addWidget(self.table)
         # Buttons
         btn_layout = QHBoxLayout()
-        import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Images")
+        import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Files")
         import_btn.clicked.connect(self.import_images)
         gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata (Batch)")
         gen_btn.clicked.connect(self.batch_generate_metadata)
