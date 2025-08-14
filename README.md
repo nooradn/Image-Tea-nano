@@ -1,6 +1,14 @@
+![WhatsApp Group](https://img.shields.io/badge/Join%20WhatsApp-Group-25D366?logo=whatsapp&style=for-the-badge&link=https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3)
+
+## Mendapatkan API Key
+Jika kamu tidak memiliki API key Gemini, kamu bisa join grup WhatsApp di atas untuk mendapatkan key shared dari komunitas.
+
 # Image-Tea-nano
 
+
 Image-Tea-nano adalah metadata generator ringan, simpel, dan jujur.
+
+Fokus utama Image-Tea-nano adalah pada fungsi dan kemudahan penggunaan, bukan pada tampilan visual atau fitur-fitur fancy. Semua fitur dirancang agar sederhana, efisien, dan langsung ke tujuan.
 
 ## Cara Install Git
 1. Download Git dari https://git-scm.com/download/win
