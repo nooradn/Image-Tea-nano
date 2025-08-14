@@ -12,44 +12,9 @@ from PySide6.QtCore import Qt, QMimeData, QThread, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon
 import qtawesome as qta
 from gemini_helper import generate_metadata_gemini
-import pyexiv2
-class ImageTeaGeneratorThread(QThread):
-    progress = Signal(int, int)  # current, total
-    finished = Signal(list)
+from metadata_operation import write_metadata_pyexiv2
+from metadata_operation import ImageTeaGeneratorThread, write_metadata_pyexiv2
 
-    def __init__(self, api_key, rows, db_path):
-        super().__init__()
-        self.api_key = api_key
-        self.rows = rows
-        self.db_path = db_path
-        self.errors = []
-
-    def run(self):
-        # Buat koneksi database baru di thread ini
-        db = ImageTeaDB(self.db_path)
-        total = len(self.rows)
-        for idx, (id_, filepath, filename, title, description, tags) in enumerate(self.rows, 1):
-            if not title:
-                t, d, tg = generate_metadata_gemini(self.api_key, filepath)
-                if not t:
-                    self.errors.append(f"{filename}: Failed to generate metadata")
-                else:
-                    db.update_metadata(filepath, t, d, tg)
-            self.progress.emit(idx, total)
-        self.finished.emit(self.errors)
-# --- Write metadata using pyexiv2 ---
-def write_metadata_pyexiv2(file_path, title, description, tag_list):
-    try:
-        metadata = pyexiv2.Image(file_path)
-        metadata.modify_xmp({
-            'Xmp.dc.title': title,
-            'Xmp.dc.description': description,
-            'Xmp.dc.subject': tag_list
-        })
-        metadata.close()
-        print(f"[pyexiv2] Metadata written to {file_path}")
-    except Exception as e:
-        print(f"[pyexiv2 ERROR] {file_path}: {e}")
 
 
 from db_operation import ImageTeaDB, DB_PATH
@@ -225,25 +190,8 @@ class ImageTeaMainWindow(QMainWindow):
             print("[Gemini] Metadata generated for all images.")
 
     def write_metadata_to_images(self):
-        rows = self.db.get_all_images()
-        errors = []
-        for id_, filepath, filename, title, description, tags in rows:
-            if self.is_image_file(filepath):
-                if title or description or tags:
-                    try:
-                        tag_list = [t.strip() for t in tags.split(',')] if tags else []
-                        write_metadata_pyexiv2(filepath, title or '', description or '', tag_list)
-                    except Exception as e:
-                        errors.append(f"{filename}: {e}")
-            elif self.is_video_file(filepath):
-                # Tidak perlu menulis metadata ke video, hanya simpan di DB
-                continue
-        if errors:
-            print("[Write Metadata Errors]")
-            for err in errors:
-                print(err)
-        else:
-            print("[Write Metadata] Metadata written to all images.")
+        from metadata_operation import write_metadata_to_images
+        write_metadata_to_images(self.db, self.is_image_file, self.is_video_file)
 
     def delete_selected(self):
         selected = self.table.selectionModel().selectedRows()
