@@ -1,5 +1,7 @@
 import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import os
 import sqlite3
 import json
 from PySide6.QtWidgets import (
@@ -9,10 +11,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QMimeData, QThread, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon
 import qtawesome as qta
-import google.genai as genai
-from google.genai import types
+from gemini_helper import generate_metadata_gemini
 import pyexiv2
-class MetadataGeneratorThread(QThread):
+class ImageTeaGeneratorThread(QThread):
     progress = Signal(int, int)  # current, total
     finished = Signal(list)
 
@@ -25,7 +26,7 @@ class MetadataGeneratorThread(QThread):
 
     def run(self):
         # Buat koneksi database baru di thread ini
-        db = MetaGenDB(self.db_path)
+        db = ImageTeaDB(self.db_path)
         total = len(self.rows)
         for idx, (id_, filepath, filename, title, description, tags) in enumerate(self.rows, 1):
             if not title:
@@ -50,183 +51,10 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
     except Exception as e:
         print(f"[pyexiv2 ERROR] {file_path}: {e}")
 
-DB_PATH = 'database.db'
 
-# --- Database Layer ---
-class MetaGenDB:
-    def __init__(self, db_path=DB_PATH):
-        self.conn = sqlite3.connect(db_path)
-        self._init_db()
+from db_operation import ImageTeaDB, DB_PATH
 
-    def _init_db(self):
-        c = self.conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS api_keys (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            service TEXT UNIQUE,
-            api_key TEXT
-        )''')
-        c.execute('''CREATE TABLE IF NOT EXISTS images (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filepath TEXT UNIQUE,
-            filename TEXT,
-            title TEXT,
-            description TEXT,
-            tags TEXT
-        )''')
-        self.conn.commit()
 
-    def set_api_key(self, service, api_key):
-        c = self.conn.cursor()
-        c.execute('INSERT OR REPLACE INTO api_keys (service, api_key) VALUES (?, ?)', (service, api_key))
-        self.conn.commit()
-
-    def get_api_key(self, service):
-        c = self.conn.cursor()
-        c.execute('SELECT api_key FROM api_keys WHERE service=?', (service,))
-        row = c.fetchone()
-        return row[0] if row else None
-
-    def add_image(self, filepath, filename, title=None, description=None, tags=None):
-        c = self.conn.cursor()
-        c.execute('''INSERT OR IGNORE INTO images (filepath, filename, title, description, tags) VALUES (?, ?, ?, ?, ?)''',
-                  (filepath, filename, title, description, tags))
-        self.conn.commit()
-
-    def update_metadata(self, filepath, title, description, tags):
-        c = self.conn.cursor()
-        c.execute('''UPDATE images SET title=?, description=?, tags=? WHERE filepath=?''',
-                  (title, description, tags, filepath))
-        self.conn.commit()
-
-    def delete_image(self, filepath):
-        c = self.conn.cursor()
-        c.execute('DELETE FROM images WHERE filepath=?', (filepath,))
-        self.conn.commit()
-
-    def clear_images(self):
-        c = self.conn.cursor()
-        c.execute('DELETE FROM images')
-        self.conn.commit()
-
-    def get_all_images(self):
-        c = self.conn.cursor()
-        c.execute('SELECT id, filepath, filename, title, description, tags FROM images')
-        return c.fetchall()
-
-# --- Gemini API Wrapper (Strict JSON Parsing) ---
-def generate_metadata_gemini(api_key, image_path, prompt=None):
-    try:
-        client = genai.Client(api_key=api_key)
-        ext = os.path.splitext(image_path)[1].lower()
-        is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']
-        if not prompt:
-            prompt = (
-                "Create high-quality image or video metadata following these guidelines:\n\n"
-                "1. Title/Description Requirements:\n"
-                "- Length: Min 8 - Max Length must be exactly 80 characters, no more than that since its CRITICAL\n"
-                "- Write as a natural, descriptive sentence/phrase (not keyword list)\n"
-                "- Cover Who, What, When, Where, Why aspects where relevant\n"
-                "- Capture mood, emotion, and visual impact\n"
-                "- Must be unique and detailed\n"
-                "- Include visual style/technique if notable\n"
-                "- Be factual and objective\n\n"
-                "2. Description Requirements:\n"
-                "- Provide a detailed description of the image or video, different from the title\n"
-                "- Use a full sentence or two, not just keywords\n"
-                "- Must be unique and informative\n\n"
-                "3. Keywords Requirements:\n"
-                "- You must provide exactly 15 keywords and not less since its CRITICAL\n"
-                "- Keywords must be precise and directly relevant\n"
-                "- Include both literal and conceptual terms\n"
-                "- Cover key visual elements, themes, emotions, techniques\n"
-                "- Avoid overly generic or irrelevant terms\n"
-                "- Use industry-standard terminology\n"
-                "- Separate keywords with commas\n\n"
-                "4. General Guidelines:\n"
-                "- Use only English language\n"
-                "- Be respectful and accurate with identities\n"
-                "- No personally identifiable information\n"
-                "- No special characters except commas between keywords\n"
-                "- Focus on commercial value and searchability\n\n"
-                "5. Strict Don'ts:\n"
-                "- No brand names, trademarks, or company names\n"
-                "- No celebrity names or personal names\n"
-                "- No specific event references or newsworthy content\n"
-                "- No copyrighted elements or protected designs\n"
-                "- No editorial content or journalistic references\n"
-                "- No offensive, controversial, or sensitive terms\n"
-                "- No location-specific landmarks unless generic\n"
-                "- No date-specific references or temporal events\n"
-                "- No product names or model numbers\n"
-                "- No camera/tech specifications in metadata\n\n"
-                "RESPONSE FORMAT (Strict JSON with ALL fields required):\n"
-                "{\n"
-                '  "title": "Your descriptive title here",\n'
-                '  "description": "A detailed description of the image or video.",\n'
-                '  "tags": ["tag1", "tag2", "tag3"]\n'
-                "}\n"
-                "\nVALIDATION RULES:\n"
-                "1. Use DOUBLE quotes for all strings\n"
-                "2. All fields (title, description, tags) are required\n"
-                "3. Response must be valid JSON\n"
-            )
-        import time
-        if is_video:
-            # Official Gemini API for video: upload file, then use in generate_content
-            myfile = client.files.upload(file=image_path)
-            # Polling status ACTIVE
-            file_id = myfile.name if hasattr(myfile, 'name') else getattr(myfile, 'id', None)
-            status = None
-            for _ in range(20):  # max 20x polling (sekitar 10 detik)
-                fileinfo = client.files.get(name=file_id)
-                status = getattr(fileinfo, 'state', None) or getattr(fileinfo, 'status', None)
-                if status == 'ACTIVE':
-                    break
-                time.sleep(0.5)
-            if status != 'ACTIVE':
-                print(f"[Gemini ERROR] File {file_id} not ACTIVE after upload, status: {status}")
-                return '', '', ''
-            contents = [myfile, prompt]
-        else:
-            with open(image_path, 'rb') as f:
-                image_bytes = f.read()
-            contents = [types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'), prompt]
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=contents
-        )
-        print("[Gemini RAW JSON Result]")
-        print(response)
-        # Extract JSON from Gemini response
-        text = None
-        if hasattr(response, 'candidates') and response.candidates:
-            try:
-                text = response.candidates[0].content.parts[0].text
-            except Exception:
-                text = str(response)
-        elif hasattr(response, 'text'):
-            text = response.text
-        elif isinstance(response, dict) and 'text' in response:
-            text = response['text']
-        else:
-            text = str(response)
-        # Try to parse JSON, handle code block markdown
-        try:
-            if text.strip().startswith('```'):
-                text = text.strip().lstrip('`').lstrip('json').strip()
-                if text.endswith('```'):
-                    text = text[:text.rfind('```')].strip()
-            meta = json.loads(text)
-            title = meta.get('title', '')
-            description = meta.get('description', '')
-            tags = ', '.join(meta.get('tags', [])) if isinstance(meta.get('tags'), list) else str(meta.get('tags', ''))
-        except Exception as e:
-            print(f"[Gemini JSON PARSE ERROR] {e}")
-            title = description = tags = ''
-        return title, description, tags
-    except Exception as e:
-        print(f"[Gemini ERROR] {e}")
-        return '', '', ''
 
 # --- PySide6 GUI ---
 class DragDropWidget(QLabel):
@@ -248,12 +76,12 @@ class DragDropWidget(QLabel):
             if hasattr(mainwin, 'handle_dropped_files'):
                 mainwin.handle_dropped_files(paths)
 
-class MetaGenMainWindow(QMainWindow):
+class ImageTeaMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Image Tea (nano) Metadata Generator")
         self.setWindowIcon(qta.icon('fa5s.magic'))
-        self.db = MetaGenDB()
+        self.db = ImageTeaDB()
         self.api_key = self.db.get_api_key('gemini')
         self._setup_ui()
         self.refresh_table()
@@ -372,10 +200,11 @@ class MetaGenMainWindow(QMainWindow):
         self.progress_bar.setMaximum(0)  # Indeterminate mode (marquee)
         self.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
-        self.thread = MetadataGeneratorThread(self.api_key, rows, DB_PATH)
-        self.thread.progress.connect(self._on_progress_update)
-        self.thread.finished.connect(self._on_generation_finished)
-        self.thread.start()
+        thread = ImageTeaGeneratorThread(self.api_key, rows, DB_PATH)
+        thread.progress.connect(self._on_progress_update)
+        thread.finished.connect(self._on_generation_finished)
+        thread.start()
+        self.thread = thread
 
     def _on_progress_update(self, current, total):
         # Optionally, could show percent if desired
@@ -445,7 +274,7 @@ class MetaGenMainWindow(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    window = MetaGenMainWindow()
+    window = ImageTeaMainWindow()
     window.resize(900, 600)
     window.show()
     sys.exit(app.exec())
