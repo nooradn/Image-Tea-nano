@@ -3,21 +3,16 @@ import os
 from config import BASE_PATH
 sys.path.insert(0, BASE_PATH)
 import os
-import sqlite3
-import json
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
-    QFileDialog, QMessageBox, QLabel, QLineEdit, QAbstractItemView, QHeaderView, QInputDialog, QProgressBar
+    QApplication, QMainWindow, QTableWidgetItem,
+    QFileDialog, QMessageBox, QLabel
 )
-from PySide6.QtCore import Qt, QMimeData, QThread, Signal
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import qtawesome as qta
-from gemini_helper import generate_metadata_gemini
-from metadata_operation import write_metadata_pyexiv2
-from metadata_operation import ImageTeaGeneratorThread, write_metadata_pyexiv2
-
+from metadata_operation import ImageTeaGeneratorThread
+from metadata_operation import write_metadata_to_images
 from database.db_operation import ImageTeaDB, DB_PATH
-
 from ui.setup_ui import setup_ui
 
 
@@ -130,7 +125,6 @@ class ImageTeaMainWindow(QMainWindow):
             print("[Gemini] Metadata generated for all images.")
 
     def write_metadata_to_images(self):
-        from metadata_operation import write_metadata_to_images
         write_metadata_to_images(self.db, self.is_image_file, self.is_video_file)
 
     def delete_selected(self):

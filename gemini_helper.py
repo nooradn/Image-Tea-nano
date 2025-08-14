@@ -1,3 +1,4 @@
+import time
 import os
 import json
 import google.genai as genai
@@ -59,7 +60,6 @@ def generate_metadata_gemini(api_key, image_path, prompt=None):
 				"2. All fields (title, description, tags) are required\n"
 				"3. Response must be valid JSON\n"
 			)
-		import time
 		if is_video:
 			myfile = client.files.upload(file=image_path)
 			file_id = myfile.name if hasattr(myfile, 'name') else getattr(myfile, 'id', None)
