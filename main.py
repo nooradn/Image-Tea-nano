@@ -26,7 +26,7 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
     except Exception as e:
         print(f"[pyexiv2 ERROR] {file_path}: {e}")
 
-DB_PATH = 'metagen.db'
+DB_PATH = 'database.db'
 
 # --- Database Layer ---
 class MetaGenDB:
@@ -227,7 +227,7 @@ class DragDropWidget(QLabel):
 class MetaGenMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("MetaGen - Image Metadata Generator")
+        self.setWindowTitle("Image Tea (nano) Metadata Generator")
         self.setWindowIcon(qta.icon('fa5s.magic'))
         self.db = MetaGenDB()
         self.api_key = self.db.get_api_key('gemini')
