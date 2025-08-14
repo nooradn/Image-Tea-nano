@@ -4,14 +4,38 @@ import sqlite3
 import json
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget, QTableWidgetItem,
-    QFileDialog, QMessageBox, QLabel, QLineEdit, QAbstractItemView, QHeaderView, QInputDialog
+    QFileDialog, QMessageBox, QLabel, QLineEdit, QAbstractItemView, QHeaderView, QInputDialog, QProgressBar
 )
-from PySide6.QtCore import Qt, QMimeData
+from PySide6.QtCore import Qt, QMimeData, QThread, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon
 import qtawesome as qta
 import google.genai as genai
 from google.genai import types
 import pyexiv2
+class MetadataGeneratorThread(QThread):
+    progress = Signal(int, int)  # current, total
+    finished = Signal(list)
+
+    def __init__(self, api_key, rows, db_path):
+        super().__init__()
+        self.api_key = api_key
+        self.rows = rows
+        self.db_path = db_path
+        self.errors = []
+
+    def run(self):
+        # Buat koneksi database baru di thread ini
+        db = MetaGenDB(self.db_path)
+        total = len(self.rows)
+        for idx, (id_, filepath, filename, title, description, tags) in enumerate(self.rows, 1):
+            if not title:
+                t, d, tg = generate_metadata_gemini(self.api_key, filepath)
+                if not t:
+                    self.errors.append(f"{filename}: Failed to generate metadata")
+                else:
+                    db.update_metadata(filepath, t, d, tg)
+            self.progress.emit(idx, total)
+        self.finished.emit(self.errors)
 # --- Write metadata using pyexiv2 ---
 def write_metadata_pyexiv2(file_path, title, description, tag_list):
     try:
@@ -255,6 +279,15 @@ class MetaGenMainWindow(QMainWindow):
         api_layout.addWidget(self.api_key_edit)
         api_layout.addWidget(api_save_btn)
         layout.addLayout(api_layout)
+        # Progress Bar
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFormat('')
+        self.progress_bar.setVisible(False)
+        layout.addWidget(self.progress_bar)
         # Drag and drop
         self.dnd_widget = DragDropWidget(self)
         layout.addWidget(self.dnd_widget)
@@ -334,15 +367,27 @@ class MetaGenMainWindow(QMainWindow):
         if not rows:
             QMessageBox.information(self, "No Images", "No images to process.")
             return
-        errors = []
-        for id_, filepath, filename, title, description, tags in rows:
-            if not title:
-                t, d, tg = generate_metadata_gemini(self.api_key, filepath)
-                if not t:
-                    errors.append(f"{filename}: Failed to generate metadata")
-                else:
-                    self.db.update_metadata(filepath, t, d, tg)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setMaximum(0)  # Indeterminate mode (marquee)
+        self.progress_bar.setFormat('Generating metadata...')
+        QApplication.processEvents()
+        self.thread = MetadataGeneratorThread(self.api_key, rows, DB_PATH)
+        self.thread.progress.connect(self._on_progress_update)
+        self.thread.finished.connect(self._on_generation_finished)
+        self.thread.start()
+
+    def _on_progress_update(self, current, total):
+        # Optionally, could show percent if desired
+        pass
+
+    def _on_generation_finished(self, errors):
+        self.progress_bar.setFormat('Done')
+        self.progress_bar.setMaximum(1)
+        self.progress_bar.setValue(1)
+        QApplication.processEvents()
         self.refresh_table()
+        self.progress_bar.setVisible(False)
         if errors:
             print("[Gemini Errors]")
             for err in errors:
