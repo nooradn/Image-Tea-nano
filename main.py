@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from config import BASE_PATH
+sys.path.insert(0, BASE_PATH)
 import os
 import sqlite3
 import json
@@ -15,9 +16,9 @@ from gemini_helper import generate_metadata_gemini
 from metadata_operation import write_metadata_pyexiv2
 from metadata_operation import ImageTeaGeneratorThread, write_metadata_pyexiv2
 
-from db_operation import ImageTeaDB, DB_PATH
+from database.db_operation import ImageTeaDB, DB_PATH
 
-from setup_ui import setup_ui
+from ui.setup_ui import setup_ui
 
 
 

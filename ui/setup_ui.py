@@ -9,7 +9,8 @@ def setup_ui(self):
     self.api_key_edit.setPlaceholderText("Enter Gemini API Key")
     if self.api_key:
         self.api_key_edit.setText(self.api_key)
-    api_save_btn = QPushButton(qta.icon('fa5s.save'), "Save API Key")
+    self.api_key_edit.setDisabled(True)
+    api_save_btn = QPushButton(qta.icon('fa5s.save'), "Add API Key")
     api_save_btn.clicked.connect(self.save_api_key)
     icon_label = QLabel(" ")
     icon = qta.icon('fa5s.key')
@@ -20,6 +21,13 @@ def setup_ui(self):
     api_layout.addWidget(self.api_key_edit)
     api_layout.addWidget(api_save_btn)
     layout.addLayout(api_layout)
+
+    # Add Last Tested label below API key input
+    import datetime
+    self.last_tested_label = QLabel()
+    now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    self.last_tested_label.setText(f"Last Tested: {now_str}")
+    layout.addWidget(self.last_tested_label)
     self.progress_bar = QProgressBar()
     self.progress_bar.setMinimum(0)
     self.progress_bar.setMaximum(100)
