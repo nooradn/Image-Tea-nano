@@ -1,6 +1,6 @@
-from PySide6.QtCore import QThread, Signal, Qt
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtCore import QThread, Signal, Qt, QPoint
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QMenu
+from PySide6.QtGui import QColor, QBrush, QAction
 from database.db_operation import ImageTeaDB
 import datetime
 import qtawesome as qta
@@ -133,6 +133,8 @@ class AddApiKeyDialog(QDialog):
         self.key_edit.textChanged.connect(self._on_key_edit_changed)
         self.service_combo.currentIndexChanged.connect(self._on_service_combo_changed)
         self.api_table.cellClicked.connect(self._on_api_table_row_clicked)
+        self.api_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.api_table.customContextMenuRequested.connect(self._show_context_menu)
         self._detected_service = None
         self._api_key_valid = False
         self._testing = False
@@ -308,3 +310,36 @@ class AddApiKeyDialog(QDialog):
             self._refresh_api_table()
             self.key_edit.clear()
             self.note_edit.clear()
+
+    def _show_context_menu(self, pos: QPoint):
+        index = self.api_table.indexAt(pos)
+        if not index.isValid():
+            return
+        row = index.row()
+        self.api_table.selectRow(row)
+        service_item = self.api_table.item(row, 0)
+        api_item = self.api_table.item(row, 1)
+        note_item = self.api_table.item(row, 3)
+        if not service_item or not api_item:
+            return
+        # Set input fields to match the selected row before showing menu
+        service_text = service_item.text()
+        api_text = api_item.text()
+        note_text = note_item.text() if note_item else ""
+        self.key_edit.setText(api_text)
+        self.note_edit.setText(note_text)
+        self.service_combo.setCurrentText(service_text.capitalize())
+        if service_text.lower() == "openai":
+            self._detected_service = "openai"
+        elif service_text.lower() == "gemini":
+            self._detected_service = "gemini"
+        else:
+            self._detected_service = None
+        menu = QMenu(self)
+        action_test = QAction(qta.icon('fa5s.play'), "Test and Save", self)
+        action_delete = QAction(qta.icon('fa5s.trash'), "Delete", self)
+        action_test.triggered.connect(self.test_and_save_api_key)
+        action_delete.triggered.connect(self.delete_api_key)
+        menu.addAction(action_test)
+        menu.addAction(action_delete)
+        menu.exec(self.api_table.viewport().mapToGlobal(pos))
