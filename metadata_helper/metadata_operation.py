@@ -1,5 +1,5 @@
 import pyexiv2
-from gemini_helper import generate_metadata_gemini
+from ai_helper.gemini_helper import generate_metadata_gemini
 from database.db_operation import ImageTeaDB, DB_PATH
 
 from PySide6.QtCore import QThread, Signal

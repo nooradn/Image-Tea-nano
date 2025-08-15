@@ -1,8 +1,8 @@
 import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import BASE_PATH
 sys.path.insert(0, BASE_PATH)
-import os
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTableWidgetItem,
     QFileDialog, QMessageBox, QLabel
@@ -10,8 +10,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import qtawesome as qta
-from metadata_operation import ImageTeaGeneratorThread
-from metadata_operation import write_metadata_to_images
+from metadata_helper.metadata_operation import ImageTeaGeneratorThread
+from metadata_helper.metadata_operation import write_metadata_to_images
 from database.db_operation import ImageTeaDB, DB_PATH
 from ui.setup_ui import setup_ui
 
