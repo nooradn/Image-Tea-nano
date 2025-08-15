@@ -19,13 +19,14 @@ class ImageTeaDB:
             last_tested TEXT,
             status TEXT
         )''')
-        c.execute('''CREATE TABLE IF NOT EXISTS images (
+        c.execute('''CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filepath TEXT UNIQUE,
             filename TEXT,
             title TEXT,
             description TEXT,
-            tags TEXT
+            tags TEXT,
+            status TEXT
         )''')
         self.conn.commit()
 
@@ -75,31 +76,40 @@ class ImageTeaDB:
         c.execute('DELETE FROM api_keys WHERE service=? AND api_key=?', (service, api_key))
         self.conn.commit()
 
-    def add_image(self, filepath, filename, title=None, description=None, tags=None):
+    def add_file(self, filepath, filename, title=None, description=None, tags=None, status=None):
         c = self.conn.cursor()
-        c.execute('''INSERT OR IGNORE INTO images (filepath, filename, title, description, tags) VALUES (?, ?, ?, ?, ?)''',
-                  (filepath, filename, title, description, tags))
+        c.execute('''INSERT OR IGNORE INTO files (filepath, filename, title, description, tags, status) VALUES (?, ?, ?, ?, ?, ?)''',
+                  (filepath, filename, title, description, tags, status))
         self.conn.commit()
 
-    def update_metadata(self, filepath, title, description, tags):
+    def update_metadata(self, filepath, title, description, tags, status=None):
         c = self.conn.cursor()
-        c.execute('''UPDATE images SET title=?, description=?, tags=? WHERE filepath=?''',
-                  (title, description, tags, filepath))
+        if status is not None:
+            c.execute('''UPDATE files SET title=?, description=?, tags=?, status=? WHERE filepath=?''',
+                      (title, description, tags, status, filepath))
+        else:
+            c.execute('''UPDATE files SET title=?, description=?, tags=? WHERE filepath=?''',
+                      (title, description, tags, filepath))
         self.conn.commit()
 
-    def delete_image(self, filepath):
+    def update_file_status(self, filepath, status):
         c = self.conn.cursor()
-        c.execute('DELETE FROM images WHERE filepath=?', (filepath,))
+        c.execute('UPDATE files SET status=? WHERE filepath=?', (status, filepath))
         self.conn.commit()
 
-    def clear_images(self):
+    def delete_file(self, filepath):
         c = self.conn.cursor()
-        c.execute('DELETE FROM images')
+        c.execute('DELETE FROM files WHERE filepath=?', (filepath,))
         self.conn.commit()
 
-    def get_all_images(self):
+    def clear_files(self):
         c = self.conn.cursor()
-        c.execute('SELECT id, filepath, filename, title, description, tags FROM images')
+        c.execute('DELETE FROM files')
+        self.conn.commit()
+
+    def get_all_files(self):
+        c = self.conn.cursor()
+        c.execute('SELECT id, filepath, filename, title, description, tags, status FROM files')
         return c.fetchall()
 
     def get_all_api_keys(self):

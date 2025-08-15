@@ -6,9 +6,9 @@ class ImageTableWidget(QWidget):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.table = QTableWidget(0, 7, self)
+        self.table = QTableWidget(0, 8, self)
         self.table.setHorizontalHeaderLabels([
-            "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count"
+            "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count", "Status"
         ])
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
@@ -27,10 +27,10 @@ class ImageTableWidget(QWidget):
 
 def refresh_table(self):
     self.table.table.setRowCount(0)
-    for row in self.db.get_all_images():
+    for row in self.db.get_all_files():
         row_idx = self.table.table.rowCount()
         self.table.table.insertRow(row_idx)
-        display_values = row[1:6]
+        display_values = row[1:7]
         for col, val in enumerate(display_values):
             item = QTableWidgetItem(str(val) if val is not None else "")
             if col == 0:
@@ -46,6 +46,10 @@ def refresh_table(self):
         tag_count_item = QTableWidgetItem(str(tag_count))
         tag_count_item.setTextAlignment(Qt.AlignCenter)
         self.table.table.setItem(row_idx, 6, tag_count_item)
+        status_val = row[6] if len(row) > 6 and row[6] is not None else ""
+        status_item = QTableWidgetItem(str(status_val))
+        status_item.setTextAlignment(Qt.AlignCenter)
+        self.table.table.setItem(row_idx, 7, status_item)
 
 def delete_selected(self):
     selected = self.table.table.selectionModel().selectedRows()
@@ -54,10 +58,10 @@ def delete_selected(self):
         return
     for idx in selected:
         filepath = self.table.table.item(idx.row(), 1).text()
-        self.db.delete_image(filepath)
+        self.db.delete_file(filepath)
     refresh_table(self)
 
 def clear_all(self):
-    if QMessageBox.question(self, "Clear All", "Are you sure you want to clear all images?", QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
-        self.db.clear_images()
+    if QMessageBox.question(self, "Clear All", "Are you sure you want to clear all files?", QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
+        self.db.clear_files()
         refresh_table(self)
