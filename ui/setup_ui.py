@@ -1,9 +1,10 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox
 import datetime
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from ui.file_dnd_widget import DragDropWidget
 import qtawesome as qta
 from ui.main_table import ImageTableWidget
+from ui.prompt_section import PromptSectionWidget
 
 def setup_ui(self):
     from database.db_operation import ImageTeaDB
@@ -146,19 +147,16 @@ def setup_ui(self):
     self.last_tested_label.setText(f"Last Tested: {now_str}")
     self.last_tested_label.setToolTip("Shows the last time the selected API key was tested")
     layout.addWidget(self.last_tested_label)
-    self.progress_bar = QProgressBar()
-    self.progress_bar.setMinimum(0)
-    self.progress_bar.setMaximum(100)
-    self.progress_bar.setValue(0)
-    self.progress_bar.setTextVisible(True)
-    self.progress_bar.setFormat('')
-    self.progress_bar.setVisible(False)
-    self.progress_bar.setToolTip("Shows progress for batch operations")
-    layout.addWidget(self.progress_bar)
+
+    self.prompt_section = PromptSectionWidget(self)
+    layout.addWidget(self.prompt_section)
+
     self.dnd_widget = DragDropWidget(self)
     layout.addWidget(self.dnd_widget)
+
     self.table = ImageTableWidget(self)
     layout.addWidget(self.table)
+
     btn_layout = QHBoxLayout()
     import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Files")
     import_btn.setToolTip("Import images or videos from your computer")

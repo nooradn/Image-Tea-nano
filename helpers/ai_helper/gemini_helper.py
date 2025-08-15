@@ -9,7 +9,7 @@ def load_gemini_prompt_vars():
     prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
     with open(prompt_path, "r", encoding="utf-8") as f:
         data = json.load(f)
-    return data["gemini_prompt"], data["min_title_length"], data["max_title_length"], data["required_tag_count"]
+    return data["ai_prompt"], data["min_title_length"], data["max_title_length"], data["required_tag_count"]
 
 def format_gemini_prompt(base_prompt, min_title_length, max_title_length, required_tag_count):
     prompt = base_prompt

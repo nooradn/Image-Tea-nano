@@ -86,10 +86,10 @@ class ImageTeaMainWindow(QMainWindow):
         if not rows:
             QMessageBox.information(self, "No Images", "No images to process.")
             return
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(0)
-        self.progress_bar.setFormat('Generating metadata...')
+        self.table.progress_bar.setVisible(True)
+        self.table.progress_bar.setMinimum(0)
+        self.table.progress_bar.setMaximum(0)
+        self.table.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
         thread = ImageTeaGeneratorThread(self.api_key, rows, DB_PATH)
         thread.progress.connect(self._on_progress_update)
@@ -101,12 +101,12 @@ class ImageTeaMainWindow(QMainWindow):
         pass
 
     def _on_generation_finished(self, errors):
-        self.progress_bar.setFormat('Done')
-        self.progress_bar.setMaximum(1)
-        self.progress_bar.setValue(1)
+        self.table.progress_bar.setFormat('Done')
+        self.table.progress_bar.setMaximum(1)
+        self.table.progress_bar.setValue(1)
         QApplication.processEvents()
         refresh_table(self)
-        self.progress_bar.setVisible(False)
+        self.table.progress_bar.setVisible(False)
         if errors:
             print("[Gemini Errors]")
             for err in errors:
