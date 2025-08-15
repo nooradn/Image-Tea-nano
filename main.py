@@ -37,7 +37,7 @@ class ImageTeaMainWindow(QMainWindow):
         for path in paths:
             if os.path.isfile(path):
                 fname = os.path.basename(path)
-                self.db.add_image(path, fname)
+                self.db.add_file(path, fname)
                 added += 1
         if added:
             refresh_table(self)
@@ -50,9 +50,9 @@ class ImageTeaMainWindow(QMainWindow):
         if not self.api_key:
             QMessageBox.warning(self, "API Key", "Please set your Gemini API key first.")
             return
-        rows = self.db.get_all_images()
+        rows = self.db.get_all_files()
         if not rows:
-            QMessageBox.information(self, "No Images", "No images to process.")
+            QMessageBox.information(self, "No Files", "No files to process.")
             return
         self.table.progress_bar.setVisible(True)
         self.table.progress_bar.setMinimum(0)
@@ -80,7 +80,7 @@ class ImageTeaMainWindow(QMainWindow):
             for err in errors:
                 print(err)
         else:
-            print("[Gemini] Metadata generated for all images.")
+            print("[Gemini] Metadata generated for all files.")
 
     def write_metadata_to_images(self):
         write_metadata_to_images(self.db, None, None)

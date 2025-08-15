@@ -10,5 +10,5 @@ def import_files(parent, db, is_image_file, is_video_file):
     )
     for path in files:
         fname = os.path.basename(path)
-        db.add_image(path, fname)
+        db.add_file(path, fname)
     return bool(files)

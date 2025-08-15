@@ -1,10 +1,11 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QFrame
 import datetime
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from ui.file_dnd_widget import DragDropWidget
 import qtawesome as qta
 from ui.main_table import ImageTableWidget
 from ui.prompt_section import PromptSectionWidget
+from ui.stats_section import StatsSectionWidget
 
 def setup_ui(self):
     from database.db_operation import ImageTeaDB
@@ -151,39 +152,76 @@ def setup_ui(self):
     self.prompt_section = PromptSectionWidget(self)
     layout.addWidget(self.prompt_section)
 
-    self.dnd_widget = DragDropWidget(self)
-    layout.addWidget(self.dnd_widget)
+    # Grup tombol import/delete/clear di kiri dan write metadata di kanan atas tabel
+    top_btn_layout = QHBoxLayout()
+    left_btn_group = QHBoxLayout()
+    right_btn_group = QHBoxLayout()
+
+    import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Files")
+    import_btn.setToolTip("Import images or videos from your computer")
+    import_btn.clicked.connect(self.import_images)
+
+    del_btn = QPushButton(qta.icon('fa5s.trash'), "Delete Selected")
+    del_btn.setToolTip("Delete the selected images from the table and database")
+    del_btn.clicked.connect(self.delete_selected)
+
+    clear_btn = QPushButton(qta.icon('fa5s.broom'), "Clear All")
+    clear_btn.setToolTip("Remove all images from the table and database")
+    clear_btn.clicked.connect(self.clear_all)
+
+    write_btn = QPushButton(qta.icon('fa5s.save'), "Write Metadata to Images")
+    write_btn.setToolTip("Write the generated metadata back to the image files")
+    write_btn.clicked.connect(self.write_metadata_to_images)
+
+    left_btn_group.addWidget(import_btn)
+    left_btn_group.addWidget(del_btn)
+    left_btn_group.addWidget(clear_btn)
+
+    right_btn_group.addWidget(write_btn)
+
+    top_btn_layout.addLayout(left_btn_group)
+    top_btn_layout.addStretch()
+    top_btn_layout.addLayout(right_btn_group)
+    layout.addLayout(top_btn_layout)
 
     self.table = ImageTableWidget(self)
     layout.addWidget(self.table)
 
-    btn_layout = QHBoxLayout()
-    import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Files")
-    import_btn.setToolTip("Import images or videos from your computer")
-    import_btn.clicked.connect(self.import_images)
-    gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata (Batch)")
-    gen_btn.setToolTip("Generate metadata for all images in the table")
+    self.dnd_widget = DragDropWidget(self)
+    layout.addWidget(self.dnd_widget)
+
+    # Grup generate metadata: stats_section di kiri sebaris dengan tombol generate di kanan bawah tabel
+    btn_row_layout = QHBoxLayout()
+    self.stats_section = StatsSectionWidget(self)
+    btn_row_layout.addWidget(self.stats_section)
+
+    btn_row_layout.addStretch()
+
+    gen_group_layout = QVBoxLayout()
+    self.gen_mode_combo = QComboBox()
+    self.gen_mode_combo.addItems(["Generate All", "Selected Only", "Failed Only"])
+    self.gen_mode_combo.setToolTip("Choose which files to generate metadata for")
+    gen_group_layout.addWidget(self.gen_mode_combo)
+
+    gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata")
+    gen_btn.setToolTip("Generate metadata for all files in the table")
     gen_btn.clicked.connect(self.batch_generate_metadata)
-    write_btn = QPushButton(qta.icon('fa5s.save'), "Write Metadata to Images")
-    write_btn.setToolTip("Write the generated metadata back to the image files")
-    write_btn.clicked.connect(self.write_metadata_to_images)
-    del_btn = QPushButton(qta.icon('fa5s.trash'), "Delete Selected")
-    del_btn.setToolTip("Delete the selected images from the table and database")
-    del_btn.clicked.connect(self.delete_selected)
-    clear_btn = QPushButton(qta.icon('fa5s.broom'), "Clear All")
-    clear_btn.setToolTip("Remove all images from the table and database")
-    clear_btn.clicked.connect(self.clear_all)
-    btn_layout.addWidget(import_btn)
-    btn_layout.addWidget(gen_btn)
-    btn_layout.addWidget(write_btn)
-    btn_layout.addWidget(del_btn)
-    btn_layout.addWidget(clear_btn)
-    layout.addLayout(btn_layout)
+    gen_btn.setMinimumWidth(260)
+    gen_btn.setMinimumHeight(48)
+    font = gen_btn.font()
+    font.setPointSize(font.pointSize() + 4)
+    font.setBold(True)
+    gen_btn.setFont(font)
+    gen_group_layout.addWidget(gen_btn)
+
+    btn_row_layout.addLayout(gen_group_layout)
+
+    layout.addLayout(btn_row_layout)
     central.setLayout(layout)
     self.setCentralWidget(central)
 
-    # Initial population
     if self.model_combo.count() > 0:
         refresh_api_key_combo(self.model_combo.currentText())
     else:
+        refresh_api_key_combo(None)
         refresh_api_key_combo(None)
