@@ -9,8 +9,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import qtawesome as qta
-from metadata_helper.metadata_operation import ImageTeaGeneratorThread
-from metadata_helper.metadata_operation import write_metadata_to_images
+from helpers.metadata_helper.metadata_operation import ImageTeaGeneratorThread
+from helpers.metadata_helper.metadata_operation import write_metadata_to_images
 from database.db_operation import ImageTeaDB, DB_PATH
 from ui.setup_ui import setup_ui
 from ui.main_table import (
