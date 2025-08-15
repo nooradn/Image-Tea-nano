@@ -1,8 +1,8 @@
 import sys
 import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import BASE_PATH
 sys.path.insert(0, BASE_PATH)
-import os
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QTableWidgetItem,
     QFileDialog, QMessageBox, QLabel

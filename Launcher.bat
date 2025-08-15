@@ -38,8 +38,7 @@ if exist "%PYTHON_DIR%" (
     ) else (
         echo Warning: requirements.txt not found. Skipping package installation.
     )
-    "%PYTHON_EXE%" "%MAIN_PY%"
-    goto :eof
+    goto :VERIFY
 )
 
 echo Python installation not found. Setting up environment...
@@ -106,9 +105,39 @@ if exist "%REQUIREMENTS_FILE%" (
     echo Warning: requirements.txt not found. Skipping package installation.
 )
 
-REM =====================================================================
-REM Launch the application
-REM =====================================================================
+:VERIFY
+echo.
+echo ================================
+echo Verifying Python and pip version:
+echo ================================
+"%PYTHON_EXE%" --version
+"%PYTHON_EXE%" -c "import sys; print('Python executable:', sys.executable)"
+"%PYTHON_EXE%" -m pip --version
+
+echo.
+echo ================================
+echo Verifying installed requirements:
+echo ================================
+if exist "%BASE_DIR%\requirements.txt" (
+    "%PYTHON_EXE%" -m pip freeze > "%TEMP%\pip_freeze.txt"
+    for /f "usebackq tokens=*" %%r in ("%BASE_DIR%\requirements.txt") do (
+        set "REQ=%%r"
+        if not "!REQ!"=="" if "!REQ:~0,1!" NEQ "#" (
+            echo Checking !REQ! ...
+            findstr /I /C:"!REQ!" "%TEMP%\pip_freeze.txt" >nul
+            if errorlevel 1 (
+                echo   [MISSING/DIFFERENT] !REQ!
+            ) else (
+                echo   [OK] !REQ!
+            )
+        )
+    )
+    del "%TEMP%\pip_freeze.txt"
+) else (
+    echo requirements.txt not found, skipping requirements verification.
+)
+
+echo.
 echo Setup complete. Running main.py...
 "%PYTHON_EXE%" "%MAIN_PY%"
 
