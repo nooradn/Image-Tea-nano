@@ -19,25 +19,7 @@ from ui.main_table import (
     clear_all,
     ImageTableWidget
 )
-
-class DragDropWidget(QLabel):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setText("Drag and drop images or videos here")
-        self.setAlignment(Qt.AlignCenter)
-        self.setAcceptDrops(True)
-        self.setStyleSheet("border: 2px dashed #aaa; padding: 20px; font-size: 16px;")
-
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent):
-        if event.mimeData().hasUrls():
-            paths = [url.toLocalFile() for url in event.mimeData().urls()]
-            mainwin = self.window()
-            if hasattr(mainwin, 'handle_dropped_files'):
-                mainwin.handle_dropped_files(paths)
+from ui.file_dnd_widget import DragDropWidget
 
 class ImageTeaMainWindow(QMainWindow):
     def __init__(self):
@@ -48,15 +30,6 @@ class ImageTeaMainWindow(QMainWindow):
         self.api_key = self.db.get_api_key('gemini')
         setup_ui(self)
         refresh_table(self)
-
-    def save_api_key(self):
-        key = self.api_key_edit.text().strip()
-        if not key:
-            QMessageBox.warning(self, "API Key", "API key cannot be empty.")
-            return
-        self.db.set_api_key('gemini', key)
-        self.api_key = key
-        QMessageBox.information(self, "API Key", "API key saved.")
 
     def handle_dropped_files(self, paths):
         added = 0
