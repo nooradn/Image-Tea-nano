@@ -1,4 +1,5 @@
- PySide6
- qtawesome
- google-genai
- pyexiv2
+PySide6
+qtawesome
+openai
+google-genai
+pyexiv2
