@@ -1,8 +1,9 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar, QTableWidget, QAbstractItemView, QHeaderView
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QLineEdit, QProgressBar
 import datetime
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from ui.file_dnd_widget import DragDropWidget
 import qtawesome as qta
+from ui.main_table import ImageTableWidget
 
 def setup_ui(self):
     from database.db_operation import ImageTeaDB
@@ -156,13 +157,7 @@ def setup_ui(self):
     layout.addWidget(self.progress_bar)
     self.dnd_widget = DragDropWidget(self)
     layout.addWidget(self.dnd_widget)
-    self.table = QTableWidget(0, 7)
-    self.table.setHorizontalHeaderLabels([
-        "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count"
-    ])
-    self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
-    self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-    self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+    self.table = ImageTableWidget(self)
     layout.addWidget(self.table)
     btn_layout = QHBoxLayout()
     import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Files")

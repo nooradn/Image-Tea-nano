@@ -1,5 +1,15 @@
-from PySide6.QtWidgets import QTableWidgetItem, QMessageBox
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView
 from PySide6.QtCore import Qt
+
+class ImageTableWidget(QTableWidget):
+    def __init__(self, parent=None):
+        super().__init__(0, 7, parent)
+        self.setHorizontalHeaderLabels([
+            "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count"
+        ])
+        self.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
 def refresh_table(self):
     self.table.setRowCount(0)

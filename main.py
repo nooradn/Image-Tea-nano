@@ -16,7 +16,8 @@ from ui.setup_ui import setup_ui
 from ui.main_table import (
     refresh_table,
     delete_selected,
-    clear_all
+    clear_all,
+    ImageTableWidget
 )
 
 class DragDropWidget(QLabel):
