@@ -81,11 +81,25 @@ class ImageTeaMainWindow(QMainWindow):
         for row in self.db.get_all_images():
             row_idx = self.table.rowCount()
             self.table.insertRow(row_idx)
-            for col, val in enumerate(row):
+            # row[1]: filepath, row[2]: filename, row[3]: title, row[4]: description, row[5]: tags
+            display_values = row[1:6]
+            for col, val in enumerate(display_values):
                 item = QTableWidgetItem(str(val) if val is not None else "")
                 if col == 0:
                     item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(row_idx, col, item)
+            # Title char count
+            title_val = row[3] if len(row) > 3 and row[3] is not None else ""
+            title_len = len(title_val)
+            title_len_item = QTableWidgetItem(str(title_len))
+            title_len_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row_idx, 5, title_len_item)
+            # Tag count
+            tags_val = row[5] if len(row) > 5 and row[5] is not None else ""
+            tag_count = len([t for t in tags_val.split(",") if t.strip()]) if tags_val else 0
+            tag_count_item = QTableWidgetItem(str(tag_count))
+            tag_count_item.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(row_idx, 6, tag_count_item)
 
     def batch_generate_metadata(self):
         if not self.api_key:

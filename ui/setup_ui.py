@@ -156,8 +156,10 @@ def setup_ui(self):
     layout.addWidget(self.progress_bar)
     self.dnd_widget = DragDropWidget(self)
     layout.addWidget(self.dnd_widget)
-    self.table = QTableWidget(0, 6)
-    self.table.setHorizontalHeaderLabels(["ID", "Filepath", "Filename", "Title", "Description", "Tags"])
+    self.table = QTableWidget(0, 7)
+    self.table.setHorizontalHeaderLabels([
+        "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count"
+    ])
     self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
     self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
     self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
