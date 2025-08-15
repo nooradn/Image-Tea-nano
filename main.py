@@ -4,8 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import BASE_PATH
 sys.path.insert(0, BASE_PATH)
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QTableWidgetItem,
-    QFileDialog, QMessageBox, QLabel
+    QApplication, QMainWindow, QFileDialog, QMessageBox, QLabel
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
@@ -14,10 +13,12 @@ from metadata_helper.metadata_operation import ImageTeaGeneratorThread
 from metadata_helper.metadata_operation import write_metadata_to_images
 from database.db_operation import ImageTeaDB, DB_PATH
 from ui.setup_ui import setup_ui
+from ui.main_table import (
+    refresh_table,
+    delete_selected,
+    clear_all
+)
 
-
-
-# --- PySide6 GUI ---
 class DragDropWidget(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -45,7 +46,7 @@ class ImageTeaMainWindow(QMainWindow):
         self.db = ImageTeaDB()
         self.api_key = self.db.get_api_key('gemini')
         setup_ui(self)
-        self.refresh_table()
+        refresh_table(self)
 
     def save_api_key(self):
         key = self.api_key_edit.text().strip()
@@ -65,7 +66,7 @@ class ImageTeaMainWindow(QMainWindow):
                     self.db.add_image(path, fname)
                     added += 1
         if added:
-            self.refresh_table()
+            refresh_table(self)
 
     def import_images(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Images or Videos", "", "Images/Videos (*.jpg *.jpeg *.png *.bmp *.gif *.mp4 *.mpeg *.mov *.avi *.flv *.mpg *.webm *.wmv *.3gp *.3gpp)")
@@ -74,32 +75,7 @@ class ImageTeaMainWindow(QMainWindow):
             if self.is_image_file(path) or self.is_video_file(path):
                 self.db.add_image(path, fname)
         if files:
-            self.refresh_table()
-
-    def refresh_table(self):
-        self.table.setRowCount(0)
-        for row in self.db.get_all_images():
-            row_idx = self.table.rowCount()
-            self.table.insertRow(row_idx)
-            # row[1]: filepath, row[2]: filename, row[3]: title, row[4]: description, row[5]: tags
-            display_values = row[1:6]
-            for col, val in enumerate(display_values):
-                item = QTableWidgetItem(str(val) if val is not None else "")
-                if col == 0:
-                    item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(row_idx, col, item)
-            # Title char count
-            title_val = row[3] if len(row) > 3 and row[3] is not None else ""
-            title_len = len(title_val)
-            title_len_item = QTableWidgetItem(str(title_len))
-            title_len_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_idx, 5, title_len_item)
-            # Tag count
-            tags_val = row[5] if len(row) > 5 and row[5] is not None else ""
-            tag_count = len([t for t in tags_val.split(",") if t.strip()]) if tags_val else 0
-            tag_count_item = QTableWidgetItem(str(tag_count))
-            tag_count_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_idx, 6, tag_count_item)
+            refresh_table(self)
 
     def batch_generate_metadata(self):
         if not self.api_key:
@@ -111,7 +87,7 @@ class ImageTeaMainWindow(QMainWindow):
             return
         self.progress_bar.setVisible(True)
         self.progress_bar.setMinimum(0)
-        self.progress_bar.setMaximum(0)  # Indeterminate mode (marquee)
+        self.progress_bar.setMaximum(0)
         self.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
         thread = ImageTeaGeneratorThread(self.api_key, rows, DB_PATH)
@@ -121,7 +97,6 @@ class ImageTeaMainWindow(QMainWindow):
         self.thread = thread
 
     def _on_progress_update(self, current, total):
-        # Optionally, could show percent if desired
         pass
 
     def _on_generation_finished(self, errors):
@@ -129,7 +104,7 @@ class ImageTeaMainWindow(QMainWindow):
         self.progress_bar.setMaximum(1)
         self.progress_bar.setValue(1)
         QApplication.processEvents()
-        self.refresh_table()
+        refresh_table(self)
         self.progress_bar.setVisible(False)
         if errors:
             print("[Gemini Errors]")
@@ -142,19 +117,10 @@ class ImageTeaMainWindow(QMainWindow):
         write_metadata_to_images(self.db, self.is_image_file, self.is_video_file)
 
     def delete_selected(self):
-        selected = self.table.selectionModel().selectedRows()
-        if not selected:
-            QMessageBox.information(self, "Delete", "No rows selected.")
-            return
-        for idx in selected:
-            filepath = self.table.item(idx.row(), 1).text()
-            self.db.delete_image(filepath)
-        self.refresh_table()
+        delete_selected(self)
 
     def clear_all(self):
-        if QMessageBox.question(self, "Clear All", "Are you sure you want to clear all images?", QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
-            self.db.clear_images()
-            self.refresh_table()
+        clear_all(self)
 
     @staticmethod
     def is_image_file(path):
