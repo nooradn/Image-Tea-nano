@@ -16,12 +16,12 @@ REM    - Installs required packages from requirements.txt
 REM    - Runs main.py
 REM =====================================================================
 
-REM Set base directory to the location of this batch file (removes trailing backslash)
 set "BASE_DIR=%~dp0"
 set "BASE_DIR=%BASE_DIR:~0,-1%"
 set "PYTHON_DIR=%BASE_DIR%\python\Windows"
 set "PYTHON_EXE=%PYTHON_DIR%\python.exe"
 set "MAIN_PY=%BASE_DIR%\main.py"
+set "REQUIREMENTS_FILE=%BASE_DIR%\requirements.txt"
 
 REM =====================================================================
 REM Check if Python directory exists
@@ -41,7 +41,55 @@ if exist "%PYTHON_DIR%" (
     goto :VERIFY
 )
 
-echo Python installation not found. Setting up environment...
+REM User Consent Section with Green Color
+powershell -Command "Write-Host '=====================================================================' -ForegroundColor Green"
+powershell -Command "Write-Host 'Image Tea - User Consent Required' -ForegroundColor Green"
+powershell -Command "Write-Host '=====================================================================' -ForegroundColor Green"
+powershell -Command "Write-Host 'Image Tea berkomitmen menjadi aplikasi yang jujur dan transparan.' -ForegroundColor Green"
+powershell -Command "Write-Host 'Untuk dapat berjalan, aplikasi ini membutuhkan Python 3.12.10 embedded, pip, dan seluruh library Python yang tercantum di requirements.txt.' -ForegroundColor Green"
+powershell -Command "Write-Host 'Python dan seluruh library akan di-instal secara otomatis ke direktori berikut:' -ForegroundColor Green"
+powershell -Command "Write-Host '    %PYTHON_DIR%' -ForegroundColor Green"
+powershell -Command "Write-Host 'Semua file Python, pip, dan library hanya akan ditempatkan di folder tersebut, tidak akan mengubah sistem Anda.' -ForegroundColor Green"
+powershell -Command "Write-Host 'Tidak ada perubahan pada PATH atau instalasi global.' -ForegroundColor Green"
+powershell -Command "Write-Host ''"
+powershell -Command "Write-Host 'Perkiraan total ukuran download dan instalasi:' -ForegroundColor Green"
+powershell -Command "Write-Host '  - Python embedded: ~8 MB' -ForegroundColor Green"
+powershell -Command "Write-Host '  - pip dan library (requirements.txt): bervariasi, rata-rata 30-100 MB tergantung kebutuhan' -ForegroundColor Green"
+powershell -Command "Write-Host '  - Total estimasi: sekitar 300-500 MB (tergantung jumlah dan ukuran library)' -ForegroundColor Green"
+powershell -Command "Write-Host ''"
+if exist "%REQUIREMENTS_FILE%" (
+    powershell -Command "Write-Host 'Daftar library yang akan diinstal:' -ForegroundColor Green"
+    for /f "usebackq tokens=*" %%l in ("%REQUIREMENTS_FILE%") do (
+        set "LIB=%%l"
+        if not "!LIB!"=="" if "!LIB:~0,1!" NEQ "#" (
+            powershell -Command "Write-Host '  - !LIB!' -ForegroundColor Green"
+        )
+    )
+) else (
+    powershell -Command "Write-Host 'Tidak ditemukan requirements.txt, tidak ada library tambahan yang akan diinstal.' -ForegroundColor Green"
+)
+powershell -Command "Write-Host ''"
+powershell -Command "Write-Host 'Kami memahami kebutuhan privasi Anda. Aplikasi ini berjalan sepenuhnya secara lokal di komputer Anda.' -ForegroundColor Green"
+powershell -Command "Write-Host 'Developer (Studio Desainia) TIDAK mengumpulkan data apapun dari pengguna.' -ForegroundColor Green"
+powershell -Command "Write-Host 'Library yang diinstal diperlukan untuk komunikasi dengan platform ai dan dokumentasi lengkap dapat di lihat di internet.' -ForegroundColor Green"
+powershell -Command "Write-Host ''"
+powershell -Command "Write-Host 'Jika nantinya aplikasi Image Tea sudah tidak dibutuhkan, Anda dapat menghapus seluruh folder Image Tea ini dan tidak akan mempengaruhi sistem Anda.' -ForegroundColor Green"
+powershell -Command "Write-Host ''"
+powershell -Command "Write-Host 'Dengan melanjutkan, Anda menyetujui instalasi Python embedded, pip, dan seluruh library Python di lokasi di atas.' -ForegroundColor Green"
+powershell -Command "Write-Host ''"
+
+choice /c yn /n /m "Setuju? (Y/N):"
+if errorlevel 2 (
+    echo.
+    echo Anda tidak menyetujui instalasi. Proses dibatalkan.
+    endlocal
+    exit /b
+)
+
+echo Terima kasih atas konfirmasi Anda.
+echo Proses pengunduhan Python dan library akan segera dimulai.
+echo Proses ini membutuhkan waktu dan koneksi internet yang stabil.
+echo Jika terjadi kegagalan atau Anda berubah pikiran, silakan tutup jendela CMD ini dan jalankan ulang Launcher.bat.
 
 REM =====================================================================
 REM Define variables for setup process
