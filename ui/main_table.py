@@ -5,6 +5,7 @@ class ImageTableWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
         self.table = QTableWidget(0, 7, self)
         self.table.setHorizontalHeaderLabels([
             "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count"
