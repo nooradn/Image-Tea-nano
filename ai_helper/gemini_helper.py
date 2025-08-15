@@ -25,7 +25,7 @@ def generate_metadata_gemini(api_key, image_path, prompt=None):
 				"- Use a full sentence or two, not just keywords\n"
 				"- Must be unique and informative\n\n"
 				"3. Keywords Requirements:\n"
-				"- You must provide exactly 15 keywords and not less since its CRITICAL\n"
+				"- You must provide exactly 40 keywords and not less since its CRITICAL\n"
 				"- Keywords must be precise and directly relevant\n"
 				"- Include both literal and conceptual terms\n"
 				"- Cover key visual elements, themes, emotions, techniques\n"
