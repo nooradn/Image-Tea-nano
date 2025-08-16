@@ -4,7 +4,6 @@ import json
 import google.genai as genai
 from google.genai import types
 from config import BASE_PATH
-from database.db_operation import ImageTeaDB
 
 def load_gemini_prompt_vars():
     prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
@@ -19,13 +18,8 @@ def format_gemini_prompt(base_prompt, min_title_length, max_title_length, requir
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
     return prompt
 
-def generate_metadata_gemini(api_key, image_path, prompt=None):
+def generate_metadata_gemini(api_key, model, image_path, prompt=None):
     try:
-        db = ImageTeaDB()
-        api_key_info = db.get_api_key('gemini')
-        if not api_key_info or api_key_info.get('api_key') != api_key or not api_key_info.get('model'):
-            raise RuntimeError("No model found for this Gemini API key in the database.")
-        model = api_key_info.get('model')
         client = genai.Client(api_key=api_key)
         ext = os.path.splitext(image_path)[1].lower()
         is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']

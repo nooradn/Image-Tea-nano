@@ -8,9 +8,10 @@ class ImageTeaGeneratorThread(QThread):
 	progress = Signal(int, int)  # current, total
 	finished = Signal(list)
 
-	def __init__(self, api_key, rows, db_path):
+	def __init__(self, api_key, model, rows, db_path):
 		super().__init__()
 		self.api_key = api_key
+		self.model = model
 		self.rows = rows
 		self.db_path = db_path
 		self.errors = []
@@ -18,9 +19,10 @@ class ImageTeaGeneratorThread(QThread):
 	def run(self):
 		db = ImageTeaDB(self.db_path)
 		total = len(self.rows)
-		for idx, (id_, filepath, filename, title, description, tags) in enumerate(self.rows, 1):
+		for idx, row in enumerate(self.rows, 1):
+			id_, filepath, filename, title, description, tags, status = row
 			if not title:
-				t, d, tg = generate_metadata_gemini(self.api_key, filepath)
+				t, d, tg = generate_metadata_gemini(self.api_key, self.model, filepath)
 				if not t:
 					self.errors.append(f"{filename}: Failed to generate metadata")
 				else:
@@ -47,7 +49,8 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
 def write_metadata_to_images(db, is_image_file, is_video_file):
 	rows = db.get_all_images()
 	errors = []
-	for id_, filepath, filename, title, description, tags in rows:
+	for row in rows:
+		id_, filepath, filename, title, description, tags, status = row
 		if is_image_file(filepath):
 			if title or description or tags:
 				try:

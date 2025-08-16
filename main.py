@@ -47,8 +47,16 @@ class ImageTeaMainWindow(QMainWindow):
             refresh_table(self)
 
     def batch_generate_metadata(self):
-        if not self.api_key:
-            QMessageBox.warning(self, "API Key", "Please set your Gemini API key first.")
+        # Get api_key and model from current combo selection in setup_ui (api_key_combo and model from api_key_map)
+        api_key = None
+        model = None
+        if hasattr(self, "api_key_combo") and hasattr(self, "api_key_map"):
+            idx = self.api_key_combo.currentIndex()
+            api_key = self.api_key_combo.currentData() if idx >= 0 else None
+            if api_key and api_key in self.api_key_map:
+                model = self.api_key_map[api_key].get("model")
+        if not api_key or not model:
+            QMessageBox.warning(self, "API Key", "Please select both API Key and Model first.")
             return
         rows = self.db.get_all_files()
         if not rows:
@@ -59,7 +67,7 @@ class ImageTeaMainWindow(QMainWindow):
         self.table.progress_bar.setMaximum(0)
         self.table.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
-        thread = ImageTeaGeneratorThread(self.api_key, rows, DB_PATH)
+        thread = ImageTeaGeneratorThread(api_key, model, rows, DB_PATH)
         thread.progress.connect(self._on_progress_update)
         thread.finished.connect(self._on_generation_finished)
         thread.start()
