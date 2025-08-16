@@ -32,7 +32,11 @@ class ImageTeaGeneratorThread(QThread):
 			visual_idx = self.row_map.get(id_, idx)
 			self.row_status.emit(visual_idx, "processing")
 			try:
-				t, d, tg = self.generate_metadata_func(self.api_key, self.model, filepath)
+				result = self.generate_metadata_func(self.api_key, self.model, filepath)
+				if isinstance(result, tuple) and len(result) >= 3:
+					t, d, tg = result[0], result[1], result[2]
+				else:
+					t, d, tg = '', '', ''
 				t = _extract_xmp_value(t)
 				d = _extract_xmp_value(d)
 				if not t:

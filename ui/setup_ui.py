@@ -57,6 +57,7 @@ def setup_ui(self):
     self.api_key_combo.setEditable(False)
     self.api_key_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
     self.api_key_combo.setToolTip("Select the API key to use for the selected model")
+    self.api_key_combo.setMaximumWidth(550)
     self.api_key_map = {}
 
     def refresh_api_key_combo(selected_model=None):
