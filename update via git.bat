@@ -12,16 +12,18 @@ if %errorlevel%==0 (
     powershell -Command "Write-Host ''"
     powershell -Command "Write-Host 'PERINGATAN: Semua API key dan data yang tersimpan di database.db akan HILANG dan TIDAK DAPAT DIKEMBALIKAN!' -ForegroundColor Red"
     powershell -Command "Write-Host 'Jangan gunakan Image Tea sebagai aplikasi penyimpanan data, aplikasi ini hanya untuk generate metadata.' -ForegroundColor Yellow"
+    powershell -Command "Write-Host 'Meskipun Image Tea menyimpan API key untuk kemudahan, jika database dihapus (misal saat update), seluruh API key akan hilang.' -ForegroundColor Yellow"
+    powershell -Command "Write-Host 'Sebaiknya simpan API key Anda di tempat lain yang aman, jangan hanya di aplikasi ini.' -ForegroundColor Yellow"
     powershell -Command "Write-Host ''"
     choice /c YN /n /m "Apakah Anda ingin menghapus database lama sebelum update? (Y/N): "
     if errorlevel 2 (
         echo Database tidak dihapus.
     ) else (
-        if exist "database\database.db" (
-            del /f /q "database\database.db"
-            echo Database database\database.db telah dihapus.
+        if exist "database/database.db" (
+            del /f /q "database/database.db"
+            echo Database database/database.db telah dihapus.
         ) else (
-            echo Database database\database.db tidak ditemukan, tidak ada yang dihapus.
+            echo Database database/database.db tidak ditemukan, tidak ada yang dihapus.
         )
     )
     echo.
