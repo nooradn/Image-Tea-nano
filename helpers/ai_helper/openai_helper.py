@@ -1,9 +1,22 @@
 import os
 import json
 import base64
+import time
 from openai import OpenAI
 from config import BASE_PATH
 from helpers.ai_helper.ai_variation_helper import generate_timestamp, generate_token
+
+_generation_times_openai = []
+
+def track_openai_generation_time(duration_ms):
+    _generation_times_openai.append(duration_ms)
+    if len(_generation_times_openai) > 1000:
+        _generation_times_openai.pop(0)
+    gen_time = duration_ms
+    avg_time = int(sum(_generation_times_openai) / len(_generation_times_openai)) if _generation_times_openai else 0
+    longest_time = max(_generation_times_openai) if _generation_times_openai else 0
+    last_time = _generation_times_openai[-1] if _generation_times_openai else 0
+    return gen_time, avg_time, longest_time, last_time
 
 def load_openai_prompt_vars():
     prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
@@ -32,6 +45,7 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, min_title_le
     return full_prompt
 
 def generate_metadata_openai(api_key, model, image_path, prompt=None):
+    start_time = time.perf_counter()
     try:
         ext = os.path.splitext(image_path)[1].lower()
         is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']
@@ -103,3 +117,6 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
     except Exception as e:
         error_message = f"[OpenAI ERROR] {e}"
         return '', '', '', error_message, 0, 0, 0
+    finally:
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        track_openai_generation_time(duration_ms)

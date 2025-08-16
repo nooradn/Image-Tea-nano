@@ -3,7 +3,10 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
 class StatsSectionWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        hbox = QHBoxLayout(self)
+        main_vbox = QVBoxLayout(self)
+        main_vbox.setContentsMargins(0, 0, 0, 0)
+
+        hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 0)
 
         file_stats_layout = QVBoxLayout()
@@ -28,9 +31,31 @@ class StatsSectionWidget(QWidget):
         token_stats_layout.addWidget(self.label_token_output)
         token_stats_layout.addWidget(self.label_token_total)
 
+        time_stats_layout = QVBoxLayout()
+        time_stats_layout.setContentsMargins(0, 0, 0, 0)
+        self.label_gen_time = QLabel("Generation Time: 0 ms")
+        self.label_avg_time = QLabel("Average Time: 0 ms")
+        self.label_longest_time = QLabel("Longest Time: 0 ms")
+        self.label_last_time = QLabel("Last Time: 0 ms")
+        time_stats_layout.addWidget(self.label_gen_time)
+        time_stats_layout.addWidget(self.label_avg_time)
+        time_stats_layout.addWidget(self.label_longest_time)
+        time_stats_layout.addWidget(self.label_last_time)
+
         hbox.addLayout(file_stats_layout)
-        hbox.addStretch(1)
+        hbox.addSpacing(24)
         hbox.addLayout(token_stats_layout)
+        hbox.addSpacing(24)
+        hbox.addLayout(time_stats_layout)
+        hbox.addStretch(1)
+
+        main_vbox.addLayout(hbox)
+
+        # Cache for timing stats
+        self._last_gen_time = 0
+        self._avg_time = 0
+        self._longest_time = 0
+        self._last_time = 0
 
     def update_stats(self, total, selected, failed, success=0, draft=0):
         self.label_total.setText(f"Total Images: {total}")
@@ -43,3 +68,29 @@ class StatsSectionWidget(QWidget):
         self.label_token_input.setText(f"Token Input: {token_input}")
         self.label_token_output.setText(f"Token Output: {token_output}")
         self.label_token_total.setText(f"Token Total: {token_total}")
+
+    def _format_time(self, ms):
+        if ms >= 60000:
+            return f"{ms/60000:.1f} m"
+        elif ms >= 1000:
+            return f"{ms/1000:.1f} s"
+        else:
+            return f"{ms} ms"
+
+    def update_generation_times(self, gen_time_ms, avg_time_ms, longest_time_ms, last_time_ms):
+        self.label_gen_time.setText(f"Generation Time: {self._format_time(gen_time_ms)}")
+        self.label_avg_time.setText(f"Average Time: {self._format_time(avg_time_ms)}")
+        self.label_longest_time.setText(f"Longest Time: {self._format_time(longest_time_ms)}")
+        self.label_last_time.setText(f"Last Time: {self._format_time(last_time_ms)}")
+        self._last_gen_time = gen_time_ms
+        self._avg_time = avg_time_ms
+        self._longest_time = longest_time_ms
+        self._last_time = last_time_ms
+
+    def get_last_generation_times(self):
+        return {
+            "generation_time": self._last_gen_time,
+            "average_time": self._avg_time,
+            "longest_time": self._longest_time,
+            "last_time": self._last_time
+        }

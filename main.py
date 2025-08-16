@@ -124,16 +124,30 @@ class ImageTeaMainWindow(QMainWindow):
 
         print(f"[DEBUG] Using service: {service}")
         if service == "gemini":
-            from helpers.ai_helper.gemini_helper import generate_metadata_gemini
+            from helpers.ai_helper.gemini_helper import generate_metadata_gemini, track_gemini_generation_time
             def metadata_func(api_key, model, image_path, prompt=None):
+                import time
+                t0 = time.perf_counter()
                 title, description, tags, token_input, token_output, token_total = generate_metadata_gemini(api_key, model, image_path, prompt)
+                t1 = time.perf_counter()
+                duration_ms = int((t1 - t0) * 1000)
+                gen_time, avg_time, longest_time, last_time = track_gemini_generation_time(duration_ms)
+                if hasattr(self, "stats_section"):
+                    self.stats_section.update_generation_times(gen_time, avg_time, longest_time, last_time)
                 self.db.insert_api_token_stats(image_path, service, model, token_input, token_output, token_total)
                 self.update_token_stats_ui()
                 return title, description, tags
         elif service == "openai":
-            from helpers.ai_helper.openai_helper import generate_metadata_openai
+            from helpers.ai_helper.openai_helper import generate_metadata_openai, track_openai_generation_time
             def metadata_func(api_key, model, image_path, prompt=None):
+                import time
+                t0 = time.perf_counter()
                 title, description, tags, error_message, token_input, token_output, token_total = generate_metadata_openai(api_key, model, image_path, prompt)
+                t1 = time.perf_counter()
+                duration_ms = int((t1 - t0) * 1000)
+                gen_time, avg_time, longest_time, last_time = track_openai_generation_time(duration_ms)
+                if hasattr(self, "stats_section"):
+                    self.stats_section.update_generation_times(gen_time, avg_time, longest_time, last_time)
                 self.db.insert_api_token_stats(image_path, service, model, token_input, token_output, token_total)
                 self.update_token_stats_ui()
                 if error_message:

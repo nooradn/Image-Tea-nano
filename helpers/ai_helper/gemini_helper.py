@@ -6,6 +6,18 @@ from google.genai import types
 from config import BASE_PATH
 from helpers.ai_helper.ai_variation_helper import generate_timestamp, generate_token
 
+_generation_times_gemini = []
+
+def track_gemini_generation_time(duration_ms):
+    _generation_times_gemini.append(duration_ms)
+    if len(_generation_times_gemini) > 1000:
+        _generation_times_gemini.pop(0)
+    gen_time = duration_ms
+    avg_time = int(sum(_generation_times_gemini) / len(_generation_times_gemini)) if _generation_times_gemini else 0
+    longest_time = max(_generation_times_gemini) if _generation_times_gemini else 0
+    last_time = _generation_times_gemini[-1] if _generation_times_gemini else 0
+    return gen_time, avg_time, longest_time, last_time
+
 def load_gemini_prompt_vars():
     prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
     with open(prompt_path, "r", encoding="utf-8") as f:
@@ -34,6 +46,7 @@ def format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, min_title_le
     return full_prompt
 
 def generate_metadata_gemini(api_key, model, image_path, prompt=None):
+    start_time = time.perf_counter()
     try:
         client = genai.Client(api_key=api_key)
         ext = os.path.splitext(image_path)[1].lower()
@@ -103,3 +116,6 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None):
     except Exception as e:
         print(f"[Gemini ERROR] {e}")
         return '', '', '', 0, 0, 0
+    finally:
+        duration_ms = int((time.perf_counter() - start_time) * 1000)
+        track_gemini_generation_time(duration_ms)
