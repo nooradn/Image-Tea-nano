@@ -216,14 +216,28 @@ def setup_ui(self):
     gen_group_layout.addWidget(self.gen_mode_combo)
 
     self.gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata")
-    self.gen_btn.setToolTip("Generate metadata for all files in the table")
-    self.gen_btn.clicked.connect(self.batch_generate_metadata)
+
+    def update_gen_btn_tooltip(idx):
+        mode = self.gen_mode_combo.currentText()
+        if mode == "Generate All":
+            self.gen_btn.setToolTip("Generate metadata for all files in the table")
+        elif mode == "Selected Only":
+            self.gen_btn.setToolTip("Generate metadata only for selected files")
+        elif mode == "Failed Only":
+            self.gen_btn.setToolTip("Generate metadata only for files that previously failed")
+        else:
+            self.gen_btn.setToolTip("Generate metadata")
+
+    self.gen_mode_combo.currentIndexChanged.connect(update_gen_btn_tooltip)
+    update_gen_btn_tooltip(self.gen_mode_combo.currentIndex())
+
     self.gen_btn.setMinimumWidth(260)
     self.gen_btn.setMinimumHeight(48)
     font = self.gen_btn.font()
     font.setPointSize(font.pointSize() + 4)
     font.setBold(True)
     self.gen_btn.setFont(font)
+    self.gen_btn.clicked.connect(self.batch_generate_metadata)
     gen_group_layout.addWidget(self.gen_btn)
 
     btn_row_layout.addLayout(gen_group_layout)
