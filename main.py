@@ -153,9 +153,9 @@ class ImageTeaMainWindow(QMainWindow):
             print("[STOP] Stopping metadata generation process...")
             table_widget = self.table.table
             for row in range(table_widget.rowCount()):
-                status_item = table_widget.item(row, 7)
+                status_item = table_widget.item(row, 8)
                 if status_item and status_item.text().lower() == "processing":
-                    filepath_item = table_widget.item(row, 0)
+                    filepath_item = table_widget.item(row, 1)
                     if filepath_item:
                         filepath = filepath_item.text()
                         self.db.update_file_status(filepath, "stopped")
