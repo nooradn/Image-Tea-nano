@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QColor, QIcon
 import qtawesome as qta
 from helpers.metadata_helper.metadata_operation import ImageTeaGeneratorThread
-from helpers.metadata_helper.metadata_operation import write_metadata_to_images, read_metadata_pyexiv2
+from helpers.metadata_helper.metadata_operation import read_metadata_pyexiv2
 from database.db_operation import ImageTeaDB, DB_PATH
 from ui.setup_ui import setup_ui
 from ui.main_table import ImageTableWidget
@@ -44,36 +44,6 @@ class ImageTeaMainWindow(QMainWindow):
             self.stop_generate_metadata()
         else:
             self.batch_generate_metadata()
-
-    def handle_dropped_files(self, paths):
-        added = 0
-        for path in paths:
-            if os.path.isfile(path):
-                fname = os.path.basename(path)
-                t, d, tg = read_metadata_pyexiv2(path)
-                title = _extract_xmp_value(t)
-                description = _extract_xmp_value(d)
-                tags = tg if tg else None
-                title = title if title else None
-                description = description if description else None
-                self.db.add_file(path, fname, title, description, tags, status="draft")
-                added += 1
-        if added:
-            self.table.refresh_table()
-
-    def import_images(self):
-        if import_files(self, self.db, None, None):
-            rows = self.db.get_all_files()
-            for row in rows:
-                id_, filepath, filename, title, description, tags, status = row
-                if status is None or status != "draft":
-                    t, d, tg = read_metadata_pyexiv2(filepath)
-                    t_val = _extract_xmp_value(t)
-                    d_val = _extract_xmp_value(d)
-                    t_val = t_val if t_val else None
-                    d_val = d_val if d_val else None
-                    self.db.update_metadata(filepath, t_val if t_val is not None else title, d_val if d_val is not None else description, tg if tg else tags, status="draft")
-            self.table.refresh_table()
 
     def batch_generate_metadata(self):
         if self.is_generating:
@@ -224,15 +194,6 @@ class ImageTeaMainWindow(QMainWindow):
                 print(err)
         else:
             print("[Gemini] Metadata generated for all files.")
-
-    def write_metadata_to_images(self):
-        write_metadata_to_images(self.db, None, None)
-
-    def delete_selected(self):
-        self.table.delete_selected()
-
-    def clear_all(self):
-        self.table.clear_all()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

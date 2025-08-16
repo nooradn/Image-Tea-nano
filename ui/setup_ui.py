@@ -7,6 +7,7 @@ from ui.main_table import ImageTableWidget
 from ui.prompt_section import PromptSectionWidget
 from ui.stats_section import StatsSectionWidget
 from ui.main_menu import setup_main_menu
+from helpers.file_importer import import_files
 
 def setup_ui(self):
     setup_main_menu(self)
@@ -176,28 +177,7 @@ def setup_ui(self):
     left_btn_group = QHBoxLayout()
     right_btn_group = QHBoxLayout()
 
-    import_btn = QPushButton(qta.icon('fa5s.folder-open'), "Import Files")
-    import_btn.setToolTip("Import images or videos from your computer")
-    import_btn.clicked.connect(self.import_images)
-
-    del_btn = QPushButton(qta.icon('fa5s.trash'), "Delete Selected")
-    del_btn.setToolTip("Delete the selected images from the table and database")
-    del_btn.clicked.connect(self.delete_selected)
-
-    clear_btn = QPushButton(qta.icon('fa5s.broom'), "Clear All")
-    clear_btn.setToolTip("Remove all images from the table and database")
-    clear_btn.clicked.connect(self.clear_all)
-
-    write_btn = QPushButton(qta.icon('fa5s.save'), "Write Metadata to Images")
-    write_btn.setToolTip("Write the generated metadata back to the image files")
-    write_btn.clicked.connect(self.write_metadata_to_images)
-
-    left_btn_group.addWidget(import_btn)
-    left_btn_group.addWidget(del_btn)
-    left_btn_group.addWidget(clear_btn)
-
-    right_btn_group.addWidget(write_btn)
-
+    # Tombol Write Metadata dihapus karena sudah di menu Metadata
     top_btn_layout.addLayout(left_btn_group)
     top_btn_layout.addStretch()
     top_btn_layout.addLayout(right_btn_group)

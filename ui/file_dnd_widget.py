@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QLabel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
+from helpers.file_importer import import_files
 
 class DragDropWidget(QLabel):
 	"""
@@ -65,8 +66,9 @@ class DragDropWidget(QLabel):
 				self.on_files_dropped(paths)
 			else:
 				mainwin = self.window()
-				if hasattr(mainwin, 'handle_dropped_files'):
-					mainwin.handle_dropped_files(paths)
+				if hasattr(mainwin, "db") and hasattr(mainwin, "table"):
+					if import_files(mainwin, mainwin.db, None, None, file_paths=paths):
+						mainwin.table.refresh_table()
 
 	def _is_supported_file(self, path):
 		ext = path.lower().rsplit('.', 1)[-1] if '.' in path else ''

@@ -2,10 +2,37 @@ from PySide6.QtWidgets import QMenuBar, QMenu, QMessageBox
 from PySide6.QtGui import QAction
 import qtawesome as qta
 import webbrowser
+from helpers.file_importer import import_files
+from helpers.metadata_helper.metadata_operation import write_metadata_to_images
 
 def setup_main_menu(window):
     menubar = QMenuBar(window)
     file_menu = QMenu("File", menubar)
+
+    import_action = QAction(qta.icon('fa5s.folder-open'), "Import Files", window)
+    def do_import():
+        if import_files(window, window.db, None, None):
+            window.table.refresh_table()
+    import_action.triggered.connect(do_import)
+    file_menu.addAction(import_action)
+
+    edit_menu = QMenu("Edit", menubar)
+
+    delete_action = QAction(qta.icon('fa5s.trash'), "Delete Selected", window)
+    delete_action.triggered.connect(lambda: window.table.delete_selected())
+    edit_menu.addAction(delete_action)
+
+    clear_action = QAction(qta.icon('fa5s.broom'), "Clear All", window)
+    clear_action.triggered.connect(lambda: window.table.clear_all())
+    edit_menu.addAction(clear_action)
+
+    metadata_menu = QMenu("Metadata", menubar)
+
+    write_metadata_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)
+    def do_write_metadata():
+        write_metadata_to_images(window.db, None, None)
+    write_metadata_action.triggered.connect(do_write_metadata)
+    metadata_menu.addAction(write_metadata_action)
 
     exit_action = QAction(qta.icon('fa5s.sign-out-alt'), "Exit", window)
     exit_action.triggered.connect(window.close)
@@ -32,5 +59,7 @@ def setup_main_menu(window):
     help_menu.addAction(repo_action)
 
     menubar.addMenu(file_menu)
+    menubar.addMenu(edit_menu)
+    menubar.addMenu(metadata_menu)
     menubar.addMenu(help_menu)
     window.setMenuBar(menubar)
