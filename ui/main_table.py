@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QBrush
 
 class ImageTableWidget(QWidget):
     def __init__(self, parent=None):
@@ -24,6 +25,46 @@ class ImageTableWidget(QWidget):
         self.progress_bar.setVisible(True)
         self.progress_bar.setToolTip("Shows progress for batch operations")
         self.layout.addWidget(self.progress_bar)
+
+    def set_row_status_color(self, row_idx, status):
+        color = QColor(255, 255, 255, 0)
+        if status == "processing":
+            color = QColor(243, 200, 24, int(0.3 * 255))
+        elif status == "success":
+            color = QColor(113, 204, 0, int(0.3 * 255))
+        elif status == "failed":
+            color = QColor(255, 0, 0, int(0.15 * 255))
+        for col in range(self.table.columnCount()):
+            item = self.table.item(row_idx, col)
+            if item:
+                item.setBackground(QBrush(color))
+        # Update status column text in real-time
+        status_col = 7
+        status_item = self.table.item(row_idx, status_col)
+        if status_item:
+            status_item.setText(status.capitalize())
+
+    def update_row_data(self, row_idx, row_data):
+        # row_data: (id, filepath, filename, title, description, tags, status)
+        display_values = row_data[1:7]
+        for col, val in enumerate(display_values):
+            item = self.table.item(row_idx, col)
+            if item:
+                item.setText(str(val) if val is not None else "")
+        title_val = row_data[3] if len(row_data) > 3 and row_data[3] is not None else ""
+        title_len = len(title_val)
+        title_len_item = self.table.item(row_idx, 5)
+        if title_len_item:
+            title_len_item.setText(str(title_len))
+        tags_val = row_data[5] if len(row_data) > 5 and row_data[5] is not None else ""
+        tag_count = len([t for t in tags_val.split(",") if t.strip()]) if tags_val else 0
+        tag_count_item = self.table.item(row_idx, 6)
+        if tag_count_item:
+            tag_count_item.setText(str(tag_count))
+        status_val = row_data[6] if len(row_data) > 6 and row_data[6] is not None else ""
+        status_item = self.table.item(row_idx, 7)
+        if status_item:
+            status_item.setText(str(status_val))
 
 def refresh_table(self):
     self.table.table.setRowCount(0)
@@ -50,6 +91,18 @@ def refresh_table(self):
         status_item = QTableWidgetItem(str(status_val))
         status_item.setTextAlignment(Qt.AlignCenter)
         self.table.table.setItem(row_idx, 7, status_item)
+        # Always color row according to status
+        color = QColor(255, 255, 255, 0)
+        if status_val == "success":
+            color = QColor(113, 204, 0, int(0.3 * 255))
+        elif status_val == "failed":
+            color = QColor(255, 0, 0, int(0.15 * 255))
+        elif status_val == "processing":
+            color = QColor(243, 200, 24, int(0.3 * 255))
+        for col in range(self.table.table.columnCount()):
+            item = self.table.table.item(row_idx, col)
+            if item:
+                item.setBackground(QBrush(color))
 
 def delete_selected(self):
     selected = self.table.table.selectionModel().selectedRows()

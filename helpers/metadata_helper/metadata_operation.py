@@ -13,6 +13,7 @@ def _extract_xmp_value(val):
 class ImageTeaGeneratorThread(QThread):
 	progress = Signal(int, int)  # current, total
 	finished = Signal(list)
+	row_status = Signal(int, str)  # row index, status: 'processing', 'success', 'failed'
 
 	def __init__(self, api_key, model, rows, db_path):
 		super().__init__()
@@ -27,14 +28,22 @@ class ImageTeaGeneratorThread(QThread):
 		total = len(self.rows)
 		for idx, row in enumerate(self.rows, 1):
 			id_, filepath, filename, title, description, tags, status = row
-			if not title:
+			self.row_status.emit(idx - 1, "processing")
+			try:
 				t, d, tg = generate_metadata_gemini(self.api_key, self.model, filepath)
 				t = _extract_xmp_value(t)
 				d = _extract_xmp_value(d)
 				if not t:
+					db.update_file_status(filepath, "failed")
 					self.errors.append(f"{filename}: Failed to generate metadata")
+					self.row_status.emit(idx - 1, "failed")
 				else:
-					db.update_metadata(filepath, t, d, tg)
+					db.update_metadata(filepath, t, d, tg, status="success")
+					self.row_status.emit(idx - 1, "success")
+			except Exception as e:
+				db.update_file_status(filepath, "failed")
+				self.errors.append(f"{filename}: {e}")
+				self.row_status.emit(idx - 1, "failed")
 			self.progress.emit(idx, total)
 		self.finished.emit(self.errors)
 

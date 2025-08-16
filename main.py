@@ -24,7 +24,6 @@ from helpers.file_importer import import_files
 
 def _extract_xmp_value(val):
     if isinstance(val, dict):
-        # pyexiv2 XMP values are dicts like {'lang': 'en', 'value': 'Title'}
         return val.get('value', '') if 'value' in val else ''
     return val if isinstance(val, str) else ''
 
@@ -79,23 +78,68 @@ class ImageTeaMainWindow(QMainWindow):
         if not api_key or not model:
             QMessageBox.warning(self, "API Key", "Please select both API Key and Model first.")
             return
-        rows = self.db.get_all_files()
+
+        mode = "all"
+        selected_ids = []
+        if hasattr(self, "generate_mode_combo"):
+            mode_idx = self.generate_mode_combo.currentIndex()
+            mode = self.generate_mode_combo.currentData() if mode_idx >= 0 else "all"
+        if mode == "selected":
+            if hasattr(self.table, "selectedItems"):
+                selected_rows = self.table.selectedItems()
+                selected_ids = []
+                for item in selected_rows:
+                    row = item.row()
+                    id_item = self.table.item(row, 0)
+                    if id_item:
+                        selected_ids.append(int(id_item.text()))
+        rows = []
+        all_rows = self.db.get_all_files()
+        if mode == "all":
+            rows = all_rows
+        elif mode == "selected":
+            rows = [row for row in all_rows if row[0] in selected_ids]
+        elif mode == "failed":
+            rows = [row for row in all_rows if row[6] == "failed"]
         if not rows:
             QMessageBox.information(self, "No Files", "No files to process.")
             return
         self.table.progress_bar.setVisible(True)
         self.table.progress_bar.setMinimum(0)
-        self.table.progress_bar.setMaximum(0)
+        self.table.progress_bar.setMaximum(len(rows))
+        self.table.progress_bar.setValue(0)
         self.table.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
         thread = ImageTeaGeneratorThread(api_key, model, rows, DB_PATH)
         thread.progress.connect(self._on_progress_update)
         thread.finished.connect(self._on_generation_finished)
+        thread.row_status.connect(self._on_row_status_update)
         thread.start()
         self.thread = thread
 
     def _on_progress_update(self, current, total):
-        pass
+        self.table.progress_bar.setMaximum(total)
+        self.table.progress_bar.setValue(current)
+        QApplication.processEvents()
+
+    def _on_row_status_update(self, row_idx, status):
+        if hasattr(self.table, "set_row_status_color"):
+            self.table.set_row_status_color(row_idx, status)
+        if status == "success":
+            # Update row data in real-time after success
+            table_widget = self.table.table
+            id_item = table_widget.item(row_idx, 0)
+            if id_item:
+                filepath = id_item.text()
+                # Find latest row data from DB
+                row_data = None
+                for row in self.db.get_all_files():
+                    if str(row[1]) == filepath:
+                        row_data = row
+                        break
+                if row_data and hasattr(self.table, "update_row_data"):
+                    self.table.update_row_data(row_idx, row_data)
+        QApplication.processEvents()
 
     def _on_generation_finished(self, errors):
         self.table.progress_bar.setFormat('Done')
@@ -103,7 +147,6 @@ class ImageTeaMainWindow(QMainWindow):
         self.table.progress_bar.setValue(1)
         QApplication.processEvents()
         refresh_table(self)
-        self.table.progress_bar.setVisible(False)
         if errors:
             print("[Gemini Errors]")
             for err in errors:
