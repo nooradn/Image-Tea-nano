@@ -9,21 +9,26 @@ def load_gemini_prompt_vars():
     prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
     with open(prompt_path, "r", encoding="utf-8") as f:
         data = json.load(f)
+    prompt_data = data["prompt"]
     return (
-        data["ai_prompt"],
+        prompt_data["ai_prompt"],
+        prompt_data["negative_prompt"],
+        prompt_data["system_prompt"],
         data["min_title_length"],
         data["max_title_length"],
         data["max_description_length"],
         data["required_tag_count"]
     )
 
-def format_gemini_prompt(base_prompt, min_title_length, max_title_length, max_description_length, required_tag_count):
-    prompt = base_prompt
+def format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count):
+    prompt = ai_prompt
     prompt = prompt.replace("_MIN_LEN_", str(min_title_length))
     prompt = prompt.replace("_MAX_LEN_", str(max_title_length))
     prompt = prompt.replace("_MAX_DESC_LEN_", str(max_description_length))
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
-    return prompt
+    # Compose the full prompt with negative and system prompts
+    full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
+    return full_prompt
 
 def generate_metadata_gemini(api_key, model, image_path, prompt=None):
     try:
@@ -31,8 +36,8 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None):
         ext = os.path.splitext(image_path)[1].lower()
         is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']
         if not prompt:
-            base_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_gemini_prompt_vars()
-            prompt = format_gemini_prompt(base_prompt, min_title_length, max_title_length, max_description_length, required_tag_count)
+            ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_gemini_prompt_vars()
+            prompt = format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count)
         if is_video:
             myfile = client.files.upload(file=image_path)
             file_id = myfile.name if hasattr(myfile, 'name') else getattr(myfile, 'id', None)

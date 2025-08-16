@@ -13,19 +13,19 @@ class PromptSectionWidget(QWidget):
         main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        min_title_label = QLabel("Min Title Length")
+        min_title_label = QLabel("Min Title")
         self.min_title_spin = QSpinBox()
         self.min_title_spin.setRange(1, 1000)
         self.min_title_spin.setValue(50)
         self.min_title_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        max_title_label = QLabel("Max Title Length")
+        max_title_label = QLabel("Max Title")
         self.max_title_spin = QSpinBox()
         self.max_title_spin.setRange(1, 1000)
         self.max_title_spin.setValue(80)
         self.max_title_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        max_desc_label = QLabel("Max Desc Length")
+        max_desc_label = QLabel("Max Desc")
         self.max_desc_spin = QSpinBox()
         self.max_desc_spin.setRange(1, 2000)
         self.max_desc_spin.setValue(200)
