@@ -18,10 +18,15 @@ def setup_ui(self):
     api_keys = self.db.get_all_api_keys()
     model_set = []
     for entry in api_keys:
-        if len(entry) == 5:
+        if len(entry) == 6:
+            service, api_key, note, last_tested, status, model = entry
+        elif len(entry) == 5:
             service, api_key, note, last_tested, status = entry
+            model = ""
         else:
             service, api_key, note, last_tested = entry
+            status = ""
+            model = ""
         service_disp = service.capitalize() if service.lower() in ("openai", "gemini") else service
         if service_disp not in model_set:
             model_set.append(service_disp)
@@ -56,26 +61,32 @@ def setup_ui(self):
         self.api_key_map.clear()
         api_keys = self.db.get_all_api_keys()
         for entry in api_keys:
-            if len(entry) == 5:
+            if len(entry) == 6:
+                service, api_key, note, last_tested, status, model = entry
+            elif len(entry) == 5:
                 service, api_key, note, last_tested, status = entry
+                model = ""
             else:
                 service, api_key, note, last_tested = entry
+                status = ""
+                model = ""
             service_disp = service.capitalize() if service.lower() in ("openai", "gemini") else service
             if selected_model is None or service_disp == selected_model:
                 label = f"{api_key} ({note})" if note else api_key
                 self.api_key_combo.addItem(label, api_key)
-                self.api_key_map[api_key] = {'service': service_disp, 'note': note, 'last_tested': last_tested}
+                self.api_key_map[api_key] = {'service': service_disp, 'note': note, 'last_tested': last_tested, 'model': model}
         if self.api_key_combo.count() > 0:
             self.api_key_combo.setCurrentIndex(0)
             api_key = self.api_key_combo.currentData()
             self.api_key = api_key
             if hasattr(self, 'last_tested_label'):
                 last_tested = self.api_key_map[api_key]['last_tested']
-                self.last_tested_label.setText(f"Last Tested: {last_tested}" if last_tested else "Last Tested: -")
+                model = self.api_key_map[api_key]['model']
+                self.last_tested_label.setText(f"Last Tested: {last_tested if last_tested else '-'} | Model: {model if model else '-'}")
         else:
             self.api_key = None
             if hasattr(self, 'last_tested_label'):
-                self.last_tested_label.setText("Last Tested: -")
+                self.last_tested_label.setText("Last Tested: - | Model: -")
 
     def on_model_combo_changed(idx):
         selected_model = self.model_combo.currentText()
@@ -89,11 +100,12 @@ def setup_ui(self):
             self.api_key = api_key
             if hasattr(self, 'last_tested_label'):
                 last_tested = self.api_key_map[api_key]['last_tested']
-                self.last_tested_label.setText(f"Last Tested: {last_tested}" if last_tested else "Last Tested: -")
+                model = self.api_key_map[api_key]['model']
+                self.last_tested_label.setText(f"Last Tested: {last_tested if last_tested else '-'} | Model: {model if model else '-'}")
         else:
             self.api_key = None
             if hasattr(self, 'last_tested_label'):
-                self.last_tested_label.setText("Last Tested: -")
+                self.last_tested_label.setText("Last Tested: - | Model: -")
 
     self.api_key_combo.currentIndexChanged.connect(on_api_combo_changed)
 
@@ -105,10 +117,15 @@ def setup_ui(self):
         api_keys = self.db.get_all_api_keys()
         model_set = []
         for entry in api_keys:
-            if len(entry) == 5:
+            if len(entry) == 6:
+                service, api_key, note, last_tested, status, model = entry
+            elif len(entry) == 5:
                 service, api_key, note, last_tested, status = entry
+                model = ""
             else:
                 service, api_key, note, last_tested = entry
+                status = ""
+                model = ""
             service_disp = service.capitalize() if service.lower() in ("openai", "gemini") else service
             if service_disp not in model_set:
                 model_set.append(service_disp)
@@ -145,8 +162,8 @@ def setup_ui(self):
 
     self.last_tested_label = QLabel()
     now_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    self.last_tested_label.setText(f"Last Tested: {now_str}")
-    self.last_tested_label.setToolTip("Shows the last time the selected API key was tested")
+    self.last_tested_label.setText(f"Last Tested: {now_str} | Model: -")
+    self.last_tested_label.setToolTip("Shows the last time the selected API key was tested and its model")
     layout.addWidget(self.last_tested_label)
 
     self.prompt_section = PromptSectionWidget(self)

@@ -17,7 +17,8 @@ class ImageTeaDB:
             api_key TEXT,
             note TEXT,
             last_tested TEXT,
-            status TEXT
+            status TEXT,
+            model TEXT
         )''')
         c.execute('''CREATE TABLE IF NOT EXISTS files (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,29 +31,30 @@ class ImageTeaDB:
         )''')
         self.conn.commit()
 
-    def set_api_key(self, service, api_key, note=None, last_tested=None, status=None):
+    def set_api_key(self, service, api_key, note=None, last_tested=None, status=None, model=None):
         c = self.conn.cursor()
         c.execute('SELECT id FROM api_keys WHERE service=? AND api_key=?', (service, api_key))
         row = c.fetchone()
         if row:
-            c.execute('''UPDATE api_keys SET note=?, last_tested=?, status=? WHERE id=?''',
-                      (note, last_tested, status, row[0]))
+            c.execute('''UPDATE api_keys SET note=?, last_tested=?, status=?, model=? WHERE id=?''',
+                      (note, last_tested, status, model, row[0]))
         else:
-            c.execute('''INSERT INTO api_keys (service, api_key, note, last_tested, status)
-                         VALUES (?, ?, ?, ?, ?)''',
-                      (service, api_key, note, last_tested, status))
+            c.execute('''INSERT INTO api_keys (service, api_key, note, last_tested, status, model)
+                         VALUES (?, ?, ?, ?, ?, ?)''',
+                      (service, api_key, note, last_tested, status, model))
         self.conn.commit()
 
     def get_api_key(self, service):
         c = self.conn.cursor()
-        c.execute('SELECT api_key, note, last_tested, status FROM api_keys WHERE service=? ORDER BY id DESC LIMIT 1', (service,))
+        c.execute('SELECT api_key, note, last_tested, status, model FROM api_keys WHERE service=? ORDER BY id DESC LIMIT 1', (service,))
         row = c.fetchone()
         if row:
             return {
                 'api_key': row[0],
                 'note': row[1],
                 'last_tested': row[2],
-                'status': row[3]
+                'status': row[3],
+                'model': row[4]
             }
         return None
 
@@ -69,6 +71,11 @@ class ImageTeaDB:
     def update_api_key_status(self, api_key, status):
         c = self.conn.cursor()
         c.execute('UPDATE api_keys SET status=? WHERE api_key=?', (status, api_key))
+        self.conn.commit()
+
+    def update_api_key_model(self, api_key, model):
+        c = self.conn.cursor()
+        c.execute('UPDATE api_keys SET model=? WHERE api_key=?', (model, api_key))
         self.conn.commit()
 
     def delete_api_key(self, service, api_key):
@@ -114,5 +121,5 @@ class ImageTeaDB:
 
     def get_all_api_keys(self):
         c = self.conn.cursor()
-        c.execute('SELECT service, api_key, note, last_tested, status FROM api_keys')
+        c.execute('SELECT service, api_key, note, last_tested, status, model FROM api_keys')
         return c.fetchall()

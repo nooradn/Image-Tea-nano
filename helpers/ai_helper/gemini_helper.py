@@ -18,7 +18,7 @@ def format_gemini_prompt(base_prompt, min_title_length, max_title_length, requir
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
     return prompt
 
-def generate_metadata_gemini(api_key, image_path, prompt=None):
+def generate_metadata_gemini(api_key, model, image_path, prompt=None):
     try:
         client = genai.Client(api_key=api_key)
         ext = os.path.splitext(image_path)[1].lower()
@@ -45,7 +45,7 @@ def generate_metadata_gemini(api_key, image_path, prompt=None):
                 image_bytes = f.read()
             contents = [types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'), prompt]
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model=model,
             contents=contents
         )
         print("[Gemini RAW JSON Result]")
@@ -76,7 +76,5 @@ def generate_metadata_gemini(api_key, image_path, prompt=None):
             title = description = tags = ''
         return title, description, tags
     except Exception as e:
-        print(f"[Gemini ERROR] {e}")
-        return '', '', ''
         print(f"[Gemini ERROR] {e}")
         return '', '', ''

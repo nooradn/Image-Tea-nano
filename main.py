@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 import qtawesome as qta
 from helpers.metadata_helper.metadata_operation import ImageTeaGeneratorThread
-from helpers.metadata_helper.metadata_operation import write_metadata_to_images
+from helpers.metadata_helper.metadata_operation import write_metadata_to_images, read_metadata_pyexiv2
 from database.db_operation import ImageTeaDB, DB_PATH
 from ui.setup_ui import setup_ui
 from ui.main_table import (
@@ -21,6 +21,12 @@ from ui.main_table import (
 )
 from ui.file_dnd_widget import DragDropWidget
 from helpers.file_importer import import_files
+
+def _extract_xmp_value(val):
+    if isinstance(val, dict):
+        # pyexiv2 XMP values are dicts like {'lang': 'en', 'value': 'Title'}
+        return val.get('value', '') if 'value' in val else ''
+    return val if isinstance(val, str) else ''
 
 class ImageTeaMainWindow(QMainWindow):
     def __init__(self):
@@ -37,18 +43,41 @@ class ImageTeaMainWindow(QMainWindow):
         for path in paths:
             if os.path.isfile(path):
                 fname = os.path.basename(path)
-                self.db.add_file(path, fname)
+                t, d, tg = read_metadata_pyexiv2(path)
+                title = _extract_xmp_value(t)
+                description = _extract_xmp_value(d)
+                tags = tg if tg else None
+                title = title if title else None
+                description = description if description else None
+                self.db.add_file(path, fname, title, description, tags, status="draft")
                 added += 1
         if added:
             refresh_table(self)
 
     def import_images(self):
         if import_files(self, self.db, None, None):
+            rows = self.db.get_all_files()
+            for row in rows:
+                id_, filepath, filename, title, description, tags, status = row
+                if status is None or status != "draft":
+                    t, d, tg = read_metadata_pyexiv2(filepath)
+                    t_val = _extract_xmp_value(t)
+                    d_val = _extract_xmp_value(d)
+                    t_val = t_val if t_val else None
+                    d_val = d_val if d_val else None
+                    self.db.update_metadata(filepath, t_val if t_val is not None else title, d_val if d_val is not None else description, tg if tg else tags, status="draft")
             refresh_table(self)
 
     def batch_generate_metadata(self):
-        if not self.api_key:
-            QMessageBox.warning(self, "API Key", "Please set your Gemini API key first.")
+        api_key = None
+        model = None
+        if hasattr(self, "api_key_combo") and hasattr(self, "api_key_map"):
+            idx = self.api_key_combo.currentIndex()
+            api_key = self.api_key_combo.currentData() if idx >= 0 else None
+            if api_key and api_key in self.api_key_map:
+                model = self.api_key_map[api_key].get("model")
+        if not api_key or not model:
+            QMessageBox.warning(self, "API Key", "Please select both API Key and Model first.")
             return
         rows = self.db.get_all_files()
         if not rows:
@@ -59,7 +88,7 @@ class ImageTeaMainWindow(QMainWindow):
         self.table.progress_bar.setMaximum(0)
         self.table.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
-        thread = ImageTeaGeneratorThread(self.api_key, rows, DB_PATH)
+        thread = ImageTeaGeneratorThread(api_key, model, rows, DB_PATH)
         thread.progress.connect(self._on_progress_update)
         thread.finished.connect(self._on_generation_finished)
         thread.start()
