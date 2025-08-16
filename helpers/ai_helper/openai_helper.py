@@ -27,13 +27,14 @@ def load_openai_prompt_vars():
         prompt_data["ai_prompt"],
         prompt_data["negative_prompt"],
         prompt_data["system_prompt"],
+        prompt_data["custom_prompt"],
         data["min_title_length"],
         data["max_title_length"],
         data["max_description_length"],
         data["required_tag_count"]
     )
 
-def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count):
+def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count):
     prompt = ai_prompt
     prompt = prompt.replace("_MIN_LEN_", str(min_title_length))
     prompt = prompt.replace("_MAX_LEN_", str(max_title_length))
@@ -41,7 +42,11 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, min_title_le
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
     prompt = prompt.replace("_TIMESTAMP_", generate_timestamp())
     prompt = prompt.replace("_TOKEN_", generate_token())
+    if custom_prompt and custom_prompt.strip():
+        prompt = f"{prompt}\n\nMANDATORY: {custom_prompt.strip()}\n"
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
+    print("[OpenAI FULL PROMPT]")
+    print(full_prompt)
     return full_prompt
 
 def generate_metadata_openai(api_key, model, image_path, prompt=None):
@@ -58,8 +63,8 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
             return '', '', '', error_message, 0, 0, 0
         client = OpenAI(api_key=api_key)
         if not prompt:
-            ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_openai_prompt_vars()
-            prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count)
+            ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_openai_prompt_vars()
+            prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count)
         with open(image_path, "rb") as f:
             image_bytes = f.read()
         image_b64 = base64.b64encode(image_bytes).decode("utf-8")

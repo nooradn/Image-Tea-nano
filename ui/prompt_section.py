@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QSpinBox, QSizePolicy, QLabel, QPushButton, QSpacerItem
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QSpinBox, QSizePolicy, QLabel, QPushButton, QSpacerItem, QLineEdit, QVBoxLayout
 from PySide6.QtCore import Qt
 import qtawesome as qta
 import json
@@ -9,6 +9,8 @@ from dialogs.edit_prompt_dialog import EditPromptDialog
 class PromptSectionWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        outer_layout = QVBoxLayout()
+        outer_layout.setContentsMargins(0, 0, 0, 0)
         main_layout = QHBoxLayout()
         main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         main_layout.setContentsMargins(0, 0, 0, 0)
@@ -58,13 +60,25 @@ class PromptSectionWidget(QWidget):
         self.edit_prompt_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         main_layout.addWidget(self.edit_prompt_btn)
 
-        self.setLayout(main_layout)
+        outer_layout.addLayout(main_layout)
+
+        custom_prompt_layout = QHBoxLayout()
+        custom_prompt_label = QLabel("Custom Prompt")
+        self.custom_prompt_edit = QLineEdit()
+        self.custom_prompt_edit.setPlaceholderText("Enter custom prompt (optional)")
+        self.custom_prompt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        custom_prompt_layout.addWidget(custom_prompt_label)
+        custom_prompt_layout.addWidget(self.custom_prompt_edit)
+        outer_layout.addLayout(custom_prompt_layout)
+
+        self.setLayout(outer_layout)
 
         self.config_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
         self.min_title_spin.valueChanged.connect(self.save_prompt_config)
         self.max_title_spin.valueChanged.connect(self.save_prompt_config)
         self.max_desc_spin.valueChanged.connect(self.save_prompt_config)
         self.tag_count_spin.valueChanged.connect(self.save_prompt_config)
+        self.custom_prompt_edit.editingFinished.connect(self.save_prompt_config)
         self.load_prompt_config()
 
         self.edit_prompt_btn.clicked.connect(self.open_edit_prompt_dialog)
@@ -81,6 +95,8 @@ class PromptSectionWidget(QWidget):
             self.max_title_spin.setValue(data["max_title_length"])
             self.max_desc_spin.setValue(data.get("max_description_length", 200))
             self.tag_count_spin.setValue(data["required_tag_count"])
+            prompt = data.get("prompt", {})
+            self.custom_prompt_edit.setText(prompt.get("custom_prompt", ""))
         except Exception as e:
             print(f"Failed to load prompt config: {e}")
 
@@ -94,6 +110,9 @@ class PromptSectionWidget(QWidget):
         data["max_title_length"] = self.max_title_spin.value()
         data["max_description_length"] = self.max_desc_spin.value()
         data["required_tag_count"] = self.tag_count_spin.value()
+        if "prompt" not in data:
+            data["prompt"] = {}
+        data["prompt"]["custom_prompt"] = self.custom_prompt_edit.text()
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
