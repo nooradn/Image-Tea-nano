@@ -48,14 +48,19 @@ class ImageTeaMainWindow(QMainWindow):
     def batch_generate_metadata(self):
         if self.is_generating:
             return
+
         api_key = None
         model = None
+        service = None
         if hasattr(self, "api_key_combo") and hasattr(self, "api_key_map"):
             idx = self.api_key_combo.currentIndex()
             api_key = self.api_key_combo.currentData() if idx >= 0 else None
             if api_key and api_key in self.api_key_map:
                 model = self.api_key_map[api_key].get("model")
-        if not api_key or not model:
+                service = self.api_key_map[api_key].get("service")
+                if service:
+                    service = service.lower()
+        if not api_key or not model or not service:
             QMessageBox.warning(self, "API Key", "Please select both API Key and Model first.")
             return
 
@@ -106,7 +111,26 @@ class ImageTeaMainWindow(QMainWindow):
         self.table.progress_bar.setValue(0)
         self.table.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
-        self.generator_thread = ImageTeaGeneratorThread(api_key, model, rows, DB_PATH, row_map=row_map)
+
+        print(f"[DEBUG] Using service: {service}")
+        if service == "gemini":
+            from helpers.ai_helper.gemini_helper import generate_metadata_gemini
+            metadata_func = generate_metadata_gemini
+        elif service == "openai":
+            from helpers.ai_helper.openai_helper import generate_metadata_openai
+            metadata_func = generate_metadata_openai
+        else:
+            print(f"[DEBUG] Unknown service: {service}")
+            QMessageBox.warning(self, "API Service", f"Unknown service: {service}")
+            self.table.progress_bar.setVisible(False)
+            self.table.progress_bar.setValue(0)
+            self.table.progress_bar.setFormat('')
+            return
+
+        self.generator_thread = ImageTeaGeneratorThread(
+            api_key, model, rows, DB_PATH, row_map=row_map
+        )
+        self.generator_thread.generate_metadata_func = metadata_func
         self.generator_thread.progress.connect(self._on_progress_update)
         self.generator_thread.finished.connect(self._on_generation_finished)
         self.generator_thread.row_status.connect(self._on_row_status_update)

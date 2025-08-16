@@ -30,9 +30,9 @@ def setup_ui(self):
             service, api_key, note, last_tested = entry
             status = ""
             model = ""
-        service_disp = service.capitalize() if service.lower() in ("openai", "gemini") else service
-        if service_disp not in model_set:
-            model_set.append(service_disp)
+        service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
+        if service_disp.capitalize() not in model_set:
+            model_set.append(service_disp.capitalize())
 
     icon_label = QLabel(" ")
     icon = qta.icon('fa5s.key')
@@ -73,9 +73,13 @@ def setup_ui(self):
                 service, api_key, note, last_tested = entry
                 status = ""
                 model = ""
-            service_disp = service.capitalize() if service.lower() in ("openai", "gemini") else service
-            if selected_model is None or service_disp == selected_model:
-                label = f"{api_key} ({note})" if note else api_key
+            service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
+            if selected_model is None or service_disp.capitalize() == selected_model:
+                if api_key and len(api_key) > 5:
+                    masked_key = '*' * (len(api_key) - 5) + api_key[-5:]
+                else:
+                    masked_key = api_key
+                label = f"{masked_key} ({note})" if note else masked_key
                 self.api_key_combo.addItem(label, api_key)
                 self.api_key_map[api_key] = {'service': service_disp, 'note': note, 'last_tested': last_tested, 'model': model}
         if self.api_key_combo.count() > 0:
@@ -94,6 +98,7 @@ def setup_ui(self):
     def on_model_combo_changed(idx):
         selected_model = self.model_combo.currentText()
         refresh_api_key_combo(selected_model)
+        self.selected_model = selected_model
 
     self.model_combo.currentIndexChanged.connect(on_model_combo_changed)
 
@@ -101,12 +106,16 @@ def setup_ui(self):
         api_key = self.api_key_combo.itemData(idx)
         if api_key and api_key in self.api_key_map:
             self.api_key = api_key
+            self.selected_service = self.api_key_map[api_key]['service']
+            self.selected_model_name = self.api_key_map[api_key]['model']
             if hasattr(self, 'last_tested_label'):
                 last_tested = self.api_key_map[api_key]['last_tested']
                 model = self.api_key_map[api_key]['model']
                 self.last_tested_label.setText(f"Last Tested: {last_tested if last_tested else '-'} | Model: {model if model else '-'}")
         else:
             self.api_key = None
+            self.selected_service = None
+            self.selected_model_name = None
             if hasattr(self, 'last_tested_label'):
                 self.last_tested_label.setText("Last Tested: - | Model: -")
 
@@ -129,9 +138,9 @@ def setup_ui(self):
                 service, api_key, note, last_tested = entry
                 status = ""
                 model = ""
-            service_disp = service.capitalize() if service.lower() in ("openai", "gemini") else service
-            if service_disp not in model_set:
-                model_set.append(service_disp)
+            service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
+            if service_disp.capitalize() not in model_set:
+                model_set.append(service_disp.capitalize())
         self.model_combo.blockSignals(True)
         self.model_combo.clear()
         for model in model_set:
@@ -223,6 +232,8 @@ def setup_ui(self):
     self.setCentralWidget(central)
 
     if self.model_combo.count() > 0:
-        refresh_api_key_combo(self.model_combo.currentText())
+        on_model_combo_changed(self.model_combo.currentIndex())
     else:
+        refresh_api_key_combo(None)
+        refresh_api_key_combo(None)
         refresh_api_key_combo(None)

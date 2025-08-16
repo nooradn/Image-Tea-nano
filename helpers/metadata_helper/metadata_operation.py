@@ -1,5 +1,4 @@
 import pyexiv2
-from helpers.ai_helper.gemini_helper import generate_metadata_gemini
 from database.db_operation import ImageTeaDB, DB_PATH
 
 from PySide6.QtCore import QThread, Signal
@@ -14,7 +13,7 @@ class ImageTeaGeneratorThread(QThread):
 	finished = Signal(list)
 	row_status = Signal(int, str)  # row visual index in table, status
 
-	def __init__(self, api_key, model, rows, db_path, row_map=None):
+	def __init__(self, api_key, model, rows, db_path, row_map=None, generate_metadata_func=None):
 		super().__init__()
 		self.api_key = api_key
 		self.model = model
@@ -22,6 +21,7 @@ class ImageTeaGeneratorThread(QThread):
 		self.db_path = db_path
 		self.errors = []
 		self.row_map = row_map or {}
+		self.generate_metadata_func = generate_metadata_func
 
 	def run(self):
 		db = ImageTeaDB(self.db_path)
@@ -31,7 +31,7 @@ class ImageTeaGeneratorThread(QThread):
 			visual_idx = self.row_map.get(id_, idx)
 			self.row_status.emit(visual_idx, "processing")
 			try:
-				t, d, tg = generate_metadata_gemini(self.api_key, self.model, filepath)
+				t, d, tg = self.generate_metadata_func(self.api_key, self.model, filepath)
 				t = _extract_xmp_value(t)
 				d = _extract_xmp_value(d)
 				if not t:
