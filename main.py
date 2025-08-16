@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QMessageBox, QLabel
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDragEnterEvent, QDropEvent
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QColor
 import qtawesome as qta
 from helpers.metadata_helper.metadata_operation import ImageTeaGeneratorThread
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images, read_metadata_pyexiv2
@@ -36,6 +36,18 @@ class ImageTeaMainWindow(QMainWindow):
         self.api_key = self.db.get_api_key('gemini')
         setup_ui(self)
         refresh_table(self)
+        self.generator_thread = None
+        self.is_generating = False
+
+        if hasattr(self, "gen_btn"):
+            self.gen_btn.clicked.disconnect()
+            self.gen_btn.clicked.connect(self._on_gen_btn_clicked)
+
+    def _on_gen_btn_clicked(self):
+        if self.is_generating:
+            self.stop_generate_metadata()
+        else:
+            self.batch_generate_metadata()
 
     def handle_dropped_files(self, paths):
         added = 0
@@ -68,6 +80,8 @@ class ImageTeaMainWindow(QMainWindow):
             refresh_table(self)
 
     def batch_generate_metadata(self):
+        if self.is_generating:
+            return
         api_key = None
         model = None
         if hasattr(self, "api_key_combo") and hasattr(self, "api_key_map"):
@@ -81,27 +95,43 @@ class ImageTeaMainWindow(QMainWindow):
 
         mode = "all"
         selected_ids = []
-        if hasattr(self, "generate_mode_combo"):
-            mode_idx = self.generate_mode_combo.currentIndex()
-            mode = self.generate_mode_combo.currentData() if mode_idx >= 0 else "all"
-        if mode == "selected":
-            if hasattr(self.table, "selectedItems"):
-                selected_rows = self.table.selectedItems()
-                selected_ids = []
-                for item in selected_rows:
-                    row = item.row()
-                    id_item = self.table.item(row, 0)
-                    if id_item:
-                        selected_ids.append(int(id_item.text()))
+        row_map = {}
+        if hasattr(self, "gen_mode_combo"):
+            mode_idx = self.gen_mode_combo.currentIndex()
+            mode_text = self.gen_mode_combo.currentText().lower()
+            if "selected" in mode_text:
+                mode = "selected"
+            elif "failed" in mode_text:
+                mode = "failed"
+            else:
+                mode = "all"
         rows = []
         all_rows = self.db.get_all_files()
         if mode == "all":
             rows = all_rows
         elif mode == "selected":
+            table_widget = self.table.table
+            selected_ids = []
+            for row_idx in range(table_widget.rowCount()):
+                checkbox_item = table_widget.item(row_idx, 0)
+                if checkbox_item and checkbox_item.checkState() == Qt.Checked:
+                    id_data = checkbox_item.data(Qt.UserRole)
+                    if id_data is not None:
+                        try:
+                            selected_ids.append(int(id_data))
+                            row_map[int(id_data)] = row_idx
+                        except Exception:
+                            print(f"[DEBUG] Failed to parse id from checkbox row {row_idx}: {id_data}")
+            print(f"[DEBUG] Selected IDs for generate: {selected_ids}")
             rows = [row for row in all_rows if row[0] in selected_ids]
         elif mode == "failed":
             rows = [row for row in all_rows if row[6] == "failed"]
+        if mode == "selected" and not selected_ids:
+            print("[DEBUG] No rows checked for Selected Only mode.")
+            QMessageBox.information(self, "No Files", "No files selected (checkbox) to process.")
+            return
         if not rows:
+            print("[DEBUG] No rows to process after filtering.")
             QMessageBox.information(self, "No Files", "No files to process.")
             return
         self.table.progress_bar.setVisible(True)
@@ -110,12 +140,57 @@ class ImageTeaMainWindow(QMainWindow):
         self.table.progress_bar.setValue(0)
         self.table.progress_bar.setFormat('Generating metadata...')
         QApplication.processEvents()
-        thread = ImageTeaGeneratorThread(api_key, model, rows, DB_PATH)
-        thread.progress.connect(self._on_progress_update)
-        thread.finished.connect(self._on_generation_finished)
-        thread.row_status.connect(self._on_row_status_update)
-        thread.start()
-        self.thread = thread
+        self.generator_thread = ImageTeaGeneratorThread(api_key, model, rows, DB_PATH, row_map=row_map)
+        self.generator_thread.progress.connect(self._on_progress_update)
+        self.generator_thread.finished.connect(self._on_generation_finished)
+        self.generator_thread.row_status.connect(self._on_row_status_update)
+        self.generator_thread.start()
+        self.is_generating = True
+        self._set_gen_btn_stop_state(True)
+
+    def stop_generate_metadata(self):
+        if self.generator_thread and self.generator_thread.isRunning():
+            print("[STOP] Stopping metadata generation process...")
+            table_widget = self.table.table
+            for row in range(table_widget.rowCount()):
+                status_item = table_widget.item(row, 7)
+                if status_item and status_item.text().lower() == "processing":
+                    filepath_item = table_widget.item(row, 0)
+                    if filepath_item:
+                        filepath = filepath_item.text()
+                        self.db.update_file_status(filepath, "stopped")
+                    status_item.setText("Stopped")
+                    for col in range(table_widget.columnCount()):
+                        item = table_widget.item(row, col)
+                        if item:
+                            item.setBackground(QColor(255, 0, 0, int(0.15 * 255)))
+            self.generator_thread.terminate()
+            self.generator_thread.wait()
+            self.generator_thread = None
+        self.is_generating = False
+        self._set_gen_btn_stop_state(False)
+        self.table.progress_bar.setVisible(False)
+        self.table.progress_bar.setValue(0)
+        self.table.progress_bar.setFormat('')
+        refresh_table(self)
+        print("[STOP] Metadata generation stopped and UI reset.")
+
+    def _set_gen_btn_stop_state(self, is_stop):
+        if hasattr(self, "gen_btn"):
+            if is_stop:
+                self.gen_btn.setText("Stop Processes")
+                self.gen_btn.setIcon(qta.icon('fa5s.stop'))
+                self.gen_btn.setStyleSheet("background-color: rgba(204, 0, 0, 0.3);")
+            else:
+                self.gen_btn.setText("Generate Metadata")
+                self.gen_btn.setIcon(qta.icon('fa5s.magic'))
+                self.gen_btn.setStyleSheet("")
+
+    def _reset_progress_and_table(self):
+        self.table.progress_bar.setVisible(False)
+        self.table.progress_bar.setValue(0)
+        self.table.progress_bar.setFormat('')
+        refresh_table(self)
 
     def _on_progress_update(self, current, total):
         self.table.progress_bar.setMaximum(total)
@@ -126,12 +201,10 @@ class ImageTeaMainWindow(QMainWindow):
         if hasattr(self.table, "set_row_status_color"):
             self.table.set_row_status_color(row_idx, status)
         if status == "success":
-            # Update row data in real-time after success
             table_widget = self.table.table
-            id_item = table_widget.item(row_idx, 0)
+            id_item = table_widget.item(row_idx, 1)
             if id_item:
                 filepath = id_item.text()
-                # Find latest row data from DB
                 row_data = None
                 for row in self.db.get_all_files():
                     if str(row[1]) == filepath:
@@ -142,6 +215,8 @@ class ImageTeaMainWindow(QMainWindow):
         QApplication.processEvents()
 
     def _on_generation_finished(self, errors):
+        self.is_generating = False
+        self._set_gen_btn_stop_state(False)
         self.table.progress_bar.setFormat('Done')
         self.table.progress_bar.setMaximum(1)
         self.table.progress_bar.setValue(1)

@@ -220,16 +220,16 @@ def setup_ui(self):
     self.gen_mode_combo.setToolTip("Choose which files to generate metadata for")
     gen_group_layout.addWidget(self.gen_mode_combo)
 
-    gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata")
-    gen_btn.setToolTip("Generate metadata for all files in the table")
-    gen_btn.clicked.connect(self.batch_generate_metadata)
-    gen_btn.setMinimumWidth(260)
-    gen_btn.setMinimumHeight(48)
-    font = gen_btn.font()
+    self.gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata")
+    self.gen_btn.setToolTip("Generate metadata for all files in the table")
+    self.gen_btn.clicked.connect(self.batch_generate_metadata)
+    self.gen_btn.setMinimumWidth(260)
+    self.gen_btn.setMinimumHeight(48)
+    font = self.gen_btn.font()
     font.setPointSize(font.pointSize() + 4)
     font.setBold(True)
-    gen_btn.setFont(font)
-    gen_group_layout.addWidget(gen_btn)
+    self.gen_btn.setFont(font)
+    gen_group_layout.addWidget(self.gen_btn)
 
     btn_row_layout.addLayout(gen_group_layout)
 
@@ -240,5 +240,4 @@ def setup_ui(self):
     if self.model_combo.count() > 0:
         refresh_api_key_combo(self.model_combo.currentText())
     else:
-        refresh_api_key_combo(None)
         refresh_api_key_combo(None)

@@ -6,29 +6,30 @@ from PySide6.QtCore import QThread, Signal
 
 def _extract_xmp_value(val):
 	if isinstance(val, dict):
-		# pyexiv2 XMP dict: {'lang="x-default"': 'Title'}
 		return next(iter(val.values()), '')
 	return val if isinstance(val, str) else ''
 
 class ImageTeaGeneratorThread(QThread):
-	progress = Signal(int, int)  # current, total
+	progress = Signal(int, int)
 	finished = Signal(list)
-	row_status = Signal(int, str)  # row index, status: 'processing', 'success', 'failed'
+	row_status = Signal(int, str)  # row visual index in table, status
 
-	def __init__(self, api_key, model, rows, db_path):
+	def __init__(self, api_key, model, rows, db_path, row_map=None):
 		super().__init__()
 		self.api_key = api_key
 		self.model = model
 		self.rows = rows
 		self.db_path = db_path
 		self.errors = []
+		self.row_map = row_map or {}
 
 	def run(self):
 		db = ImageTeaDB(self.db_path)
 		total = len(self.rows)
-		for idx, row in enumerate(self.rows, 1):
+		for idx, row in enumerate(self.rows):
 			id_, filepath, filename, title, description, tags, status = row
-			self.row_status.emit(idx - 1, "processing")
+			visual_idx = self.row_map.get(id_, idx)
+			self.row_status.emit(visual_idx, "processing")
 			try:
 				t, d, tg = generate_metadata_gemini(self.api_key, self.model, filepath)
 				t = _extract_xmp_value(t)
@@ -36,15 +37,15 @@ class ImageTeaGeneratorThread(QThread):
 				if not t:
 					db.update_file_status(filepath, "failed")
 					self.errors.append(f"{filename}: Failed to generate metadata")
-					self.row_status.emit(idx - 1, "failed")
+					self.row_status.emit(visual_idx, "failed")
 				else:
 					db.update_metadata(filepath, t, d, tg, status="success")
-					self.row_status.emit(idx - 1, "success")
+					self.row_status.emit(visual_idx, "success")
 			except Exception as e:
 				db.update_file_status(filepath, "failed")
 				self.errors.append(f"{filename}: {e}")
-				self.row_status.emit(idx - 1, "failed")
-			self.progress.emit(idx, total)
+				self.row_status.emit(visual_idx, "failed")
+			self.progress.emit(idx + 1, total)
 		self.finished.emit(self.errors)
 
 def write_metadata_pyexiv2(file_path, title, description, tag_list):
