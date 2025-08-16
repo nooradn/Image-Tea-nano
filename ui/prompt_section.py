@@ -25,6 +25,12 @@ class PromptSectionWidget(QWidget):
         self.max_title_spin.setValue(80)
         self.max_title_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
+        max_desc_label = QLabel("Max Desc Length")
+        self.max_desc_spin = QSpinBox()
+        self.max_desc_spin.setRange(1, 2000)
+        self.max_desc_spin.setValue(200)
+        self.max_desc_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
         tag_count_label = QLabel("Tag Count")
         self.tag_count_spin = QSpinBox()
         self.tag_count_spin.setRange(1, 100)
@@ -33,12 +39,15 @@ class PromptSectionWidget(QWidget):
 
         min_title_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         max_title_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        max_desc_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         tag_count_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         main_layout.addWidget(min_title_label)
         main_layout.addWidget(self.min_title_spin)
         main_layout.addWidget(max_title_label)
         main_layout.addWidget(self.max_title_spin)
+        main_layout.addWidget(max_desc_label)
+        main_layout.addWidget(self.max_desc_spin)
         main_layout.addWidget(tag_count_label)
         main_layout.addWidget(self.tag_count_spin)
 
@@ -54,6 +63,7 @@ class PromptSectionWidget(QWidget):
         self.config_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
         self.min_title_spin.valueChanged.connect(self.save_prompt_config)
         self.max_title_spin.valueChanged.connect(self.save_prompt_config)
+        self.max_desc_spin.valueChanged.connect(self.save_prompt_config)
         self.tag_count_spin.valueChanged.connect(self.save_prompt_config)
         self.load_prompt_config()
 
@@ -69,6 +79,7 @@ class PromptSectionWidget(QWidget):
                 data = json.load(f)
             self.min_title_spin.setValue(data["min_title_length"])
             self.max_title_spin.setValue(data["max_title_length"])
+            self.max_desc_spin.setValue(data.get("max_description_length", 200))
             self.tag_count_spin.setValue(data["required_tag_count"])
         except Exception as e:
             print(f"Failed to load prompt config: {e}")
@@ -81,6 +92,7 @@ class PromptSectionWidget(QWidget):
             data = {}
         data["min_title_length"] = self.min_title_spin.value()
         data["max_title_length"] = self.max_title_spin.value()
+        data["max_description_length"] = self.max_desc_spin.value()
         data["required_tag_count"] = self.tag_count_spin.value()
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
