@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QMessageBox, QLabel
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QColor
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QColor, QIcon
 import qtawesome as qta
 from helpers.metadata_helper.metadata_operation import ImageTeaGeneratorThread
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images, read_metadata_pyexiv2
@@ -31,7 +31,8 @@ class ImageTeaMainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Image Tea (nano) Metadata Generator")
-        self.setWindowIcon(qta.icon('fa5s.magic'))
+        icon_path = os.path.join(BASE_PATH, "res", "image_tea.ico")
+        self.setWindowIcon(QIcon(icon_path))
         self.db = ImageTeaDB()
         self.api_key = self.db.get_api_key('gemini')
         setup_ui(self)

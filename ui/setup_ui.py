@@ -6,8 +6,10 @@ import qtawesome as qta
 from ui.main_table import ImageTableWidget
 from ui.prompt_section import PromptSectionWidget
 from ui.stats_section import StatsSectionWidget
+from ui.main_menu import setup_main_menu
 
 def setup_ui(self):
+    setup_main_menu(self)
     from database.db_operation import ImageTeaDB
     self.db = getattr(self, 'db', None) or ImageTeaDB()
     central = QWidget()
