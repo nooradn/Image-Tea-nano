@@ -4,6 +4,7 @@ import qtawesome as qta
 import webbrowser
 from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images
+from dialogs.csv_exporter_dialog import CSVExporterDialog
 
 def setup_main_menu(window):
     menubar = QMenuBar(window)
@@ -33,6 +34,13 @@ def setup_main_menu(window):
         write_metadata_to_images(window.db, None, None)
     write_metadata_action.triggered.connect(do_write_metadata)
     metadata_menu.addAction(write_metadata_action)
+
+    export_metadata_action = QAction(qta.icon('fa5s.file-csv'), "Export Metadata to CSV", window)
+    def show_export_dialog():
+        dialog = CSVExporterDialog(window)
+        dialog.exec()
+    export_metadata_action.triggered.connect(show_export_dialog)
+    metadata_menu.addAction(export_metadata_action)
 
     exit_action = QAction(qta.icon('fa5s.sign-out-alt'), "Exit", window)
     exit_action.triggered.connect(window.close)

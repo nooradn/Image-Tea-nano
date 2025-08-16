@@ -2,6 +2,7 @@ import pyexiv2
 from database.db_operation import ImageTeaDB, DB_PATH
 
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import QMessageBox
 
 def _extract_xmp_value(val):
 	if isinstance(val, dict):
@@ -151,5 +152,29 @@ def write_metadata_to_images(db, _unused1, _unused2):
 		print("[Write Metadata Errors]")
 		for err in errors:
 			print(err)
+		msg_box = QMessageBox()
+		msg_box.setIcon(QMessageBox.Warning)
+		msg_box.setWindowTitle("Write Metadata")
+		msg_box.setText("Some errors occurred while writing metadata.\n\n" + "\n".join(errors))
+		try:
+			from PySide6.QtWidgets import QApplication
+			app = QApplication.instance()
+			if app and app.activeWindow():
+				msg_box.setWindowIcon(app.activeWindow().windowIcon())
+		except Exception:
+			pass
+		msg_box.exec()
 	else:
 		print("[Write Metadata] Metadata written to all images.")
+		msg_box = QMessageBox()
+		msg_box.setIcon(QMessageBox.Information)
+		msg_box.setWindowTitle("Write Metadata")
+		msg_box.setText("Metadata written to all images.")
+		try:
+			from PySide6.QtWidgets import QApplication
+			app = QApplication.instance()
+			if app and app.activeWindow():
+				msg_box.setWindowIcon(app.activeWindow().windowIcon())
+		except Exception:
+			pass
+		msg_box.exec()
