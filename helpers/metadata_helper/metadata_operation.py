@@ -52,24 +52,33 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
 	try:
 		title = _extract_xmp_value(title)
 		description = _extract_xmp_value(description)
+		if isinstance(tag_list, str):
+			tag_list = [t.strip() for t in tag_list.split(',') if t.strip()]
+		elif not isinstance(tag_list, list):
+			tag_list = []
+		subject_str = ', '.join(tag_list)
+		# XPSubject must be UTF-16LE encoded and null-terminated for Windows
+		def encode_xpsubject(s):
+			if not s:
+				return b''
+			return s.encode('utf-16le') + b'\x00\x00'
 		with pyexiv2.Image(file_path) as metadata:
-			# XMP
 			metadata.modify_xmp({
 				'Xmp.dc.title': title,
 				'Xmp.dc.subject': tag_list,
 				'Xmp.dc.description': description
 			})
-			# IPTC
 			metadata.modify_iptc({
 				'Iptc.Application2.ObjectName': title,
 				'Iptc.Application2.Keywords': tag_list,
 				'Iptc.Application2.Caption': description
 			})
-			# EXIF
-			metadata.modify_exif({
+			exif_dict = {
 				'Exif.Image.ImageDescription': description,
-				'Exif.Photo.UserComment': ', '.join(tag_list)
-			})
+				'Exif.Photo.UserComment': ', '.join(tag_list),
+				'Exif.Image.XPSubject': encode_xpsubject(subject_str)
+			}
+			metadata.modify_exif(exif_dict)
 		print(f"[pyexiv2] Metadata written to {file_path}")
 	except Exception as e:
 		print(f"[pyexiv2 ERROR] {file_path}: {e}")
@@ -105,6 +114,14 @@ def read_metadata_pyexiv2(file_path):
 			user_comment = exif.get('Exif.Photo.UserComment')
 			if user_comment:
 				tags = [t.strip() for t in user_comment.split(',')]
+		if not tags and 'Exif.Image.XPSubject' in exif:
+			try:
+				xpsubject = exif['Exif.Image.XPSubject']
+				if isinstance(xpsubject, bytes):
+					xpsubject = xpsubject.decode('utf-16le').rstrip('\x00')
+				tags = [t.strip() for t in xpsubject.split(',')]
+			except Exception:
+				pass
 		if isinstance(tags, list):
 			tags_str = ','.join(tags)
 		elif isinstance(tags, str):
