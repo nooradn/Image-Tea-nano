@@ -53,7 +53,7 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None):
                 time.sleep(0.5)
             if status != 'ACTIVE':
                 print(f"[Gemini ERROR] File {file_id} not ACTIVE after upload, status: {status}")
-                return '', '', ''
+                return '', '', '', 0, 0, 0
             contents = [myfile, prompt]
         else:
             with open(image_path, 'rb') as f:
@@ -65,13 +65,23 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None):
         )
         print("[Gemini RAW JSON Result]")
         print(response)
+        # Parse tokens from response.usage_metadata
+        token_input = 0
+        token_output = 0
+        token_total = 0
+        usage = getattr(response, "usage_metadata", None)
+        if usage:
+            token_input = getattr(usage, "prompt_token_count", 0)
+            token_output = getattr(usage, "candidates_token_count", 0)
+            token_total = getattr(usage, "total_token_count", 0)
+        # Parse output text
         text = None
-        if hasattr(response, 'candidates') and response.candidates:
+        if hasattr(response, "candidates") and response.candidates:
             try:
                 text = response.candidates[0].content.parts[0].text
             except Exception:
                 text = str(response)
-        elif hasattr(response, 'text'):
+        elif hasattr(response, "text"):
             text = response.text
         elif isinstance(response, dict) and 'text' in response:
             text = response['text']
@@ -89,7 +99,7 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None):
         except Exception as e:
             print(f"[Gemini JSON PARSE ERROR] {e}")
             title = description = tags = ''
-        return title, description, tags
+        return title, description, tags, token_input, token_output, token_total
     except Exception as e:
         print(f"[Gemini ERROR] {e}")
-        return '', '', ''
+        return '', '', '', 0, 0, 0

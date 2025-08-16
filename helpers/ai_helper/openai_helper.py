@@ -41,7 +41,7 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
                 "Silakan gunakan gambar atau pilih layanan Gemini untuk video. "
                 "Jika di masa depan OpenAI sudah mendukung video, fitur ini akan segera ditambahkan."
             )
-            return '', '', '', error_message
+            return '', '', '', error_message, 0, 0, 0
         client = OpenAI(api_key=api_key)
         if not prompt:
             ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_openai_prompt_vars()
@@ -65,7 +65,26 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
         )
         print("[OpenAI RAW JSON Result]")
         print(response)
-        text = getattr(response, "output_text", None)
+        token_input = 0
+        token_output = 0
+        token_total = 0
+        usage = getattr(response, "usage", None)
+        if usage:
+            token_input = getattr(usage, "input_tokens", 0)
+            token_output = getattr(usage, "output_tokens", 0)
+            token_total = getattr(usage, "total_tokens", 0)
+        text = None
+        if hasattr(response, "output") and response.output:
+            for msg in response.output:
+                if hasattr(msg, "content") and msg.content:
+                    for part in msg.content:
+                        if hasattr(part, "text"):
+                            text = part.text
+                            break
+                    if text:
+                        break
+        if not text:
+            text = getattr(response, "output_text", None)
         if not text:
             text = str(response)
         try:
@@ -80,7 +99,7 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
         except Exception as e:
             print(f"[OpenAI JSON PARSE ERROR] {e}")
             title = description = tags = ''
-        return title, description, tags, ''
+        return title, description, tags, '', token_input, token_output, token_total
     except Exception as e:
         error_message = f"[OpenAI ERROR] {e}"
-        return '', '', '', error_message
+        return '', '', '', error_message, 0, 0, 0

@@ -43,6 +43,8 @@ class ImageTeaMainWindow(QMainWindow):
             self.gen_btn.clicked.disconnect()
             self.gen_btn.clicked.connect(self._on_gen_btn_clicked)
 
+        self.update_token_stats_ui()
+
     def _show_ai_unsupported_dialog_slot(self, message):
         dialog = AIUnsuportedDialog(message, parent=self)
         dialog.exec()
@@ -123,11 +125,17 @@ class ImageTeaMainWindow(QMainWindow):
         print(f"[DEBUG] Using service: {service}")
         if service == "gemini":
             from helpers.ai_helper.gemini_helper import generate_metadata_gemini
-            metadata_func = generate_metadata_gemini
+            def metadata_func(api_key, model, image_path, prompt=None):
+                title, description, tags, token_input, token_output, token_total = generate_metadata_gemini(api_key, model, image_path, prompt)
+                self.db.insert_api_token_stats(image_path, service, model, token_input, token_output, token_total)
+                self.update_token_stats_ui()
+                return title, description, tags
         elif service == "openai":
             from helpers.ai_helper.openai_helper import generate_metadata_openai
             def metadata_func(api_key, model, image_path, prompt=None):
-                title, description, tags, error_message = generate_metadata_openai(api_key, model, image_path, prompt)
+                title, description, tags, error_message, token_input, token_output, token_total = generate_metadata_openai(api_key, model, image_path, prompt)
+                self.db.insert_api_token_stats(image_path, service, model, token_input, token_output, token_total)
+                self.update_token_stats_ui()
                 if error_message:
                     self.show_ai_unsupported_dialog.emit(error_message)
                     return '', '', ''
@@ -215,6 +223,7 @@ class ImageTeaMainWindow(QMainWindow):
                         break
                 if row_data and hasattr(self.table, "update_row_data"):
                     self.table.update_row_data(row_idx, row_data)
+        self.update_token_stats_ui()
         QApplication.processEvents()
 
     def _on_generation_finished(self, errors):
@@ -225,12 +234,18 @@ class ImageTeaMainWindow(QMainWindow):
         self.table.progress_bar.setValue(1)
         QApplication.processEvents()
         self.table.refresh_table()
+        self.update_token_stats_ui()
         if errors:
             print("[Gemini Errors]")
             for err in errors:
                 print(err)
         else:
             print("[Gemini] Metadata generated for all files.")
+
+    def update_token_stats_ui(self):
+        if hasattr(self, "stats_section") and hasattr(self.stats_section, "update_token_stats"):
+            token_input, token_output, token_total = self.db.get_token_stats_sum()
+            self.stats_section.update_token_stats(token_input, token_output, token_total)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
