@@ -203,7 +203,7 @@ def setup_ui(self):
     top_btn_layout.addLayout(right_btn_group)
     layout.addLayout(top_btn_layout)
 
-    self.table = ImageTableWidget(self)
+    self.table = ImageTableWidget(self, db=self.db)
     layout.addWidget(self.table)
 
     self.dnd_widget = DragDropWidget(self)
@@ -213,6 +213,9 @@ def setup_ui(self):
     btn_row_layout = QHBoxLayout()
     self.stats_section = StatsSectionWidget(self)
     btn_row_layout.addWidget(self.stats_section)
+
+    # Connect table stats signal to stats section (now with 5 args)
+    self.table.stats_changed.connect(self.stats_section.update_stats)
 
     btn_row_layout.addStretch()
 
