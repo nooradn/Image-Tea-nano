@@ -3,6 +3,7 @@ import json
 import base64
 from openai import OpenAI
 from config import BASE_PATH
+from helpers.ai_helper.ai_variation_helper import generate_timestamp, generate_token
 
 def load_openai_prompt_vars():
     prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
@@ -25,6 +26,8 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, min_title_le
     prompt = prompt.replace("_MAX_LEN_", str(max_title_length))
     prompt = prompt.replace("_MAX_DESC_LEN_", str(max_description_length))
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
+    prompt = prompt.replace("_TIMESTAMP_", generate_timestamp())
+    prompt = prompt.replace("_TOKEN_", generate_token())
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
     return full_prompt
 

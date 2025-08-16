@@ -56,7 +56,9 @@ class EditPromptDialog(QDialog):
             "  • _MAX_LEN_: Maximum title length\n"
             "  • _MAX_DESC_LEN_: Maximum description length\n"
             "  • _TAGS_COUNT_: Required number of tags\n"
-            "These placeholders ensure your prompts always match the current configuration."
+            "  • _TIMESTAMP_: Unique timestamp for each request\n"
+            "  • _TOKEN_: Unique token for each request\n"
+            "These placeholders ensure your prompts always match the current configuration and are always unique for every request."
         )
         placeholder_info.setWordWrap(True)
         main_layout.addWidget(placeholder_info)
@@ -79,22 +81,6 @@ class EditPromptDialog(QDialog):
             self.ai_prompt_edit.setPlainText(prompt_data.get("ai_prompt", ""))
             self.negative_prompt_edit.setPlainText(prompt_data.get("negative_prompt", ""))
             self.system_prompt_edit.setPlainText(prompt_data.get("system_prompt", ""))
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to load prompt: {e}")
-
-    def save_prompt(self):
-        try:
-            with open(self.config_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            if "prompt" not in data:
-                data["prompt"] = {}
-            data["prompt"]["ai_prompt"] = self.ai_prompt_edit.toPlainText()
-            data["prompt"]["negative_prompt"] = self.negative_prompt_edit.toPlainText()
-            with open(self.config_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            self.accept()
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"Failed to save prompt: {e}")
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load prompt: {e}")
 
