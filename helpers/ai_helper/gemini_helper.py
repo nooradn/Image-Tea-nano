@@ -4,6 +4,7 @@ import json
 import google.genai as genai
 from google.genai import types
 from config import BASE_PATH
+from database.db_operation import ImageTeaDB
 
 def load_gemini_prompt_vars():
     prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
@@ -20,6 +21,11 @@ def format_gemini_prompt(base_prompt, min_title_length, max_title_length, requir
 
 def generate_metadata_gemini(api_key, image_path, prompt=None):
     try:
+        db = ImageTeaDB()
+        api_key_info = db.get_api_key('gemini')
+        if not api_key_info or api_key_info.get('api_key') != api_key or not api_key_info.get('model'):
+            raise RuntimeError("No model found for this Gemini API key in the database.")
+        model = api_key_info.get('model')
         client = genai.Client(api_key=api_key)
         ext = os.path.splitext(image_path)[1].lower()
         is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']
@@ -45,7 +51,7 @@ def generate_metadata_gemini(api_key, image_path, prompt=None):
                 image_bytes = f.read()
             contents = [types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'), prompt]
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model=model,
             contents=contents
         )
         print("[Gemini RAW JSON Result]")
@@ -76,7 +82,5 @@ def generate_metadata_gemini(api_key, image_path, prompt=None):
             title = description = tags = ''
         return title, description, tags
     except Exception as e:
-        print(f"[Gemini ERROR] {e}")
-        return '', '', ''
         print(f"[Gemini ERROR] {e}")
         return '', '', ''
