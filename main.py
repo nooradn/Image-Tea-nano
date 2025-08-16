@@ -6,7 +6,7 @@ sys.path.insert(0, BASE_PATH)
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QMessageBox, QLabel
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent, QColor, QIcon
 import qtawesome as qta
 from helpers.metadata_helper.metadata_operation import ImageTeaGeneratorThread
@@ -16,6 +16,7 @@ from ui.setup_ui import setup_ui
 from ui.main_table import ImageTableWidget
 from ui.file_dnd_widget import DragDropWidget
 from helpers.file_importer import import_files
+from dialogs.ai_unsuported_dialog import AIUnsuportedDialog
 
 def _extract_xmp_value(val):
     if isinstance(val, dict):
@@ -23,6 +24,8 @@ def _extract_xmp_value(val):
     return val if isinstance(val, str) else ''
 
 class ImageTeaMainWindow(QMainWindow):
+    show_ai_unsupported_dialog = Signal(str)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Image Tea (nano) Metadata Generator")
@@ -34,10 +37,15 @@ class ImageTeaMainWindow(QMainWindow):
         self.table.refresh_table()
         self.generator_thread = None
         self.is_generating = False
+        self.show_ai_unsupported_dialog.connect(self._show_ai_unsupported_dialog_slot)
 
         if hasattr(self, "gen_btn"):
             self.gen_btn.clicked.disconnect()
             self.gen_btn.clicked.connect(self._on_gen_btn_clicked)
+
+    def _show_ai_unsupported_dialog_slot(self, message):
+        dialog = AIUnsuportedDialog(message, parent=self)
+        dialog.exec()
 
     def _on_gen_btn_clicked(self):
         if self.is_generating:
@@ -118,7 +126,12 @@ class ImageTeaMainWindow(QMainWindow):
             metadata_func = generate_metadata_gemini
         elif service == "openai":
             from helpers.ai_helper.openai_helper import generate_metadata_openai
-            metadata_func = generate_metadata_openai
+            def metadata_func(api_key, model, image_path, prompt=None):
+                title, description, tags, error_message = generate_metadata_openai(api_key, model, image_path, prompt)
+                if error_message:
+                    self.show_ai_unsupported_dialog.emit(error_message)
+                    return '', '', ''
+                return title, description, tags
         else:
             print(f"[DEBUG] Unknown service: {service}")
             QMessageBox.warning(self, "API Service", f"Unknown service: {service}")

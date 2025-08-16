@@ -30,31 +30,32 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, min_title_le
 
 def generate_metadata_openai(api_key, model, image_path, prompt=None):
     try:
-        client = OpenAI(api_key=api_key)
         ext = os.path.splitext(image_path)[1].lower()
         is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']
+        if is_video:
+            error_message = (
+                "OpenAI Vision API belum mendukung input video secara langsung. "
+                "Silakan gunakan gambar atau pilih layanan Gemini untuk video. "
+                "Jika di masa depan OpenAI sudah mendukung video, fitur ini akan segera ditambahkan."
+            )
+            return '', '', '', error_message
+        client = OpenAI(api_key=api_key)
         if not prompt:
             ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_openai_prompt_vars()
             prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, min_title_length, max_title_length, max_description_length, required_tag_count)
-        if is_video:
-            # OpenAI API does not support direct video input for vision models, only images.
-            print("[OpenAI ERROR] Video input is not supported for vision models.")
-            return '', '', ''
-        else:
-            with open(image_path, "rb") as f:
-                image_bytes = f.read()
-            image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-            # OpenAI expects a data URL for image input
-            image_data_url = f"data:image/jpeg;base64,{image_b64}"
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "input_text", "text": prompt},
-                        {"type": "input_image", "image_url": image_data_url}
-                    ]
-                }
-            ]
+        with open(image_path, "rb") as f:
+            image_bytes = f.read()
+        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+        image_data_url = f"data:image/jpeg;base64,{image_b64}"
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "input_text", "text": prompt},
+                    {"type": "input_image", "image_url": image_data_url}
+                ]
+            }
+        ]
         response = client.responses.create(
             model=model,
             input=messages
@@ -76,7 +77,7 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
         except Exception as e:
             print(f"[OpenAI JSON PARSE ERROR] {e}")
             title = description = tags = ''
-        return title, description, tags
+        return title, description, tags, ''
     except Exception as e:
-        print(f"[OpenAI ERROR] {e}")
-        return '', '', ''
+        error_message = f"[OpenAI ERROR] {e}"
+        return '', '', '', error_message
