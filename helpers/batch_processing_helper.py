@@ -342,20 +342,6 @@ def stop_generate_metadata(window):
             from PySide6.QtWidgets import QApplication
             QApplication.processEvents()
             worker.stop()
-    if getattr(window, 'generator_thread', None) and window.generator_thread.isRunning():
-        print("[STOP] Stopping legacy generator thread...")
-        table_widget = window.table.table
-        for row in range(table_widget.rowCount()):
-            status_item = table_widget.item(row, 8)
-            if status_item and status_item.text().lower() == "processing":
-                filepath_item = table_widget.item(row, 1)
-                if filepath_item:
-                    filepath = filepath_item.text()
-                    window.db.update_file_status(filepath, "stopped")
-                window.table.set_row_status_color(row, "stopping")
-        window.generator_thread.terminate()
-        window.generator_thread.wait()
-        window.generator_thread = None
     window.is_generating = False
     _set_gen_btn_stop_state(window, False)
     window.table.refresh_table()
