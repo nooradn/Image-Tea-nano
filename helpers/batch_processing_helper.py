@@ -139,7 +139,6 @@ def batch_generate_metadata(window):
     from PySide6.QtWidgets import QApplication
     QApplication.processEvents()
 
-    print(f"[DEBUG] Using service: {service}")
     stop_flag = {'stop': False}
     if service == "gemini":
         from helpers.ai_helper.gemini_helper import generate_metadata_gemini, track_gemini_generation_time
