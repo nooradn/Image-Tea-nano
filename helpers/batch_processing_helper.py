@@ -1,8 +1,10 @@
 import json
 import os
-from PySide6.QtCore import Qt, QThread, Signal, QObject, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, QThread, Signal, QObject, QPropertyAnimation, QEasingCurve, QByteArray
 from PySide6.QtGui import QColor
 from config import BASE_PATH
+import threading
+import time
 
 def get_batch_size():
     config_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
@@ -29,6 +31,9 @@ class BatchWorker(QThread):
         self._errors = []
         self._should_stop = False
         self._external_stop_flag = stop_flag
+        self._threads = []
+        self._lock = threading.Lock()
+        self._completed = 0
 
     def stop(self):
         self._should_stop = True
@@ -36,36 +41,54 @@ class BatchWorker(QThread):
             self._external_stop_flag['stop'] = True
 
     def run(self):
-        from concurrent.futures import ThreadPoolExecutor, Future
-        cache_results = []
-        errors = []
-        futures = []
+        self._results = []
+        self._errors = []
+        self._completed = 0
         stop_flag = self._external_stop_flag
-        with ThreadPoolExecutor(max_workers=len(self.batch)) as executor:
-            for row in self.batch:
-                if self._should_stop or (stop_flag and stop_flag.get('stop')):
-                    break
+        threads = []
+        results = [None] * len(self.batch)
+        errors = [None] * len(self.batch)
+
+        def task_wrapper(idx, row):
+            if self._should_stop or (stop_flag and stop_flag.get('stop')):
+                return
+            try:
                 image_path = row[1]
                 prompt = None
-                futures.append(executor.submit(self.metadata_func, self.api_key, self.model, image_path, prompt, stop_flag))
-            completed = 0
-            for idx, future in enumerate(futures):
-                if self._should_stop or (stop_flag and stop_flag.get('stop')):
-                    break
-                try:
-                    result = future.result()
-                    cache_results.append((completed, result))
-                except Exception as e:
-                    errors.append(str(e))
-                completed += 1
-                self.signals.progress.emit(completed, len(self.batch))
+                result = self.metadata_func(self.api_key, self.model, image_path, prompt, stop_flag)
+                with self._lock:
+                    if not self._should_stop and not (stop_flag and stop_flag.get('stop')):
+                        results[idx] = (idx, result)
+            except Exception as e:
+                with self._lock:
+                    if not self._should_stop and not (stop_flag and stop_flag.get('stop')):
+                        errors[idx] = str(e)
+            finally:
+                with self._lock:
+                    self._completed += 1
+                    if not self._should_stop and not (stop_flag and stop_flag.get('stop')):
+                        self.signals.progress.emit(self._completed, len(self.batch))
+
+        for idx, row in enumerate(self.batch):
+            t = threading.Thread(target=task_wrapper, args=(idx, row))
+            threads.append(t)
+            t.start()
+
+        while self._completed < len(self.batch):
             if self._should_stop or (stop_flag and stop_flag.get('stop')):
-                for f in futures[completed:]:
-                    if isinstance(f, Future) and not f.done():
-                        f.cancel()
-        self._results = cache_results
-        self._errors = errors
-        self.signals.finished.emit(errors)
+                break
+            self.msleep(50)
+
+        if self._should_stop or (stop_flag and stop_flag.get('stop')):
+            time.sleep(3)
+            self._results = []
+            self._errors = []
+            self.signals.finished.emit([])
+            return
+
+        self._results = [r for r in results if r is not None]
+        self._errors = [e for e in errors if e is not None]
+        self.signals.finished.emit(self._errors)
 
 def batch_generate_metadata(window):
     if getattr(window, 'is_generating', False):
@@ -233,20 +256,45 @@ def _set_gen_btn_blinking(window, blinking, color=None, text=None):
         window._gen_btn_anim.stop()
         window._gen_btn_anim = None
     if blinking:
-        anim = QPropertyAnimation(btn, b"windowOpacity")
-        anim.setDuration(700)
-        anim.setStartValue(1.0)
-        anim.setEndValue(0.3)
-        anim.setEasingCurve(QEasingCurve.InOutQuad)
-        anim.setLoopCount(-1)
-        anim.setDirection(QPropertyAnimation.Backward)
-        anim.start()
-        window._gen_btn_anim = anim
+        from PySide6.QtCore import QTimer
+
+        def set_bg_color(bg_color):
+            btn.setStyleSheet(f"background-color: {bg_color};")
+
+        # Two colors for blinking
+        color1 = color if color else "rgba(255, 220, 28, 0.3)"
+        color2 = "rgba(255, 255, 255, 0.1)"
+        window._gen_btn_blink_state = True
+
+        # Save the previous color to restore after blinking
+        window._gen_btn_last_bg = btn.styleSheet()
+
+        def blink():
+            if not hasattr(window, "_gen_btn_blink_state"):
+                window._gen_btn_blink_state = True
+            window._gen_btn_blink_state = not window._gen_btn_blink_state
+            set_bg_color(color1 if window._gen_btn_blink_state else color2)
+
+        window._gen_btn_blink_timer = getattr(window, "_gen_btn_blink_timer", None)
+        if window._gen_btn_blink_timer:
+            window._gen_btn_blink_timer.stop()
+            window._gen_btn_blink_timer.deleteLater()
+        from PySide6.QtCore import QTimer
+        timer = QTimer(btn)
+        timer.timeout.connect(blink)
+        timer.start(400)
+        window._gen_btn_blink_timer = timer
+        set_bg_color(color1)
     else:
-        btn.setWindowOpacity(1.0)
-        window._gen_btn_anim = None
-    if color:
-        btn.setStyleSheet(f"background-color: {color};")
+        if hasattr(window, "_gen_btn_blink_timer") and window._gen_btn_blink_timer:
+            window._gen_btn_blink_timer.stop()
+            window._gen_btn_blink_timer.deleteLater()
+            window._gen_btn_blink_timer = None
+        # Restore the last background color if available, else use the provided color
+        if hasattr(window, "_gen_btn_last_bg") and window._gen_btn_last_bg:
+            btn.setStyleSheet(window._gen_btn_last_bg)
+        else:
+            btn.setStyleSheet(f"background-color: {color};" if color else "")
     if text:
         btn.setText(text)
 
@@ -262,13 +310,15 @@ def _set_gen_btn_stop_state(window, is_stop, is_stopping=False):
     elif is_stop:
         btn.setText("Stop Processes")
         btn.setIcon(qta.icon('fa5s.stop'))
-        btn.setStyleSheet("background-color: rgba(204, 0, 0, 0.3);")
         _set_gen_btn_blinking(window, False)
+        btn.setStyleSheet("background-color: rgba(204, 0, 0, 0.3);")
+        window._gen_btn_last_bg = "background-color: rgba(204, 0, 0, 0.3);"
     else:
         btn.setText("Generate Metadata")
         btn.setIcon(qta.icon('fa5s.magic'))
-        btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
         _set_gen_btn_blinking(window, False)
+        btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
+        window._gen_btn_last_bg = "background-color: rgba(132, 225, 7, 0.3);"
 
 def _run_next_batch(window):
     state = window._batch_processing_state
@@ -432,4 +482,7 @@ def _on_generation_finished(window, errors, stopped=False):
 def update_token_stats_ui(window):
     if hasattr(window, "stats_section") and hasattr(window.stats_section, "update_token_stats"):
         token_input, token_output, token_total = window.db.get_token_stats_sum()
+        window.stats_section.update_token_stats(token_input, token_output, token_total)
+        token_input, token_output, token_total = window.db.get_token_stats_sum()
+        window.stats_section.update_token_stats(token_input, token_output, token_total)
         window.stats_section.update_token_stats(token_input, token_output, token_total)
