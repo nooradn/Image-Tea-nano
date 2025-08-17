@@ -37,10 +37,12 @@ class StatsSectionWidget(QWidget):
         self.label_avg_time = QLabel("Average Time: 0 ms")
         self.label_longest_time = QLabel("Longest Time: 0 ms")
         self.label_last_time = QLabel("Last Time: 0 ms")
+        self.label_total_time = QLabel("Total Time: 0 ms")
         time_stats_layout.addWidget(self.label_gen_time)
         time_stats_layout.addWidget(self.label_avg_time)
         time_stats_layout.addWidget(self.label_longest_time)
         time_stats_layout.addWidget(self.label_last_time)
+        time_stats_layout.addWidget(self.label_total_time)
 
         hbox.addLayout(file_stats_layout)
         hbox.addSpacing(24)
@@ -56,6 +58,7 @@ class StatsSectionWidget(QWidget):
         self._avg_time = 0
         self._longest_time = 0
         self._last_time = 0
+        self._total_time = 0
 
     def update_stats(self, total, selected, failed, success=0, draft=0):
         self.label_total.setText(f"Total Images: {total}")
@@ -87,10 +90,15 @@ class StatsSectionWidget(QWidget):
         self._longest_time = longest_time_ms
         self._last_time = last_time_ms
 
+    def update_total_time(self, total_time_ms):
+        self.label_total_time.setText(f"Total Time: {self._format_time(total_time_ms)}")
+        self._total_time = total_time_ms
+
     def get_last_generation_times(self):
         return {
             "generation_time": self._last_gen_time,
             "average_time": self._avg_time,
             "longest_time": self._longest_time,
-            "last_time": self._last_time
+            "last_time": self._last_time,
+            "total_time": self._total_time
         }
