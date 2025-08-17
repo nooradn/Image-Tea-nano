@@ -46,8 +46,6 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     if custom_prompt and custom_prompt.strip():
         prompt = f"{prompt}\n\nMANDATORY: {custom_prompt.strip()}\n"
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
-    print("[OpenAI FULL PROMPT]")
-    print(full_prompt)
     return full_prompt
 
 def generate_metadata_openai(api_key, model, image_path, prompt=None):

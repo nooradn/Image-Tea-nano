@@ -7,6 +7,7 @@ from ui.main_table import ImageTableWidget
 from ui.prompt_section import PromptSectionWidget
 from ui.stats_section import StatsSectionWidget
 from ui.main_menu import setup_main_menu
+from helpers.batch_processing_helper import batch_generate_metadata
 
 def setup_ui(self):
     setup_main_menu(self)
@@ -212,7 +213,7 @@ def setup_ui(self):
     font.setPointSize(font.pointSize() + 4)
     font.setBold(True)
     self.gen_btn.setFont(font)
-    self.gen_btn.clicked.connect(self.batch_generate_metadata)
+    self.gen_btn.clicked.connect(lambda: batch_generate_metadata(self))
     gen_group_layout.addWidget(self.gen_btn)
 
     btn_row_layout.addLayout(gen_group_layout)

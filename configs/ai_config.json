@@ -10,7 +10,7 @@
   "max_description_length": 150,
   "required_tag_count": 50,
   "compression_quality": 20,
-  "batch_size": 5,
+  "batch_size": 2,
   "model_list": {
     "gemini": [
       "gemini-2.5-flash",
