@@ -46,12 +46,12 @@ class PromptSectionWidget(QWidget):
         self.batch_size_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self.batch_size_spin.setToolTip("Number of files processed per batch.\nMaximum is 10 per batch.")
 
-        cache_label = QLabel("Caching")
+        compression_label = QLabel("Compression")
         self.cache_spin = QSpinBox()
         self.cache_spin.setRange(1, 100)
         self.cache_spin.setValue(70)
         self.cache_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self.cache_spin.setToolTip("Cache compression quality (1-100).\nLower value = higher compression, more efficient internet data usage.")
+        self.cache_spin.setToolTip("Compression quality (1-100).\nLower value = higher compression, more efficient internet data usage.")
 
         main_layout = QHBoxLayout()
         main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
@@ -66,7 +66,7 @@ class PromptSectionWidget(QWidget):
         main_layout.addWidget(self.tag_count_spin)
         main_layout.addWidget(batch_size_label)
         main_layout.addWidget(self.batch_size_spin)
-        main_layout.addWidget(cache_label)
+        main_layout.addWidget(compression_label)
         main_layout.addWidget(self.cache_spin)
         main_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
@@ -104,7 +104,7 @@ class PromptSectionWidget(QWidget):
             self.max_desc_spin.setValue(data["max_description_length"])
             self.tag_count_spin.setValue(data["required_tag_count"])
             self.batch_size_spin.setValue(min(max(data["batch_size"], 1), 10))
-            self.cache_spin.setValue(data["cache_compression_quality"])
+            self.cache_spin.setValue(data["compression_quality"])
             prompt = data["prompt"]
             self.custom_prompt_edit.setText(prompt["custom_prompt"])
         except Exception as e:
@@ -124,7 +124,7 @@ class PromptSectionWidget(QWidget):
         data["max_description_length"] = self.max_desc_spin.value()
         data["required_tag_count"] = self.tag_count_spin.value()
         data["batch_size"] = self.batch_size_spin.value()
-        data["cache_compression_quality"] = self.cache_spin.value()
+        data["compression_quality"] = self.cache_spin.value()
         if "prompt" not in data:
             data["prompt"] = {}
         data["prompt"]["custom_prompt"] = self.custom_prompt_edit.text()
