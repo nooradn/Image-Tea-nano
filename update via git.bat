@@ -47,7 +47,6 @@ if %errorlevel%==0 (
         git config --get user.email
         echo Menjalankan update...
         git pull
-        pause
     ) else (
         echo Git ditemukan, tetapi Anda belum login ke git.
         set /p GITUSER=Masukkan username GitHub Anda: 
@@ -56,8 +55,10 @@ if %errorlevel%==0 (
         git config --global user.email "%GITEMAIL%"
         echo Login git berhasil. Menjalankan update...
         git pull
-        pause
     )
+    echo.
+    echo Menjalankan Launcher.bat...
+    start "" "%SCRIPT_DIR%\Launcher.bat"
 ) else (
     echo Git tidak ditemukan di sistem Anda.
     echo Silakan install Git terlebih dahulu.
