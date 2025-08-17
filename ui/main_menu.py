@@ -10,6 +10,7 @@ from helpers.metadata_helper.metadata_operation import write_metadata_to_images
 from dialogs.csv_exporter_dialog import CSVExporterDialog
 from dialogs.edit_prompt_dialog import EditPromptDialog
 from dialogs.custom_prompt_dialog import CustomPromptDialog
+from dialogs.batch_rename_dialog import BatchRenameDialog
 
 def setup_main_menu(window):
     menubar = QMenuBar(window)
@@ -31,6 +32,13 @@ def setup_main_menu(window):
     clear_action = QAction(qta.icon('fa5s.broom'), "Clear All", window)
     clear_action.triggered.connect(lambda: window.table.clear_all())
     edit_menu.addAction(clear_action)
+
+    batch_rename_action = QAction(qta.icon('fa5s.i-cursor'), "Batch Rename", window)
+    def open_batch_rename():
+        dialog = BatchRenameDialog(window)
+        dialog.exec()
+    batch_rename_action.triggered.connect(open_batch_rename)
+    edit_menu.addAction(batch_rename_action)
 
     metadata_menu = QMenu("Metadata", menubar)
 
