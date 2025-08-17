@@ -84,7 +84,7 @@ class PromptSectionWidget(QWidget):
 
         self.setLayout(outer_layout)
 
-        self.config_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
+        self.config_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
         self.min_title_spin.valueChanged.connect(self.save_prompt_config)
         self.max_title_spin.valueChanged.connect(self.save_prompt_config)
         self.max_desc_spin.valueChanged.connect(self.save_prompt_config)

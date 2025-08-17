@@ -2,6 +2,9 @@ from PySide6.QtWidgets import QMenuBar, QMenu, QMessageBox
 from PySide6.QtGui import QAction
 import qtawesome as qta
 import webbrowser
+import sys
+import os
+import subprocess
 from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images
 from dialogs.csv_exporter_dialog import CSVExporterDialog
@@ -43,6 +46,18 @@ def setup_main_menu(window):
         dialog.exec()
     export_metadata_action.triggered.connect(show_export_dialog)
     metadata_menu.addAction(export_metadata_action)
+
+    relaunch_action = QAction(qta.icon('fa5s.redo'), "Relaunch", window)
+    def relaunch_app():
+        python_exe = sys.executable
+        args = [python_exe] + sys.argv
+        try:
+            subprocess.Popen(args)
+        except Exception as e:
+            print(f"Failed to relaunch: {e}")
+        window.close()
+    relaunch_action.triggered.connect(relaunch_app)
+    file_menu.addAction(relaunch_action)
 
     exit_action = QAction(qta.icon('fa5s.sign-out-alt'), "Exit", window)
     exit_action.triggered.connect(window.close)

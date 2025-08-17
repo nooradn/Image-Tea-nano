@@ -19,7 +19,7 @@ def track_openai_generation_time(duration_ms):
     return gen_time, avg_time, longest_time, last_time
 
 def load_openai_prompt_vars():
-    prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
+    prompt_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
     with open(prompt_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     prompt_data = data["prompt"]

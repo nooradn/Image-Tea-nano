@@ -69,7 +69,7 @@ class EditPromptDialog(QDialog):
         btn_layout.addWidget(self.save_btn)
         main_layout.addLayout(btn_layout)
 
-        self.config_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
+        self.config_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
         self.load_prompt()
         self.save_btn.clicked.connect(self.save_prompt)
 

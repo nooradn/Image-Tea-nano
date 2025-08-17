@@ -20,7 +20,7 @@ class CustomPromptDialog(QDialog):
         btn_layout.addWidget(self.apply_btn)
         layout.addLayout(btn_layout)
 
-        self.config_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
+        self.config_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
         self._initial_value = None
         self.load_prompt()
 

@@ -61,7 +61,7 @@ class AddApiKeyDialog(QDialog):
         layout = QVBoxLayout()
         label_width = 80
         self.model_list = {}
-        ai_prompt_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "ai_prompt.json")
+        ai_prompt_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs", "ai_config.json")
         try:
             with open(ai_prompt_path, "r", encoding="utf-8") as f:
                 ai_prompt = json.load(f)
