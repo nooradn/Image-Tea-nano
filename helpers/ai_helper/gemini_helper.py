@@ -48,7 +48,9 @@ def format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
     return full_prompt
 
-def generate_metadata_gemini(api_key, model, image_path, prompt=None):
+def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=None):
+    if stop_flag and stop_flag.get('stop'):
+        return '', '', '', 0, 0, 0
     start_time = time.perf_counter()
     try:
         client = genai.Client(api_key=api_key)
@@ -62,6 +64,8 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None):
             file_id = myfile.name if hasattr(myfile, 'name') else getattr(myfile, 'id', None)
             status = None
             for _ in range(20):
+                if stop_flag and stop_flag.get('stop'):
+                    return '', '', '', 0, 0, 0
                 fileinfo = client.files.get(name=file_id)
                 status = getattr(fileinfo, 'state', None) or getattr(fileinfo, 'status', None)
                 if status == 'ACTIVE':
@@ -79,6 +83,8 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None):
             with open(compressed_path, 'rb') as f:
                 image_bytes = f.read()
             contents = [types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'), prompt]
+        if stop_flag and stop_flag.get('stop'):
+            return '', '', '', 0, 0, 0
         response = client.models.generate_content(
             model=model,
             contents=contents

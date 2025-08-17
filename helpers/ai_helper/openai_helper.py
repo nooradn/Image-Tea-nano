@@ -48,7 +48,9 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
     return full_prompt
 
-def generate_metadata_openai(api_key, model, image_path, prompt=None):
+def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=None):
+    if stop_flag and stop_flag.get('stop'):
+        return '', '', '', '', 0, 0, 0
     start_time = time.perf_counter()
     try:
         ext = os.path.splitext(image_path)[1].lower()
@@ -81,6 +83,8 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
                 ]
             }
         ]
+        if stop_flag and stop_flag.get('stop'):
+            return '', '', '', '', 0, 0, 0
         response = client.responses.create(
             model=model,
             input=messages
