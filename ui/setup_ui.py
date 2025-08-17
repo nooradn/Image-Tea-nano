@@ -192,6 +192,7 @@ def setup_ui(self):
     gen_group_layout.addWidget(self.gen_mode_combo)
 
     self.gen_btn = QPushButton(qta.icon('fa5s.magic'), "Generate Metadata")
+    self.gen_btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
 
     def update_gen_btn_tooltip(idx):
         mode = self.gen_mode_combo.currentText()

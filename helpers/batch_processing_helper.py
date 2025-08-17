@@ -1,6 +1,6 @@
 import json
 import os
-from PySide6.QtCore import Qt, QThread, Signal, QObject
+from PySide6.QtCore import Qt, QThread, Signal, QObject, QPropertyAnimation, QEasingCurve
 from PySide6.QtGui import QColor
 from config import BASE_PATH
 
@@ -225,6 +225,51 @@ def batch_generate_metadata(window):
     _set_gen_btn_stop_state(window, True)
     _run_next_batch(window)
 
+def _set_gen_btn_blinking(window, blinking, color=None, text=None):
+    if not hasattr(window, "gen_btn"):
+        return
+    btn = window.gen_btn
+    if hasattr(window, "_gen_btn_anim") and window._gen_btn_anim:
+        window._gen_btn_anim.stop()
+        window._gen_btn_anim = None
+    if blinking:
+        anim = QPropertyAnimation(btn, b"windowOpacity")
+        anim.setDuration(700)
+        anim.setStartValue(1.0)
+        anim.setEndValue(0.3)
+        anim.setEasingCurve(QEasingCurve.InOutQuad)
+        anim.setLoopCount(-1)
+        anim.setDirection(QPropertyAnimation.Backward)
+        anim.start()
+        window._gen_btn_anim = anim
+    else:
+        btn.setWindowOpacity(1.0)
+        window._gen_btn_anim = None
+    if color:
+        btn.setStyleSheet(f"background-color: {color};")
+    if text:
+        btn.setText(text)
+
+def _set_gen_btn_stop_state(window, is_stop, is_stopping=False):
+    if not hasattr(window, "gen_btn"):
+        return
+    import qtawesome as qta
+    btn = window.gen_btn
+    if is_stopping:
+        btn.setText("Stopping Workers")
+        btn.setIcon(qta.icon('fa5s.stop'))
+        _set_gen_btn_blinking(window, True, "rgba(255, 220, 28, 0.3)", "Stopping Workers")
+    elif is_stop:
+        btn.setText("Stop Processes")
+        btn.setIcon(qta.icon('fa5s.stop'))
+        btn.setStyleSheet("background-color: rgba(204, 0, 0, 0.3);")
+        _set_gen_btn_blinking(window, False)
+    else:
+        btn.setText("Generate Metadata")
+        btn.setIcon(qta.icon('fa5s.magic'))
+        btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
+        _set_gen_btn_blinking(window, False)
+
 def _run_next_batch(window):
     state = window._batch_processing_state
     if state.get('should_stop', False):
@@ -257,11 +302,13 @@ def _run_next_batch(window):
             window.table.progress_bar.setFormat('Stopping...')
             window.table.progress_bar.setMinimum(0)
             window.table.progress_bar.setMaximum(0)
+            _set_gen_btn_stop_state(window, False, is_stopping=True)
         else:
             window.table.progress_bar.setFormat('Generating metadata...')
             window.table.progress_bar.setMinimum(0)
             window.table.progress_bar.setMaximum(len(rows))
             window.table.progress_bar.setValue(state['current'] * get_batch_size() + cur)
+            _set_gen_btn_stop_state(window, True)
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
     def on_finished(errors):
@@ -310,6 +357,7 @@ def _run_next_batch(window):
         window.table.progress_bar.setFormat('Generating metadata...')
         window.table.progress_bar.setMinimum(0)
         window.table.progress_bar.setMaximum(len(rows))
+        _set_gen_btn_stop_state(window, True)
         from PySide6.QtWidgets import QApplication
         QApplication.processEvents()
         state['current'] += 1
@@ -339,25 +387,13 @@ def stop_generate_metadata(window):
             window.table.progress_bar.setMinimum(0)
             window.table.progress_bar.setMaximum(0)
             window.table.progress_bar.setVisible(True)
+            _set_gen_btn_stop_state(window, False, is_stopping=True)
             from PySide6.QtWidgets import QApplication
             QApplication.processEvents()
             worker.stop()
     window.is_generating = False
-    _set_gen_btn_stop_state(window, False)
     window.table.refresh_table()
     print("[STOP] Metadata generation stopped and UI reset.")
-
-def _set_gen_btn_stop_state(window, is_stop):
-    if hasattr(window, "gen_btn"):
-        import qtawesome as qta
-        if is_stop:
-            window.gen_btn.setText("Stop Processes")
-            window.gen_btn.setIcon(qta.icon('fa5s.stop'))
-            window.gen_btn.setStyleSheet("background-color: rgba(204, 0, 0, 0.3);")
-        else:
-            window.gen_btn.setText("Generate Metadata")
-            window.gen_btn.setIcon(qta.icon('fa5s.magic'))
-            window.gen_btn.setStyleSheet("")
 
 def _on_generation_finished(window, errors, stopped=False):
     window.is_generating = False
