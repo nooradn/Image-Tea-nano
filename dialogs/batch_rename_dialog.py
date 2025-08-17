@@ -1,6 +1,7 @@
+import os
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QComboBox, QRadioButton, QButtonGroup, QGroupBox,
-    QFormLayout, QLineEdit, QCheckBox, QLabel, QHBoxLayout, QSpinBox, QPushButton, QWidget
+    QFormLayout, QLineEdit, QCheckBox, QLabel, QHBoxLayout, QSpinBox, QPushButton, QWidget, QMessageBox
 )
 from PySide6.QtCore import Qt
 from datetime import datetime
@@ -18,10 +19,12 @@ class BatchRenameDialog(QDialog):
         "title": "#9508d1",
     }
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, table_widget=None, db=None):
         super().__init__(parent)
         self.setWindowTitle("Batch Rename")
         self.setFixedWidth(400)
+        self.table_widget = table_widget
+        self.db = db
 
         layout = QVBoxLayout(self)
 
@@ -89,7 +92,7 @@ class BatchRenameDialog(QDialog):
         group_layout.addRow("Pattern Mode", pattern_mode_layout)
 
         self.pattern_edit = QLineEdit(self.rename_group)
-        self.pattern_edit.setText("{prefix}_{original}_{number}_{suffix}")
+        self.pattern_edit.setText("{prefix}_{title}_{suffix}")
         self.pattern_edit.setReadOnly(True)
         group_layout.addRow("Pattern", self.pattern_edit)
 
@@ -100,7 +103,7 @@ class BatchRenameDialog(QDialog):
         self.checklist_layout = QVBoxLayout(self.checklist_widget)
         self.checklist_layout.setContentsMargins(0, 0, 0, 0)
         self.check_vars = []
-        self.pattern_order = [var for var in variable_names if var in ["prefix", "original", "number", "suffix"]]
+        self.pattern_order = [var for var in ["prefix", "title", "suffix"]]
         for i, var in enumerate(variable_names):
             h = QHBoxLayout()
             cb = QCheckBox(self.checklist_widget)
@@ -131,6 +134,25 @@ class BatchRenameDialog(QDialog):
 
         layout.addWidget(self.rename_group)
 
+        self.info_label = QLabel(
+            "<b>Warning:</b> After renaming, you can restore the previous filename using Undo Rename if needed.",
+            self
+        )
+        self.info_label.setWordWrap(True)
+        layout.addWidget(self.info_label)
+
+        btn_layout = QHBoxLayout()
+        self.undo_btn = QPushButton("Undo Rename", self)
+        self.undo_btn.setIcon(qta.icon('fa5s.undo'))
+        btn_layout.addWidget(self.undo_btn)
+        self.rename_btn = QPushButton("Rename", self)
+        self.rename_btn.setIcon(qta.icon('fa5s.edit'))
+        btn_layout.addWidget(self.rename_btn)
+
+        layout.addLayout(btn_layout)
+        self.rename_btn.clicked.connect(self.do_rename)
+        self.undo_btn.clicked.connect(self.do_undo_rename)
+
         self.radio_same_as_title.toggled.connect(self._on_radio_toggle)
         self.radio_custom.toggled.connect(self._on_radio_toggle)
         self.radio_default_pattern.toggled.connect(self._on_pattern_mode_toggle)
@@ -157,8 +179,19 @@ class BatchRenameDialog(QDialog):
         self.pattern_edit.setReadOnly(True)
         self.checklist_widget.setEnabled(custom_enabled)
         if self.radio_default_pattern.isChecked():
-            self.pattern_edit.setText("{prefix}_{original}_{number}_{suffix}")
+            self.pattern_order = ["prefix", "title", "suffix"]
+            self.pattern_edit.setText("{prefix}_{title}_{suffix}")
+            # Set checklist to match default pattern
+            for cb, _, _, var, _ in self.check_vars:
+                cb.blockSignals(True)
+                cb.setChecked(var in self.pattern_order)
+                cb.blockSignals(False)
         elif self.radio_custom_pattern.isChecked():
+            # Restore checklist to match current pattern_order (custom)
+            for cb, _, _, var, _ in self.check_vars:
+                cb.blockSignals(True)
+                cb.setChecked(var in self.pattern_order)
+                cb.blockSignals(False)
             self.update_checklist_pattern()
         self.update_preview()
 
@@ -194,7 +227,7 @@ class BatchRenameDialog(QDialog):
         remove_special = self.remove_special_checkbox.isChecked()
         replace_space = self.replace_space_checkbox.isChecked()
         if self.radio_default_pattern.isChecked():
-            pattern = "{prefix}_{original}_{number}_{suffix}"
+            pattern = "{prefix}_{title}_{suffix}"
         else:
             pattern = self.pattern_edit.text()
 
@@ -204,6 +237,9 @@ class BatchRenameDialog(QDialog):
         timestamp_val = today_timestamp if (timestamp_mode == "Timestamp" or "{timestamp}" in pattern) else ""
         date_val = today_date if (timestamp_mode == "Date" or "{date}" in pattern) else ""
 
+        example_title = "Title Example"
+        # Remove ., ,, - from title for preview
+        example_title = re.sub(r'[.,\-]', '', example_title)
         example_vars = {
             "prefix": prefix,
             "original": "original_name",
@@ -211,7 +247,7 @@ class BatchRenameDialog(QDialog):
             "suffix": suffix,
             "timestamp": timestamp_val,
             "date": date_val,
-            "title": "Title Example"
+            "title": example_title
         }
 
         try:
@@ -224,13 +260,11 @@ class BatchRenameDialog(QDialog):
         preview_raw = re.sub(r'\._+', '.', preview_raw)
         preview_raw = re.sub(r'^_+|_+$', '', preview_raw)
 
-        # Highlight variables in preview before any post-processing
         preview_html = preview_raw
         var_spans = []
         for var, color in self.VAR_COLORS.items():
             val = example_vars[var]
             if val:
-                # Use unique marker to avoid double replacement
                 marker = f"__VAR_{var.upper()}__"
                 preview_html = re.sub(
                     re.escape(val),
@@ -240,9 +274,7 @@ class BatchRenameDialog(QDialog):
                 )
                 var_spans.append((marker, f'<span style="color:{color};font-weight:bold;">{val}</span>'))
 
-        # Now apply remove special and replace space to non-HTML parts only
         def process_outside_tags(html, func):
-            # Split by tags, process only outside tags
             parts = re.split(r'(<[^>]+>)', html)
             for i, part in enumerate(parts):
                 if not part.startswith('<'):
@@ -260,8 +292,166 @@ class BatchRenameDialog(QDialog):
         if replace_space:
             preview_html = process_outside_tags(preview_html, replace_space_func)
 
-        # Replace markers with colored spans
         for marker, span in var_spans:
             preview_html = preview_html.replace(marker, span, 1)
 
         self.preview_label.setText(f"Preview: {preview_html}")
+
+    def do_rename(self):
+        mode = self.combo_mode.currentText()
+        if mode == "Rename All":
+            file_rows = [row for row in range(self.table_widget.table.rowCount())]
+        else:
+            file_rows = []
+            for row in range(self.table_widget.table.rowCount()):
+                checkbox_item = self.table_widget.table.item(row, 0)
+                if checkbox_item and checkbox_item.checkState() == Qt.Checked:
+                    file_rows.append(row)
+            if not file_rows:
+                QMessageBox.information(self, "No Selection", "No rows checked for renaming.")
+                return
+
+        files = []
+        for row in file_rows:
+            filepath = self.table_widget.table.item(row, 1).text()
+            filename = self.table_widget.table.item(row, 2).text()
+            title = self.table_widget.table.item(row, 3).text()
+            description = self.table_widget.table.item(row, 4).text()
+            tags = self.table_widget.table.item(row, 5).text()
+            status = self.table_widget.table.item(row, 8).text()
+            files.append({
+                "filepath": filepath,
+                "filename": filename,
+                "title": title,
+                "description": description,
+                "tags": tags,
+                "status": status,
+                "row": row
+            })
+
+        def sanitize_title(title):
+            if not title:
+                return title
+            # Remove ., ,, - from title
+            return re.sub(r'[.,\-]', '', title)
+
+        if self.radio_same_as_title.isChecked():
+            def pattern_func(file_info, idx):
+                base, ext = os.path.splitext(file_info['filename'])
+                title = file_info['title'] or base
+                title = sanitize_title(title)
+                remove_special = self.remove_special_checkbox.isChecked()
+                replace_space = self.replace_space_checkbox.isChecked()
+                if remove_special:
+                    title = re.sub(r'[^A-Za-z0-9_-]', '', title)
+                if replace_space:
+                    title = title.replace(' ', '_')
+                return f"{title}{ext}"
+        else:
+            def pattern_func(file_info, idx):
+                pattern = self.pattern_edit.text()
+                prefix = self.prefix_edit.text()
+                suffix = self.suffix_edit.text()
+                numbering = self.numbering_checkbox.isChecked()
+                digits = self.numbering_spin.value()
+                timestamp_mode = self.timestamp_combo.currentText()
+                remove_special = self.remove_special_checkbox.isChecked()
+                replace_space = self.replace_space_checkbox.isChecked()
+                now = datetime.now()
+                today_date = now.strftime("%Y-%m-%d")
+                today_timestamp = now.strftime("%Y%m%d_%H%M%S")
+                if "{original}" in pattern:
+                    base, ext = os.path.splitext(file_info['filename'])
+                else:
+                    base, ext = "", os.path.splitext(file_info['filename'])[1]
+                timestamp_val = today_timestamp if (timestamp_mode == "Timestamp" or "{timestamp}" in pattern) else ""
+                date_val = today_date if (timestamp_mode == "Date" or "{date}" in pattern) else ""
+                number_val = f"{idx+1:0{digits}d}" if numbering else ""
+                sanitized_title = sanitize_title(file_info['title'] or base)
+                vars_dict = {
+                    "prefix": prefix,
+                    "original": base,
+                    "number": number_val,
+                    "suffix": suffix,
+                    "timestamp": timestamp_val,
+                    "date": date_val,
+                    "title": sanitized_title
+                }
+                try:
+                    new_base = pattern.format(**vars_dict)
+                except Exception:
+                    new_base = base
+                new_base = re.sub(r'_{2,}', '_', new_base)
+                new_base = re.sub(r'_+\.', '.', new_base)
+                new_base = re.sub(r'\._+', '.', new_base)
+                new_base = re.sub(r'^_+|_+$', '', new_base)
+                if remove_special:
+                    new_base = re.sub(r'[^A-Za-z0-9_-]', '', new_base)
+                if replace_space:
+                    new_base = new_base.replace(' ', '_')
+                return f"{new_base}{ext}"
+
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Rename",
+            "Are you sure you want to rename the selected files? After renaming, you can restore the previous filename using Undo Rename if needed.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm != QMessageBox.Yes:
+            return
+
+        from helpers.file_renaming_helper import batch_rename_files
+
+        try:
+            results = batch_rename_files(files, pattern_func)
+            self.db.batch_update_file_paths(results)
+            self.table_widget.refresh_table()
+
+            success_count = sum(1 for r in results if r[4])
+            fail_count = len(results) - success_count
+            msg = f"Renaming completed.\nSuccess: {success_count}\nFailed: {fail_count}"
+            if fail_count > 0:
+                msg += "\nSome files could not be renamed. See console for details."
+                for r in results:
+                    if not r[4]:
+                        print(f"Failed to rename: {r[0]} -> {r[2]} | Error: {r[5]}")
+            QMessageBox.information(self, "Batch Rename", msg)
+        except Exception as e:
+            print("Batch rename error:", e)
+            raise
+
+    def do_undo_rename(self):
+        mode = self.combo_mode.currentText()
+        if mode == "Rename All":
+            file_rows = [row for row in range(self.table_widget.table.rowCount())]
+        else:
+            file_rows = []
+            for row in range(self.table_widget.table.rowCount()):
+                checkbox_item = self.table_widget.table.item(row, 0)
+                if checkbox_item and checkbox_item.checkState() == Qt.Checked:
+                    file_rows.append(row)
+            if not file_rows:
+                QMessageBox.information(self, "No Selection", "No rows checked for undo rename.")
+                return
+
+        files = []
+        for row in file_rows:
+            filepath = self.table_widget.table.item(row, 1).text()
+            files.append(filepath)
+
+        confirm = QMessageBox.question(
+            self,
+            "Confirm Undo Rename",
+            "Are you sure you want to undo rename for the selected files? This will restore their original filenames if possible.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if confirm != QMessageBox.Yes:
+            return
+
+        try:
+            self.db.undo_rename(files)
+            self.table_widget.refresh_table()
+            QMessageBox.information(self, "Undo Rename", "Undo rename completed. Filenames restored to their original names.")
+        except Exception as e:
+            print("Undo rename error:", e)
+            raise

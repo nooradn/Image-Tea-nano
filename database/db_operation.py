@@ -28,7 +28,8 @@ class ImageTeaDB:
                 title TEXT,
                 description TEXT,
                 tags TEXT,
-                status TEXT
+                status TEXT,
+                original_filename TEXT
             )''')
             c.execute('''CREATE TABLE IF NOT EXISTS api_tokens (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -101,11 +102,13 @@ class ImageTeaDB:
             c.execute('DELETE FROM api_keys WHERE service=? AND api_key=?', (service, api_key))
             conn.commit()
 
-    def add_file(self, filepath, filename, title=None, description=None, tags=None, status=None):
+    def add_file(self, filepath, filename, title=None, description=None, tags=None, status=None, original_filename=None):
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
-            c.execute('''INSERT OR IGNORE INTO files (filepath, filename, title, description, tags, status) VALUES (?, ?, ?, ?, ?, ?)''',
-                      (filepath, filename, title, description, tags, status))
+            if original_filename is None:
+                original_filename = filename
+            c.execute('''INSERT OR IGNORE INTO files (filepath, filename, title, description, tags, status, original_filename) VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                      (filepath, filename, title, description, tags, status, original_filename))
             conn.commit()
 
     def update_metadata(self, filepath, title, description, tags, status=None):
@@ -140,7 +143,7 @@ class ImageTeaDB:
     def get_all_files(self):
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
-            c.execute('SELECT id, filepath, filename, title, description, tags, status FROM files')
+            c.execute('SELECT id, filepath, filename, title, description, tags, status, original_filename FROM files')
             return c.fetchall()
 
     def get_all_api_keys(self):
@@ -165,3 +168,39 @@ class ImageTeaDB:
             if row:
                 return tuple(x if x is not None else 0 for x in row)
             return (0, 0, 0)
+
+    def update_file_path_and_name(self, old_filepath, new_filepath, new_filename):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            c.execute('UPDATE files SET filepath=?, filename=? WHERE filepath=?', (new_filepath, new_filename, old_filepath))
+            conn.commit()
+
+    def batch_update_file_paths(self, rename_results):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            for old_filepath, new_filepath, old_filename, new_filename, success, error in rename_results:
+                if success and new_filepath and new_filename:
+                    c.execute('UPDATE files SET filepath=?, filename=? WHERE filepath=?', (new_filepath, new_filename, old_filepath))
+            conn.commit()
+
+    def undo_rename(self, filepaths):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            for filepath in filepaths:
+                c.execute('SELECT original_filename, filename, filepath FROM files WHERE filepath=?', (filepath,))
+                row = c.fetchone()
+                if row:
+                    original_filename, current_filename, current_filepath = row
+                    dirpath = os.path.dirname(current_filepath)
+                    original_filepath = os.path.join(dirpath, original_filename)
+                    if os.path.abspath(current_filepath) == os.path.abspath(original_filepath):
+                        continue
+                    if os.path.exists(original_filepath):
+                        print(f"Undo rename failed: {original_filepath} already exists.")
+                        continue
+                    try:
+                        os.rename(current_filepath, original_filepath)
+                        c.execute('UPDATE files SET filepath=?, filename=? WHERE filepath=?', (original_filepath, original_filename, current_filepath))
+                    except Exception as e:
+                        print(f"Undo rename error: {current_filepath} -> {original_filepath} | {e}")
+            conn.commit()

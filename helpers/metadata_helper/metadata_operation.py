@@ -28,7 +28,7 @@ class ImageTeaGeneratorThread(QThread):
 		db = ImageTeaDB(self.db_path)
 		total = len(self.rows)
 		for idx, row in enumerate(self.rows):
-			id_, filepath, filename, title, description, tags, status = row
+			id_, filepath, filename, title, description, tags, status, _ = row
 			visual_idx = self.row_map.get(id_, idx)
 			self.row_status.emit(visual_idx, "processing")
 			try:
@@ -145,7 +145,7 @@ def write_metadata_to_images(db, _unused1, _unused2):
 	rows = db.get_all_files()
 	errors = []
 	for row in rows:
-		id_, filepath, filename, title, description, tags, status = row
+		id_, filepath, filename, title, description, tags, status, _ = row
 		if title or description or tags:
 			try:
 				tag_list = [t.strip() for t in tags.split(',')] if tags else []
