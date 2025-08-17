@@ -5,6 +5,8 @@ import webbrowser
 from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images
 from dialogs.csv_exporter_dialog import CSVExporterDialog
+from dialogs.edit_prompt_dialog import EditPromptDialog
+from dialogs.custom_prompt_dialog import CustomPromptDialog
 
 def setup_main_menu(window):
     menubar = QMenuBar(window)
@@ -46,6 +48,21 @@ def setup_main_menu(window):
     exit_action.triggered.connect(window.close)
     file_menu.addAction(exit_action)
 
+    prompt_menu = QMenu("Prompt", menubar)
+    edit_prompt_action = QAction(qta.icon('fa5s.edit'), "Edit Prompt", window)
+    def open_edit_prompt():
+        dialog = EditPromptDialog(window)
+        dialog.exec()
+    edit_prompt_action.triggered.connect(open_edit_prompt)
+    prompt_menu.addAction(edit_prompt_action)
+
+    custom_prompt_action = QAction(qta.icon('fa5s.comment-alt'), "Custom Prompt", window)
+    def open_custom_prompt():
+        dialog = CustomPromptDialog(window)
+        dialog.exec()
+    custom_prompt_action.triggered.connect(open_custom_prompt)
+    prompt_menu.addAction(custom_prompt_action)
+
     help_menu = QMenu("Help", menubar)
 
     about_action = QAction(qta.icon('fa5s.info-circle'), "About", window)
@@ -69,5 +86,6 @@ def setup_main_menu(window):
     menubar.addMenu(file_menu)
     menubar.addMenu(edit_menu)
     menubar.addMenu(metadata_menu)
+    menubar.addMenu(prompt_menu)
     menubar.addMenu(help_menu)
     window.setMenuBar(menubar)

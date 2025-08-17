@@ -77,10 +77,10 @@ class EditPromptDialog(QDialog):
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            prompt_data = data.get("prompt", {})
-            self.ai_prompt_edit.setPlainText(prompt_data.get("ai_prompt", ""))
-            self.negative_prompt_edit.setPlainText(prompt_data.get("negative_prompt", ""))
-            self.system_prompt_edit.setPlainText(prompt_data.get("system_prompt", ""))
+            prompt_data = data["prompt"]
+            self.ai_prompt_edit.setPlainText(prompt_data["ai_prompt"])
+            self.negative_prompt_edit.setPlainText(prompt_data["negative_prompt"])
+            self.system_prompt_edit.setPlainText(prompt_data["system_prompt"])
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load prompt: {e}")
 

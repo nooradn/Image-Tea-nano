@@ -1,49 +1,61 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QSpinBox, QSizePolicy, QLabel, QPushButton, QSpacerItem, QLineEdit, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QSpinBox, QSizePolicy, QLabel, QSpacerItem, QLineEdit, QVBoxLayout
 from PySide6.QtCore import Qt
-import qtawesome as qta
 import json
 import os
 from config import BASE_PATH
-from dialogs.edit_prompt_dialog import EditPromptDialog
 
 class PromptSectionWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._loading = False
         outer_layout = QVBoxLayout()
         outer_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout = QHBoxLayout()
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        main_layout.setContentsMargins(0, 0, 0, 0)
 
         min_title_label = QLabel("Min Title")
         self.min_title_spin = QSpinBox()
         self.min_title_spin.setRange(1, 1000)
         self.min_title_spin.setValue(50)
         self.min_title_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.min_title_spin.setToolTip("Minimum title length in characters.\nShorter titles may be less descriptive.")
 
         max_title_label = QLabel("Max Title")
         self.max_title_spin = QSpinBox()
         self.max_title_spin.setRange(1, 1000)
         self.max_title_spin.setValue(80)
         self.max_title_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.max_title_spin.setToolTip("Maximum title length in characters.\nTitles longer than this will be truncated.")
 
         max_desc_label = QLabel("Max Desc")
         self.max_desc_spin = QSpinBox()
         self.max_desc_spin.setRange(1, 2000)
         self.max_desc_spin.setValue(200)
         self.max_desc_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.max_desc_spin.setToolTip("Maximum description length in characters.\nKeep descriptions concise and clear.")
 
         tag_count_label = QLabel("Tag Count")
         self.tag_count_spin = QSpinBox()
         self.tag_count_spin.setRange(1, 100)
         self.tag_count_spin.setValue(20)
         self.tag_count_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.tag_count_spin.setToolTip("Number of keywords/tags to generate.\nExactly this many tags will be used.")
 
-        min_title_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        max_title_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        max_desc_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        tag_count_label.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        batch_size_label = QLabel("Batch Size")
+        self.batch_size_spin = QSpinBox()
+        self.batch_size_spin.setRange(1, 10)
+        self.batch_size_spin.setValue(5)
+        self.batch_size_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.batch_size_spin.setToolTip("Number of files processed per batch.\nMaximum is 10 per batch.")
 
+        cache_label = QLabel("Caching")
+        self.cache_spin = QSpinBox()
+        self.cache_spin.setRange(1, 100)
+        self.cache_spin.setValue(70)
+        self.cache_spin.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+        self.cache_spin.setToolTip("Cache compression quality (1-100).\nLower value = higher compression, more efficient internet data usage.")
+
+        main_layout = QHBoxLayout()
+        main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.addWidget(min_title_label)
         main_layout.addWidget(self.min_title_spin)
         main_layout.addWidget(max_title_label)
@@ -52,13 +64,11 @@ class PromptSectionWidget(QWidget):
         main_layout.addWidget(self.max_desc_spin)
         main_layout.addWidget(tag_count_label)
         main_layout.addWidget(self.tag_count_spin)
-
+        main_layout.addWidget(batch_size_label)
+        main_layout.addWidget(self.batch_size_spin)
+        main_layout.addWidget(cache_label)
+        main_layout.addWidget(self.cache_spin)
         main_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
-
-        self.edit_prompt_btn = QPushButton(qta.icon('fa5s.edit'), "Prompt")
-        self.edit_prompt_btn.setToolTip("Edit the prompt configuration")
-        self.edit_prompt_btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        main_layout.addWidget(self.edit_prompt_btn)
 
         outer_layout.addLayout(main_layout)
 
@@ -67,6 +77,7 @@ class PromptSectionWidget(QWidget):
         self.custom_prompt_edit = QLineEdit()
         self.custom_prompt_edit.setPlaceholderText("Enter custom prompt (optional)")
         self.custom_prompt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.custom_prompt_edit.setToolTip("Custom prompt for AI generation.\nLeave blank to use the default prompt.")
         custom_prompt_layout.addWidget(custom_prompt_label)
         custom_prompt_layout.addWidget(self.custom_prompt_edit)
         outer_layout.addLayout(custom_prompt_layout)
@@ -78,29 +89,31 @@ class PromptSectionWidget(QWidget):
         self.max_title_spin.valueChanged.connect(self.save_prompt_config)
         self.max_desc_spin.valueChanged.connect(self.save_prompt_config)
         self.tag_count_spin.valueChanged.connect(self.save_prompt_config)
+        self.batch_size_spin.valueChanged.connect(self.save_prompt_config)
+        self.cache_spin.valueChanged.connect(self.save_prompt_config)
         self.custom_prompt_edit.editingFinished.connect(self.save_prompt_config)
         self.load_prompt_config()
 
-        self.edit_prompt_btn.clicked.connect(self.open_edit_prompt_dialog)
-
-    def open_edit_prompt_dialog(self):
-        dlg = EditPromptDialog(self)
-        dlg.exec()
-
     def load_prompt_config(self):
+        self._loading = True
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             self.min_title_spin.setValue(data["min_title_length"])
             self.max_title_spin.setValue(data["max_title_length"])
-            self.max_desc_spin.setValue(data.get("max_description_length", 200))
+            self.max_desc_spin.setValue(data["max_description_length"])
             self.tag_count_spin.setValue(data["required_tag_count"])
-            prompt = data.get("prompt", {})
-            self.custom_prompt_edit.setText(prompt.get("custom_prompt", ""))
+            self.batch_size_spin.setValue(min(max(data["batch_size"], 1), 10))
+            self.cache_spin.setValue(data["cache_compression_quality"])
+            prompt = data["prompt"]
+            self.custom_prompt_edit.setText(prompt["custom_prompt"])
         except Exception as e:
             print(f"Failed to load prompt config: {e}")
+        self._loading = False
 
     def save_prompt_config(self):
+        if getattr(self, "_loading", False):
+            return
         try:
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -110,6 +123,8 @@ class PromptSectionWidget(QWidget):
         data["max_title_length"] = self.max_title_spin.value()
         data["max_description_length"] = self.max_desc_spin.value()
         data["required_tag_count"] = self.tag_count_spin.value()
+        data["batch_size"] = self.batch_size_spin.value()
+        data["cache_compression_quality"] = self.cache_spin.value()
         if "prompt" not in data:
             data["prompt"] = {}
         data["prompt"]["custom_prompt"] = self.custom_prompt_edit.text()
