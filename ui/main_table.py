@@ -1,6 +1,8 @@
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu
+from PySide6.QtCore import Qt, Signal, QPoint
+from PySide6.QtGui import QColor, QBrush, QAction
+from dialogs.file_metadata_dialog import FileMetadataDialog
+import qtawesome as qta
 
 class ImageTableWidget(QWidget):
     stats_changed = Signal(int, int, int, int, int)  # total, selected, failed, success, draft
@@ -35,6 +37,32 @@ class ImageTableWidget(QWidget):
         # Connect selection change to stats update
         self.table.selectionModel().selectionChanged.connect(self._emit_stats)
         self.table.itemChanged.connect(self._on_item_changed)
+
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._show_context_menu)
+        self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
+
+    def _show_context_menu(self, pos: QPoint):
+        index = self.table.indexAt(pos)
+        if not index.isValid():
+            return
+        menu = QMenu(self)
+        edit_icon = qta.icon("fa5s.edit")
+        edit_action = QAction(edit_icon, "Edit metadata", self)
+        edit_action.triggered.connect(lambda: self._open_metadata_dialog(index.row()))
+        menu.addAction(edit_action)
+        menu.exec(self.table.viewport().mapToGlobal(pos))
+
+    def _on_cell_double_clicked(self, row, column):
+        self._open_metadata_dialog(row)
+
+    def _open_metadata_dialog(self, row):
+        filepath_item = self.table.item(row, 1)
+        if not filepath_item:
+            return
+        filepath = filepath_item.text()
+        dialog = FileMetadataDialog(filepath, parent=self)
+        dialog.exec()
 
     def set_row_status_color(self, row_idx, status):
         color = QColor(255, 255, 255, 0)
