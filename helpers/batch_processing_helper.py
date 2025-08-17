@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt, QThread, Signal, QObject, QPropertyAnimation, QEa
 from PySide6.QtGui import QColor
 from config import BASE_PATH
 import threading
+import time
 
 def get_batch_size():
     config_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
@@ -65,7 +66,6 @@ class BatchWorker(QThread):
             finally:
                 with self._lock:
                     self._completed += 1
-                    # Emit progress only if not stopped
                     if not self._should_stop and not (stop_flag and stop_flag.get('stop')):
                         self.signals.progress.emit(self._completed, len(self.batch))
 
@@ -79,14 +79,13 @@ class BatchWorker(QThread):
                 break
             self.msleep(50)
 
-        # Do not join threads if stopped, just return immediately
         if self._should_stop or (stop_flag and stop_flag.get('stop')):
+            time.sleep(3)
             self._results = []
             self._errors = []
             self.signals.finished.emit([])
             return
 
-        # Only collect results if not stopped
         self._results = [r for r in results if r is not None]
         self._errors = [e for e in errors if e is not None]
         self.signals.finished.emit(self._errors)
@@ -485,4 +484,5 @@ def update_token_stats_ui(window):
         token_input, token_output, token_total = window.db.get_token_stats_sum()
         window.stats_section.update_token_stats(token_input, token_output, token_total)
         token_input, token_output, token_total = window.db.get_token_stats_sum()
+        window.stats_section.update_token_stats(token_input, token_output, token_total)
         window.stats_section.update_token_stats(token_input, token_output, token_total)
