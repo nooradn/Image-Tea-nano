@@ -246,6 +246,7 @@ def batch_generate_metadata(window):
     }
     window.is_generating = True
     _set_gen_btn_stop_state(window, True)
+    window._gen_total_time_start = time.perf_counter()
     _run_next_batch(window)
 
 def _set_gen_btn_blinking(window, blinking, color=None, text=None):
@@ -468,6 +469,10 @@ def _on_generation_finished(window, errors, stopped=False):
         window.table.progress_bar.setMaximum(1)
         window.table.progress_bar.setValue(1)
         window.table.progress_bar.setVisible(True)
+    # Total time update
+    if hasattr(window, "stats_section") and hasattr(window, "_gen_total_time_start"):
+        total_time_ms = int((time.perf_counter() - window._gen_total_time_start) * 1000)
+        window.stats_section.update_total_time(total_time_ms)
     from PySide6.QtWidgets import QApplication
     QApplication.processEvents()
     window.table.refresh_table()
