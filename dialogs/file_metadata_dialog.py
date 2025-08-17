@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QTextEdit, QHBoxLayout, QFormLayout, QSpacerItem, QSizePolicy
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QPixmap, QImage
 from PySide6.QtCore import Qt
 import os
 
@@ -29,18 +29,40 @@ class FileMetadataDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        # Image preview
+        # Image/video preview
         img_label = QLabel()
         img_label.setAlignment(Qt.AlignCenter)
+        video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
+        ext = os.path.splitext(filepath)[1].lower()
         if os.path.exists(filepath):
-            pixmap = QPixmap(filepath)
-            if not pixmap.isNull():
-                pixmap = pixmap.scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                img_label.setPixmap(pixmap)
+            if ext in video_exts:
+                try:
+                    import cv2
+                    cap = cv2.VideoCapture(filepath)
+                    ret, frame = cap.read()
+                    cap.release()
+                    if ret and frame is not None:
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        h, w, ch = frame_rgb.shape
+                        bytes_per_line = ch * w
+                        qimg = QImage(frame_rgb.data, w, h, bytes_per_line, QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(qimg)
+                        pixmap = pixmap.scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        img_label.setPixmap(pixmap)
+                    else:
+                        img_label.setText("Cannot preview video")
+                except Exception as e:
+                    print(f"Video preview error: {e}")
+                    img_label.setText("Cannot preview video")
             else:
-                img_label.setText("Cannot preview image")
+                pixmap = QPixmap(filepath)
+                if not pixmap.isNull():
+                    pixmap = pixmap.scaled(300, 300, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    img_label.setPixmap(pixmap)
+                else:
+                    img_label.setText("Cannot preview image")
         else:
-            img_label.setText("Image not found")
+            img_label.setText("Image/Video not found")
         layout.addWidget(img_label)
 
         form = QFormLayout()
