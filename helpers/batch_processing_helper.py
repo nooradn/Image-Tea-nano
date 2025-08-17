@@ -343,7 +343,7 @@ def _run_next_batch(window):
         filepath = row[1]
         for row_idx in range(table_widget.rowCount()):
             item = table_widget.item(row_idx, 1)
-            if item and item.text() == filepath:
+            if item and item.data(Qt.UserRole) == filepath:
                 batch_indices.append(row_idx)
                 window.table.set_row_status_color(row_idx, "processing")
     worker = BatchWorker(api_key, model, batch, service, metadata_func, row_map, stop_flag=stop_flag)
@@ -369,7 +369,7 @@ def _run_next_batch(window):
                 window.db.update_file_status(filepath, "stopped")
                 for row_idx in range(table_widget.rowCount()):
                     item = table_widget.item(row_idx, 1)
-                    if item and item.text() == filepath:
+                    if item and item.data(Qt.UserRole) == filepath:
                         window.table.set_row_status_color(row_idx, "stopped")
             window.table.refresh_table()
             window.table.progress_bar.setFormat('Stopped')
@@ -399,7 +399,7 @@ def _run_next_batch(window):
             filepath = row[1]
             for row_idx in range(table_widget.rowCount()):
                 item = table_widget.item(row_idx, 1)
-                if item and item.text() == filepath:
+                if item and item.data(Qt.UserRole) == filepath:
                     if any(r.get("image_path") == filepath and r.get("title") for _, r in cache_results if isinstance(r, dict)):
                         window.table.set_row_status_color(row_idx, "success")
                     else:
