@@ -1,4 +1,9 @@
 @echo off
+REM Dapatkan direktori script ini
+set SCRIPT_DIR=%~dp0
+REM Hapus trailing backslash jika ada
+if "%SCRIPT_DIR:~-1%"=="\" set SCRIPT_DIR=%SCRIPT_DIR:~0,-1%
+
 REM Cek apakah git sudah terpasang
 git --version >nul 2>&1
 if %errorlevel%==0 (
@@ -19,11 +24,12 @@ if %errorlevel%==0 (
     if errorlevel 2 (
         echo Database tidak dihapus.
     ) else (
-        if exist "database/database.db" (
-            del /f /q "database/database.db"
-            echo Database database/database.db telah dihapus.
+        set DB_PATH=%SCRIPT_DIR%\database\database.db
+        if exist "%DB_PATH%" (
+            del /f /q "%DB_PATH%"
+            echo Database %DB_PATH% telah dihapus.
         ) else (
-            echo Database database/database.db tidak ditemukan, tidak ada yang dihapus.
+            echo Database %DB_PATH% tidak ditemukan, tidak ada yang dihapus.
         )
     )
     echo.
