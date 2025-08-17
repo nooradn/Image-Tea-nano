@@ -21,6 +21,6 @@ def import_files(parent, db, is_image_file, is_video_file, file_paths=None):
             title = t if t else None
             description = d if d else None
             tags = tg if tg else None
-            db.add_file(path, fname, title, description, tags, status="draft")
+            db.add_file(path, fname, title, description, tags, status="draft", original_filename=fname)
             added += 1
     return bool(added)

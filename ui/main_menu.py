@@ -35,7 +35,7 @@ def setup_main_menu(window):
 
     batch_rename_action = QAction(qta.icon('fa5s.i-cursor'), "Batch Rename", window)
     def open_batch_rename():
-        dialog = BatchRenameDialog(window)
+        dialog = BatchRenameDialog(window, table_widget=window.table, db=window.db)
         dialog.exec()
     batch_rename_action.triggered.connect(open_batch_rename)
     edit_menu.addAction(batch_rename_action)
