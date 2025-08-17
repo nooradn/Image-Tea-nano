@@ -4,24 +4,15 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from config import BASE_PATH
 sys.path.insert(0, BASE_PATH)
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QMessageBox, QLabel
+    QApplication, QMainWindow, QMessageBox
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QDragEnterEvent, QDropEvent, QColor, QIcon
+from PySide6.QtGui import QColor, QIcon
 import qtawesome as qta
 from helpers.metadata_helper.metadata_operation import ImageTeaGeneratorThread
-from helpers.metadata_helper.metadata_operation import read_metadata_pyexiv2
 from database.db_operation import ImageTeaDB, DB_PATH
 from ui.setup_ui import setup_ui
-from ui.main_table import ImageTableWidget
-from ui.file_dnd_widget import DragDropWidget
-from helpers.file_importer import import_files
 from dialogs.ai_unsuported_dialog import AIUnsuportedDialog
-
-def _extract_xmp_value(val):
-    if isinstance(val, dict):
-        return val.get('value', '') if 'value' in val else ''
-    return val if isinstance(val, str) else ''
 
 class ImageTeaMainWindow(QMainWindow):
     show_ai_unsupported_dialog = Signal(str)

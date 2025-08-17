@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QFrame
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox
 import datetime
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from ui.file_dnd_widget import DragDropWidget
@@ -7,7 +7,6 @@ from ui.main_table import ImageTableWidget
 from ui.prompt_section import PromptSectionWidget
 from ui.stats_section import StatsSectionWidget
 from ui.main_menu import setup_main_menu
-from helpers.file_importer import import_files
 
 def setup_ui(self):
     setup_main_menu(self)
@@ -21,15 +20,7 @@ def setup_ui(self):
     api_keys = self.db.get_all_api_keys()
     model_set = []
     for entry in api_keys:
-        if len(entry) == 6:
-            service, api_key, note, last_tested, status, model = entry
-        elif len(entry) == 5:
-            service, api_key, note, last_tested, status = entry
-            model = ""
-        else:
-            service, api_key, note, last_tested = entry
-            status = ""
-            model = ""
+        service, api_key, note, last_tested, status, model = entry
         service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
         if service_disp.capitalize() not in model_set:
             model_set.append(service_disp.capitalize())
@@ -65,15 +56,7 @@ def setup_ui(self):
         self.api_key_map.clear()
         api_keys = self.db.get_all_api_keys()
         for entry in api_keys:
-            if len(entry) == 6:
-                service, api_key, note, last_tested, status, model = entry
-            elif len(entry) == 5:
-                service, api_key, note, last_tested, status = entry
-                model = ""
-            else:
-                service, api_key, note, last_tested = entry
-                status = ""
-                model = ""
+            service, api_key, note, last_tested, status, model = entry
             service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
             if selected_model is None or service_disp.capitalize() == selected_model:
                 if api_key and len(api_key) > 5:
@@ -130,15 +113,7 @@ def setup_ui(self):
         api_keys = self.db.get_all_api_keys()
         model_set = []
         for entry in api_keys:
-            if len(entry) == 6:
-                service, api_key, note, last_tested, status, model = entry
-            elif len(entry) == 5:
-                service, api_key, note, last_tested, status = entry
-                model = ""
-            else:
-                service, api_key, note, last_tested = entry
-                status = ""
-                model = ""
+            service, api_key, note, last_tested, status, model = entry
             service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
             if service_disp.capitalize() not in model_set:
                 model_set.append(service_disp.capitalize())
@@ -249,6 +224,4 @@ def setup_ui(self):
     if self.model_combo.count() > 0:
         on_model_combo_changed(self.model_combo.currentIndex())
     else:
-        refresh_api_key_combo(None)
-        refresh_api_key_combo(None)
         refresh_api_key_combo(None)
