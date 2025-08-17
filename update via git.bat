@@ -4,6 +4,10 @@ set SCRIPT_DIR=%~dp0
 REM Hapus trailing backslash jika ada
 if "%SCRIPT_DIR:~-1%"=="\" set SCRIPT_DIR=%SCRIPT_DIR:~0,-1%
 
+REM Lokasi database yang akan dihapus (relatif terhadap script ini)
+set DB_PATH=%SCRIPT_DIR%\database\database.db
+echo [INFO] Lokasi database yang akan dihapus: %DB_PATH%
+
 REM Cek apakah git sudah terpasang
 git --version >nul 2>&1
 if %errorlevel%==0 (
@@ -24,7 +28,7 @@ if %errorlevel%==0 (
     if errorlevel 2 (
         echo Database tidak dihapus.
     ) else (
-        set DB_PATH=%SCRIPT_DIR%\database\database.db
+        echo [INFO] Mencari dan menghapus database di: %DB_PATH%
         if exist "%DB_PATH%" (
             del /f /q "%DB_PATH%"
             echo Database %DB_PATH% telah dihapus.
