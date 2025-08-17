@@ -6,7 +6,7 @@ import sys
 import os
 import subprocess
 from helpers.file_importer import import_files
-from helpers.metadata_helper.metadata_operation import write_metadata_to_images
+from helpers.metadata_helper.metadata_operation import write_metadata_to_images, write_metadata_to_videos
 from dialogs.csv_exporter_dialog import CSVExporterDialog
 from dialogs.edit_prompt_dialog import EditPromptDialog
 from dialogs.custom_prompt_dialog import CustomPromptDialog
@@ -55,11 +55,17 @@ def setup_main_menu(window):
 
     metadata_menu = QMenu("Metadata", menubar)
 
-    write_metadata_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)
-    def do_write_metadata():
-        write_metadata_to_images(window.db, None, None)
-    write_metadata_action.triggered.connect(do_write_metadata)
-    metadata_menu.addAction(write_metadata_action)
+    write_metadata_images_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)
+    def do_write_metadata_images():
+        write_metadata_to_images(window.db)
+    write_metadata_images_action.triggered.connect(do_write_metadata_images)
+    metadata_menu.addAction(write_metadata_images_action)
+
+    write_metadata_videos_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Videos", window)
+    def do_write_metadata_videos():
+        write_metadata_to_videos(window.db)
+    write_metadata_videos_action.triggered.connect(do_write_metadata_videos)
+    metadata_menu.addAction(write_metadata_videos_action)
 
     export_metadata_action = QAction(qta.icon('fa5s.file-csv'), "Export Metadata to CSV", window)
     def show_export_dialog():

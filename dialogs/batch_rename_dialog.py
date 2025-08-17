@@ -313,7 +313,9 @@ class BatchRenameDialog(QDialog):
 
         files = []
         for row in file_rows:
-            filepath = self.table_widget.table.item(row, 1).text()
+            # Use the original filepath from UserRole, not the truncated display text
+            filepath_item = self.table_widget.table.item(row, 1)
+            filepath = filepath_item.data(Qt.UserRole) if filepath_item else None
             filename = self.table_widget.table.item(row, 2).text()
             title = self.table_widget.table.item(row, 3).text()
             description = self.table_widget.table.item(row, 4).text()
@@ -332,7 +334,6 @@ class BatchRenameDialog(QDialog):
         def sanitize_title(title):
             if not title:
                 return title
-            # Remove ., ,, - from title
             return re.sub(r'[.,\-]', '', title)
 
         if self.radio_same_as_title.isChecked():
@@ -436,7 +437,8 @@ class BatchRenameDialog(QDialog):
 
         files = []
         for row in file_rows:
-            filepath = self.table_widget.table.item(row, 1).text()
+            filepath_item = self.table_widget.table.item(row, 1)
+            filepath = filepath_item.data(Qt.UserRole) if filepath_item else None
             files.append(filepath)
 
         confirm = QMessageBox.question(

@@ -3,6 +3,9 @@ from database.db_operation import ImageTeaDB, DB_PATH
 
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import QMessageBox
+import os
+import exiftool
+from config import BASE_PATH
 
 def _extract_xmp_value(val):
 	if isinstance(val, dict):
@@ -12,7 +15,7 @@ def _extract_xmp_value(val):
 class ImageTeaGeneratorThread(QThread):
 	progress = Signal(int, int)
 	finished = Signal(list)
-	row_status = Signal(int, str)  # row visual index in table, status
+	row_status = Signal(int, str)
 
 	def __init__(self, api_key, model, rows, db_path, row_map=None, generate_metadata_func=None):
 		super().__init__()
@@ -157,7 +160,58 @@ def read_metadata_pyexiv2(file_path):
 		print(f"[pyexiv2 READ ERROR] {file_path}: {e}")
 		return None, None, None
 
-def write_metadata_to_images(db, _unused1, _unused2):
+def read_metadata_video(file_path):
+	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool.exe")
+	video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
+	ext = os.path.splitext(file_path)[1].lower()
+	if ext not in video_exts:
+		return None, None, None
+	try:
+		with exiftool.ExifToolHelper(executable=exiftool_path) as et:
+			metadata_list = et.get_metadata([file_path])
+			if metadata_list and len(metadata_list) > 0:
+				data = metadata_list[0]
+				print(f"[DEBUG] All metadata keys: {list(data.keys())}")
+				print(f"[DEBUG] All metadata: {data}")
+				title_keys = ["QuickTime:Title", "XMP:Title", "Title"]
+				description_keys = ["QuickTime:Description", "XMP:Description", "Description"]
+				tags_keys = ["QuickTime:Keywords", "XMP:Keywords", "Keywords"]
+				for k in title_keys:
+					print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
+				for k in description_keys:
+					print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
+				for k in tags_keys:
+					print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
+				title = None
+				for k in title_keys:
+					if k in data:
+						title = data[k]
+						break
+				description = None
+				for k in description_keys:
+					if k in data:
+						description = data[k]
+						break
+				tags = None
+				for k in tags_keys:
+					if k in data:
+						tags = data[k]
+						break
+				if isinstance(tags, list):
+					tags_str = ",".join(str(t) for t in tags)
+				elif isinstance(tags, str):
+					tags_str = tags
+				else:
+					tags_str = ""
+				print(f"[exiftool READ] {file_path} | title: {title} | description: {description} | tags: {tags_str}")
+				return title, description, tags_str
+		print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
+		return None, None, None
+	except Exception as e:
+		print(f"[exiftool READ ERROR] {file_path}: {e}")
+		return None, None, None
+
+def write_metadata_to_images(db):
 	rows = db.get_all_files()
 	errors = []
 	for row in rows:
@@ -194,6 +248,66 @@ def write_metadata_to_images(db, _unused1, _unused2):
 		msg_box.setIcon(QMessageBox.Information)
 		msg_box.setWindowTitle("Write Metadata")
 		msg_box.setText("Metadata written to all images.")
+		try:
+			from PySide6.QtWidgets import QApplication
+			app = QApplication.instance()
+			if app and app.activeWindow():
+				msg_box.setWindowIcon(app.activeWindow().windowIcon())
+		except Exception:
+			pass
+		msg_box.exec()
+
+def write_metadata_to_videos(db):
+	rows = db.get_all_files()
+	errors = []
+	video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
+	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool.exe")
+	with exiftool.ExifTool(executable=exiftool_path) as et:
+		for row in rows:
+			id_, filepath, filename, title, description, tags, status, _ = row
+			ext = os.path.splitext(filepath)[1].lower()
+			if ext in video_exts:
+				try:
+					print(f"[DEBUG] exiftool will write to: {filepath}")
+					metadata_args = []
+					if title is not None:
+						metadata_args.append(f"-Title={title}")
+					if description is not None:
+						metadata_args.append(f"-Description={description}")
+						metadata_args.append(f"-QuickTime:Comment={description}")
+					if tags is not None:
+						metadata_args.append(f"-Keywords={tags}")
+					metadata_args.append("-overwrite_original")
+					metadata_args.append(filepath)
+					result = et.execute(*[arg.encode('utf-8') for arg in metadata_args])
+					print(f"[DEBUG] exiftool result for {filename}: {result}")
+					if result is None:
+						print(f"[DEBUG] exiftool error: No result returned for {filename}")
+						errors.append(f"{filename}: exiftool error (no result)")
+				except Exception as e:
+					print(f"[DEBUG] Exception: {e}")
+					errors.append(f"{filename}: {e}")
+	if errors:
+		print("[Write Video Metadata Errors]")
+		for err in errors:
+			print(err)
+		msg_box = QMessageBox()
+		msg_box.setIcon(QMessageBox.Warning)
+		msg_box.setWindowTitle("Write Metadata")
+		msg_box.setText("Some errors occurred while writing metadata to videos.\n\n" + "\n".join(errors))
+		try:
+			from PySide6.QtWidgets import QApplication
+			app = QApplication.instance()
+			if app and app.activeWindow():
+				msg_box.setWindowIcon(app.activeWindow().windowIcon())
+		except Exception:
+			pass
+		msg_box.exec()
+	else:
+		msg_box = QMessageBox()
+		msg_box.setIcon(QMessageBox.Information)
+		msg_box.setWindowTitle("Write Metadata")
+		msg_box.setText("Metadata written to all videos.")
 		try:
 			from PySide6.QtWidgets import QApplication
 			app = QApplication.instance()
