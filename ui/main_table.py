@@ -42,8 +42,12 @@ class ImageTableWidget(QWidget):
             color = QColor(243, 200, 24, int(0.3 * 255))
         elif status == "success":
             color = QColor(113, 204, 0, int(0.3 * 255))
-        elif status == "failed" or status == "stopped":
+        elif status == "failed":
             color = QColor(255, 0, 0, int(0.15 * 255))
+        elif status == "stopping":
+            color = QColor(255, 140, 0, int(0.18 * 255))
+        elif status == "stopped":
+            color = QColor(255, 0, 0, int(0.25 * 255))
         for col in range(self.table.columnCount()):
             item = self.table.item(row_idx, col)
             if item:
@@ -109,10 +113,14 @@ class ImageTableWidget(QWidget):
             color = QColor(255, 255, 255, 0)
             if status_val == "success":
                 color = QColor(113, 204, 0, int(0.3 * 255))
-            elif status_val == "failed" or status_val == "stopped":
+            elif status_val == "failed":
                 color = QColor(255, 0, 0, int(0.15 * 255))
             elif status_val == "processing":
                 color = QColor(243, 200, 24, int(0.3 * 255))
+            elif status_val == "stopping":
+                color = QColor(255, 140, 0, int(0.18 * 255))
+            elif status_val == "stopped":
+                color = QColor(255, 0, 0, int(0.25 * 255))
             for col in range(self.table.columnCount()):
                 item = self.table.item(row_idx, col)
                 if item:

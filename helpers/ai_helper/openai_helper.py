@@ -35,7 +35,7 @@ def load_openai_prompt_vars():
         data["required_tag_count"]
     )
 
-def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count):
+def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, filename=None):
     prompt = ai_prompt
     prompt = prompt.replace("_MIN_LEN_", str(min_title_length))
     prompt = prompt.replace("_MAX_LEN_", str(max_title_length))
@@ -43,18 +43,21 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
     prompt = prompt.replace("_TIMESTAMP_", generate_timestamp())
     prompt = prompt.replace("_TOKEN_", generate_token())
+    if filename:
+        prompt = f"Filename: {filename}\n{prompt}"
     if custom_prompt and custom_prompt.strip():
         prompt = f"{prompt}\n\nMANDATORY: {custom_prompt.strip()}\n"
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
-    print("[OpenAI FULL PROMPT]")
-    print(full_prompt)
     return full_prompt
 
-def generate_metadata_openai(api_key, model, image_path, prompt=None):
+def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=None):
+    if stop_flag and stop_flag.get('stop'):
+        return '', '', '', '', 0, 0, 0
     start_time = time.perf_counter()
     try:
         ext = os.path.splitext(image_path)[1].lower()
         is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']
+        filename = os.path.basename(image_path)
         if is_video:
             error_message = (
                 "OpenAI Vision API belum mendukung input video secara langsung. "
@@ -65,7 +68,7 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
         client = OpenAI(api_key=api_key)
         if not prompt:
             ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_openai_prompt_vars()
-            prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count)
+            prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, filename=filename)
         compressed_path = compress_and_save_image(image_path)
         if not compressed_path:
             error_message = f"[OpenAI ERROR] Failed to compress image: {image_path}"
@@ -83,12 +86,12 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
                 ]
             }
         ]
+        if stop_flag and stop_flag.get('stop'):
+            return '', '', '', '', 0, 0, 0
         response = client.responses.create(
             model=model,
             input=messages
         )
-        print("[OpenAI RAW JSON Result]")
-        print(response)
         token_input = 0
         token_output = 0
         token_total = 0

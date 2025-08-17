@@ -204,3 +204,9 @@ class ImageTeaDB:
                     except Exception as e:
                         print(f"Undo rename error: {current_filepath} -> {original_filepath} | {e}")
             conn.commit()
+
+    def clear_all_metadata(self):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            c.execute('UPDATE files SET title=NULL, description=NULL, tags=NULL, status="draft"')
+            conn.commit()

@@ -84,7 +84,6 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
 				'Exif.Image.XPSubject': encode_xpsubject(subject_str)
 			}
 			metadata.modify_exif(exif_dict)
-		print(f"[pyexiv2] Metadata written to {file_path}")
 	except Exception as e:
 		print(f"[pyexiv2 ERROR] {file_path}: {e}")
 
@@ -169,7 +168,6 @@ def write_metadata_to_images(db, _unused1, _unused2):
 			pass
 		msg_box.exec()
 	else:
-		print("[Write Metadata] Metadata written to all images.")
 		msg_box = QMessageBox()
 		msg_box.setIcon(QMessageBox.Information)
 		msg_box.setWindowTitle("Write Metadata")
