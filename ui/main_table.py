@@ -3,6 +3,7 @@ from PySide6.QtCore import Qt, Signal, QPoint
 from PySide6.QtGui import QColor, QBrush, QAction
 from dialogs.file_metadata_dialog import FileMetadataDialog
 import qtawesome as qta
+import os
 
 class ImageTableWidget(QWidget):
     stats_changed = Signal(int, int, int, int, int)  # total, selected, failed, success, draft
@@ -18,10 +19,9 @@ class ImageTableWidget(QWidget):
         ])
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
-        for col in range(1, 9):
-            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.Stretch)
-        self.table.setColumnWidth(0, 32)
+        for col in range(0, 9):
+            self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeToContents)
+        self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.layout.addWidget(self.table)
 
         self.progress_bar = QProgressBar(self)
@@ -42,6 +42,23 @@ class ImageTableWidget(QWidget):
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
 
+    def _shorten_filepath(self, path):
+        if not path:
+            return ""
+        norm_path = os.path.normpath(path)
+        parts = norm_path.split(os.sep)
+        if len(parts) >= 2:
+            drive = parts[0]
+            last_dir = parts[-2]
+            filename = parts[-1]
+            last10 = filename[-10:] if len(filename) > 10 else filename
+            return f"{drive}{os.sep}...{os.sep}{last_dir}{os.sep}...{last10}"
+        elif len(parts) == 1:
+            filename = parts[0]
+            last10 = filename[-10:] if len(filename) > 10 else filename
+            return f"...{os.sep}{last10}"
+        return path
+
     def _show_context_menu(self, pos: QPoint):
         index = self.table.indexAt(pos)
         if not index.isValid():
@@ -60,7 +77,9 @@ class ImageTableWidget(QWidget):
         filepath_item = self.table.item(row, 1)
         if not filepath_item:
             return
-        filepath = filepath_item.text()
+        filepath = filepath_item.data(Qt.UserRole)
+        if not filepath:
+            filepath = filepath_item.text()
         dialog = FileMetadataDialog(filepath, parent=self)
         dialog.exec()
 
@@ -89,8 +108,9 @@ class ImageTableWidget(QWidget):
             status_item.setText(status.capitalize())
 
     def update_row_data(self, row_idx, row_data):
-        # row_data: (id, filepath, filename, title, description, tags, status)
-        display_values = row_data[1:7]
+        display_values = list(row_data[1:7])
+        if len(display_values) > 0:
+            display_values[0] = self._shorten_filepath(display_values[0])
         for col, val in enumerate(display_values):
             item = self.table.item(row_idx, col + 1)
             if item:
@@ -121,12 +141,17 @@ class ImageTableWidget(QWidget):
             checkbox_item.setCheckState(Qt.Unchecked)
             checkbox_item.setData(Qt.UserRole, row[0])
             self.table.setItem(row_idx, 0, checkbox_item)
-            display_values = row[1:7]
-            for col, val in enumerate(display_values):
-                item = QTableWidgetItem(str(val) if val is not None else "")
-                if col == 0:
-                    item.setTextAlignment(Qt.AlignCenter)
-                self.table.setItem(row_idx, col + 1, item)
+            display_values = list(row[1:7])
+            if len(display_values) > 0:
+                short_fp = self._shorten_filepath(display_values[0])
+                fp_item = QTableWidgetItem(short_fp)
+                fp_item.setData(Qt.UserRole, display_values[0])
+                self.table.setItem(row_idx, 1, fp_item)
+                for col, val in enumerate(display_values[1:], start=2):
+                    item = QTableWidgetItem(str(val) if val is not None else "")
+                    if col == 2:
+                        item.setTextAlignment(Qt.AlignCenter)
+                    self.table.setItem(row_idx, col, item)
             title_val = row[3] if len(row) > 3 and row[3] is not None else ""
             title_len = len(title_val)
             title_len_item = QTableWidgetItem(str(title_len))
@@ -180,7 +205,9 @@ class ImageTableWidget(QWidget):
             QMessageBox.information(self, "Delete", "No rows selected.")
             return
         for idx in selected:
-            filepath = self.table.item(idx.row(), 1).text()
+            filepath = self.table.item(idx.row(), 1).data(Qt.UserRole)
+            if not filepath:
+                filepath = self.table.item(idx.row(), 1).text()
             self.db.delete_file(filepath)
         self.refresh_table()
 
