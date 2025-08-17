@@ -3,3 +3,4 @@ qtawesome
 openai
 google-genai
 pyexiv2
+pillow

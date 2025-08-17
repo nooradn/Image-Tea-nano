@@ -2,9 +2,15 @@ from PySide6.QtWidgets import QMenuBar, QMenu, QMessageBox
 from PySide6.QtGui import QAction
 import qtawesome as qta
 import webbrowser
+import sys
+import os
+import subprocess
 from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images
 from dialogs.csv_exporter_dialog import CSVExporterDialog
+from dialogs.edit_prompt_dialog import EditPromptDialog
+from dialogs.custom_prompt_dialog import CustomPromptDialog
+from dialogs.batch_rename_dialog import BatchRenameDialog
 
 def setup_main_menu(window):
     menubar = QMenuBar(window)
@@ -27,6 +33,13 @@ def setup_main_menu(window):
     clear_action.triggered.connect(lambda: window.table.clear_all())
     edit_menu.addAction(clear_action)
 
+    batch_rename_action = QAction(qta.icon('fa5s.i-cursor'), "Batch Rename", window)
+    def open_batch_rename():
+        dialog = BatchRenameDialog(window)
+        dialog.exec()
+    batch_rename_action.triggered.connect(open_batch_rename)
+    edit_menu.addAction(batch_rename_action)
+
     metadata_menu = QMenu("Metadata", menubar)
 
     write_metadata_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)
@@ -42,9 +55,36 @@ def setup_main_menu(window):
     export_metadata_action.triggered.connect(show_export_dialog)
     metadata_menu.addAction(export_metadata_action)
 
+    relaunch_action = QAction(qta.icon('fa5s.redo'), "Relaunch", window)
+    def relaunch_app():
+        python_exe = sys.executable
+        args = [python_exe] + sys.argv
+        try:
+            subprocess.Popen(args)
+        except Exception as e:
+            print(f"Failed to relaunch: {e}")
+        window.close()
+    relaunch_action.triggered.connect(relaunch_app)
+    file_menu.addAction(relaunch_action)
+
     exit_action = QAction(qta.icon('fa5s.sign-out-alt'), "Exit", window)
     exit_action.triggered.connect(window.close)
     file_menu.addAction(exit_action)
+
+    prompt_menu = QMenu("Prompt", menubar)
+    edit_prompt_action = QAction(qta.icon('fa5s.edit'), "Edit Prompt", window)
+    def open_edit_prompt():
+        dialog = EditPromptDialog(window)
+        dialog.exec()
+    edit_prompt_action.triggered.connect(open_edit_prompt)
+    prompt_menu.addAction(edit_prompt_action)
+
+    custom_prompt_action = QAction(qta.icon('fa5s.comment-alt'), "Custom Prompt", window)
+    def open_custom_prompt():
+        dialog = CustomPromptDialog(window)
+        dialog.exec()
+    custom_prompt_action.triggered.connect(open_custom_prompt)
+    prompt_menu.addAction(custom_prompt_action)
 
     help_menu = QMenu("Help", menubar)
 
@@ -69,5 +109,6 @@ def setup_main_menu(window):
     menubar.addMenu(file_menu)
     menubar.addMenu(edit_menu)
     menubar.addMenu(metadata_menu)
+    menubar.addMenu(prompt_menu)
     menubar.addMenu(help_menu)
     window.setMenuBar(menubar)

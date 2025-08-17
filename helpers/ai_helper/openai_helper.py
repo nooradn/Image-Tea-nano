@@ -5,6 +5,7 @@ import time
 from openai import OpenAI
 from config import BASE_PATH
 from helpers.ai_helper.ai_variation_helper import generate_timestamp, generate_token
+from helpers.image_compression_helper import compress_and_save_image
 
 _generation_times_openai = []
 
@@ -19,7 +20,7 @@ def track_openai_generation_time(duration_ms):
     return gen_time, avg_time, longest_time, last_time
 
 def load_openai_prompt_vars():
-    prompt_path = os.path.join(BASE_PATH, "configs", "ai_prompt.json")
+    prompt_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
     with open(prompt_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     prompt_data = data["prompt"]
@@ -65,7 +66,11 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None):
         if not prompt:
             ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_openai_prompt_vars()
             prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count)
-        with open(image_path, "rb") as f:
+        compressed_path = compress_and_save_image(image_path)
+        if not compressed_path:
+            error_message = f"[OpenAI ERROR] Failed to compress image: {image_path}"
+            return '', '', '', error_message, 0, 0, 0
+        with open(compressed_path, "rb") as f:
             image_bytes = f.read()
         image_b64 = base64.b64encode(image_bytes).decode("utf-8")
         image_data_url = f"data:image/jpeg;base64,{image_b64}"
