@@ -62,28 +62,45 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
 		elif not isinstance(tag_list, list):
 			tag_list = []
 		subject_str = ', '.join(tag_list)
-		# XPSubject must be UTF-16LE encoded and null-terminated for Windows
-		def encode_xpsubject(s):
-			if not s:
-				return b''
-			return s.encode('utf-16le') + b'\x00\x00'
+		xmp_update = {}
+		iptc_update = {}
+		exif_update = {}
+
+		if not title:
+			xmp_update['Xmp.dc.title'] = ''
+			iptc_update['Iptc.Application2.ObjectName'] = ''
+			exif_update['Exif.Image.ImageDescription'] = ''
+		else:
+			xmp_update['Xmp.dc.title'] = title
+			iptc_update['Iptc.Application2.ObjectName'] = title
+			if not description:
+				exif_update['Exif.Image.ImageDescription'] = title
+
+		if not description:
+			xmp_update['Xmp.dc.description'] = ''
+			iptc_update['Iptc.Application2.Caption'] = ''
+			if 'Exif.Image.ImageDescription' not in exif_update:
+				exif_update['Exif.Image.ImageDescription'] = ''
+		else:
+			xmp_update['Xmp.dc.description'] = description
+			iptc_update['Iptc.Application2.Caption'] = description
+			exif_update['Exif.Image.ImageDescription'] = description
+
+		if not tag_list:
+			xmp_update['Xmp.dc.subject'] = []
+			iptc_update['Iptc.Application2.Keywords'] = []
+			exif_update['Exif.Photo.UserComment'] = ''
+			exif_update['Exif.Image.XPSubject'] = ''
+		else:
+			xmp_update['Xmp.dc.subject'] = tag_list
+			iptc_update['Iptc.Application2.Keywords'] = tag_list
+			exif_update['Exif.Photo.UserComment'] = ', '.join(tag_list)
+			exif_update['Exif.Image.XPSubject'] = subject_str
+
 		with pyexiv2.Image(file_path) as metadata:
-			metadata.modify_xmp({
-				'Xmp.dc.title': title,
-				'Xmp.dc.subject': tag_list,
-				'Xmp.dc.description': description
-			})
-			metadata.modify_iptc({
-				'Iptc.Application2.ObjectName': title,
-				'Iptc.Application2.Keywords': tag_list,
-				'Iptc.Application2.Caption': description
-			})
-			exif_dict = {
-				'Exif.Image.ImageDescription': description,
-				'Exif.Photo.UserComment': ', '.join(tag_list),
-				'Exif.Image.XPSubject': encode_xpsubject(subject_str)
-			}
-			metadata.modify_exif(exif_dict)
+			metadata.modify_xmp(xmp_update)
+			metadata.modify_iptc(iptc_update)
+			metadata.modify_exif(exif_update)
 	except Exception as e:
 		print(f"[pyexiv2 ERROR] {file_path}: {e}")
 
@@ -149,6 +166,11 @@ def write_metadata_to_images(db, _unused1, _unused2):
 			try:
 				tag_list = [t.strip() for t in tags.split(',')] if tags else []
 				write_metadata_pyexiv2(filepath, title, description, tag_list)
+			except Exception as e:
+				errors.append(f"{filename}: {e}")
+		else:
+			try:
+				write_metadata_pyexiv2(filepath, '', '', [])
 			except Exception as e:
 				errors.append(f"{filename}: {e}")
 	if errors:
