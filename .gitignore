@@ -208,5 +208,6 @@ __marimo__/
 
 python/
 database.db
+thumbs.db
 tests/
 temp/
