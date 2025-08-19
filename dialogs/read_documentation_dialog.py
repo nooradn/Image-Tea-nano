@@ -99,24 +99,38 @@ class ReadDocumentationDialog(QDialog):
         except Exception as e:
             print(f"Error reading directory {folder_path}: {e}")
             return
+        files = []
+        dirs = []
         for entry in entries:
             full_path = os.path.join(folder_path, entry)
             if os.path.isdir(full_path):
-                dir_item = QTreeWidgetItem([entry.title()])
-                dir_item.setData(0, Qt.UserRole, full_path)
-                dir_item.setIcon(0, self.folder_icon)
-                parent_item.addChild(dir_item)
-                self.add_children(full_path, dir_item)
+                dirs.append((entry, full_path))
             elif entry.lower().endswith(".md"):
-                display_name = os.path.splitext(entry)[0].replace('_', ' ').replace('-', ' ').title()
-                file_item = QTreeWidgetItem([display_name])
-                file_item.setData(0, Qt.UserRole, full_path)
-                file_item.setIcon(0, self.file_icon)
-                parent_item.addChild(file_item)
+                files.append((entry, full_path))
+        for entry, full_path in files:
+            display_name = os.path.splitext(entry)[0].replace('_', ' ').replace('-', ' ').title()
+            file_item = QTreeWidgetItem([display_name])
+            file_item.setData(0, Qt.UserRole, full_path)
+            file_item.setIcon(0, self.file_icon)
+            parent_item.addChild(file_item)
+        for entry, full_path in dirs:
+            dir_item = QTreeWidgetItem([entry.title()])
+            dir_item.setData(0, Qt.UserRole, full_path)
+            dir_item.setIcon(0, self.folder_icon)
+            parent_item.addChild(dir_item)
+            self.add_children(full_path, dir_item)
 
     def on_item_clicked(self, item, column):
         file_path = item.data(0, Qt.UserRole)
-        if os.path.isfile(file_path) and file_path.lower().endswith(".md"):
+        if os.path.isdir(file_path):
+            item.setExpanded(True)
+            if item.childCount() > 0:
+                first_child = item.child(0)
+                self.tree.setCurrentItem(first_child)
+                self.on_item_clicked(first_child, 0)
+            else:
+                self.viewer.clear()
+        elif os.path.isfile(file_path) and file_path.lower().endswith(".md"):
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     md_text = f.read()
