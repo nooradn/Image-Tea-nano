@@ -66,14 +66,18 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             myfile = client.files.upload(file=image_path)
             file_id = myfile.name if hasattr(myfile, 'name') else getattr(myfile, 'id', None)
             status = None
-            for _ in range(20):
+            max_wait_seconds = 600
+            poll_interval = 1
+            waited = 0
+            while waited < max_wait_seconds:
                 if stop_flag and stop_flag.get('stop'):
                     return '', '', '', 0, 0, 0
                 fileinfo = client.files.get(name=file_id)
                 status = getattr(fileinfo, 'state', None) or getattr(fileinfo, 'status', None)
                 if status == 'ACTIVE':
                     break
-                time.sleep(0.5)
+                time.sleep(poll_interval)
+                waited += poll_interval
             if status != 'ACTIVE':
                 print(f"[Gemini ERROR] File {file_id} not ACTIVE after upload, status: {status}")
                 return '', '', '', 0, 0, 0

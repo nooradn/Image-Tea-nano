@@ -57,13 +57,13 @@ def setup_main_menu(window):
 
     write_metadata_images_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)
     def do_write_metadata_images():
-        write_metadata_to_images(window.db)
+        write_metadata_to_images(window.db, window)
     write_metadata_images_action.triggered.connect(do_write_metadata_images)
     metadata_menu.addAction(write_metadata_images_action)
 
     write_metadata_videos_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Videos", window)
     def do_write_metadata_videos():
-        write_metadata_to_videos(window.db)
+        write_metadata_to_videos(window.db, window)
     write_metadata_videos_action.triggered.connect(do_write_metadata_videos)
     metadata_menu.addAction(write_metadata_videos_action)
 

@@ -1,8 +1,8 @@
 import pyexiv2
 from database.db_operation import ImageTeaDB, DB_PATH
 
-from PySide6.QtCore import QThread, Signal
-from PySide6.QtWidgets import QMessageBox
+from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QSizePolicy
 import os
 import exiftool
 from config import BASE_PATH
@@ -11,6 +11,27 @@ def _extract_xmp_value(val):
 	if isinstance(val, dict):
 		return next(iter(val.values()), '')
 	return val if isinstance(val, str) else ''
+
+class ProgressDialog(QDialog):
+	def __init__(self, parent, total, title):
+		super().__init__(parent)
+		self.setWindowTitle(title)
+		self.setFixedWidth(400)
+		self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
+		self.setModal(True)
+		layout = QVBoxLayout()
+		self.label = QLabel("")
+		self.label.setWordWrap(True)
+		self.label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+		layout.addWidget(self.label)
+		self.progress = QProgressBar()
+		self.progress.setRange(0, total)
+		layout.addWidget(self.progress)
+		self.setLayout(layout)
+
+	def update_progress(self, value, filename):
+		self.progress.setValue(value)
+		self.label.setText(f"Writing metadata to:\n{filename}")
 
 class ImageTeaGeneratorThread(QThread):
 	progress = Signal(int, int)
@@ -211,11 +232,14 @@ def read_metadata_video(file_path):
 		print(f"[exiftool READ ERROR] {file_path}: {e}")
 		return None, None, None
 
-def write_metadata_to_images(db):
+def write_metadata_to_images(db, parent=None):
 	rows = db.get_all_files()
 	errors = []
-	for row in rows:
+	dialog = ProgressDialog(parent, len(rows), "Writing Metadata to Images")
+	dialog.show()
+	for idx, row in enumerate(rows):
 		id_, filepath, filename, title, description, tags, status, _ = row
+		dialog.update_progress(idx + 1, filename)
 		if title or description or tags:
 			try:
 				tag_list = [t.strip() for t in tags.split(',')] if tags else []
@@ -227,92 +251,51 @@ def write_metadata_to_images(db):
 				write_metadata_pyexiv2(filepath, '', '', [])
 			except Exception as e:
 				errors.append(f"{filename}: {e}")
+		dialog.repaint()
+		from PySide6.QtCore import QCoreApplication
+		QCoreApplication.processEvents()
+	dialog.close()
 	if errors:
 		print("[Write Metadata Errors]")
 		for err in errors:
 			print(err)
-		msg_box = QMessageBox()
-		msg_box.setIcon(QMessageBox.Warning)
-		msg_box.setWindowTitle("Write Metadata")
-		msg_box.setText("Some errors occurred while writing metadata.\n\n" + "\n".join(errors))
-		try:
-			from PySide6.QtWidgets import QApplication
-			app = QApplication.instance()
-			if app and app.activeWindow():
-				msg_box.setWindowIcon(app.activeWindow().windowIcon())
-		except Exception:
-			pass
-		msg_box.exec()
-	else:
-		msg_box = QMessageBox()
-		msg_box.setIcon(QMessageBox.Information)
-		msg_box.setWindowTitle("Write Metadata")
-		msg_box.setText("Metadata written to all images.")
-		try:
-			from PySide6.QtWidgets import QApplication
-			app = QApplication.instance()
-			if app and app.activeWindow():
-				msg_box.setWindowIcon(app.activeWindow().windowIcon())
-		except Exception:
-			pass
-		msg_box.exec()
 
-def write_metadata_to_videos(db):
+def write_metadata_to_videos(db, parent=None):
 	rows = db.get_all_files()
 	errors = []
 	video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
 	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool.exe")
-	with exiftool.ExifTool(executable=exiftool_path) as et:
-		for row in rows:
-			id_, filepath, filename, title, description, tags, status, _ = row
-			ext = os.path.splitext(filepath)[1].lower()
-			if ext in video_exts:
-				try:
-					print(f"[DEBUG] exiftool will write to: {filepath}")
-					metadata_args = []
-					if title is not None:
-						metadata_args.append(f"-Title={title}")
-					if description is not None:
-						metadata_args.append(f"-Description={description}")
-						metadata_args.append(f"-QuickTime:Comment={description}")
-					if tags is not None:
-						metadata_args.append(f"-Keywords={tags}")
-					metadata_args.append("-overwrite_original")
-					metadata_args.append(filepath)
-					result = et.execute(*[arg.encode('utf-8') for arg in metadata_args])
-					print(f"[DEBUG] exiftool result for {filename}: {result}")
-					if result is None:
-						print(f"[DEBUG] exiftool error: No result returned for {filename}")
-						errors.append(f"{filename}: exiftool error (no result)")
-				except Exception as e:
-					print(f"[DEBUG] Exception: {e}")
-					errors.append(f"{filename}: {e}")
+	video_rows = [row for row in rows if os.path.splitext(row[1])[1].lower() in video_exts]
+	dialog = ProgressDialog(parent, len(video_rows), "Writing Metadata to Videos")
+	dialog.show()
+	for idx, row in enumerate(video_rows):
+		id_, filepath, filename, title, description, tags, status, _ = row
+		dialog.update_progress(idx + 1, filename)
+		try:
+			metadata_args = []
+			if title is not None:
+				metadata_args.append(f"-Title={title}")
+			if description is not None:
+				metadata_args.append(f"-Description={description}")
+				metadata_args.append(f"-QuickTime:Comment={description}")
+			if tags is not None:
+				metadata_args.append(f"-Keywords={tags}")
+			metadata_args.append("-overwrite_original")
+			metadata_args.append(filepath)
+			with exiftool.ExifTool(executable=exiftool_path) as et:
+				result = et.execute(*[arg.encode('utf-8') for arg in metadata_args])
+				print(f"[DEBUG] exiftool result for {filename}: {result}")
+				if result is None:
+					print(f"[DEBUG] exiftool error: No result returned for {filename}")
+					errors.append(f"{filename}: exiftool error (no result)")
+		except Exception as e:
+			print(f"[DEBUG] Exception: {e}")
+			errors.append(f"{filename}: {e}")
+		dialog.repaint()
+		from PySide6.QtCore import QCoreApplication
+		QCoreApplication.processEvents()
+	dialog.close()
 	if errors:
 		print("[Write Video Metadata Errors]")
 		for err in errors:
 			print(err)
-		msg_box = QMessageBox()
-		msg_box.setIcon(QMessageBox.Warning)
-		msg_box.setWindowTitle("Write Metadata")
-		msg_box.setText("Some errors occurred while writing metadata to videos.\n\n" + "\n".join(errors))
-		try:
-			from PySide6.QtWidgets import QApplication
-			app = QApplication.instance()
-			if app and app.activeWindow():
-				msg_box.setWindowIcon(app.activeWindow().windowIcon())
-		except Exception:
-			pass
-		msg_box.exec()
-	else:
-		msg_box = QMessageBox()
-		msg_box.setIcon(QMessageBox.Information)
-		msg_box.setWindowTitle("Write Metadata")
-		msg_box.setText("Metadata written to all videos.")
-		try:
-			from PySide6.QtWidgets import QApplication
-			app = QApplication.instance()
-			if app and app.activeWindow():
-				msg_box.setWindowIcon(app.activeWindow().windowIcon())
-		except Exception:
-			pass
-		msg_box.exec()
