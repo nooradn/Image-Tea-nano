@@ -1,6 +1,6 @@
 import os
 from PySide6.QtWidgets import (
-    QDialog, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QTextBrowser, QSizePolicy, QSplitter, QComboBox, QLabel
+    QDialog, QHBoxLayout, QVBoxLayout, QTreeWidget, QTreeWidgetItem, QTextBrowser, QSizePolicy, QSplitter, QComboBox, QLabel, QLineEdit, QPushButton
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -13,18 +13,29 @@ class ReadDocumentationDialog(QDialog):
         self.setWindowTitle("Read Documentation")
         self.resize(900, 600)
 
-        # Language selection combobox
         self.lang_combo = QComboBox()
         self.lang_combo.addItem("Bahasa Indonesia", "id")
         self.lang_combo.addItem("English", "en")
         lang_label = QLabel("Language:")
         lang_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
-        # Layout for language selection
+        self.search_entry = QLineEdit()
+        self.search_entry.setPlaceholderText("Search documentation...")
+        self.search_icon = QLabel()
+        self.search_icon.setPixmap(qta.icon('fa5s.search').pixmap(18, 18))
+        self.search_icon.setFixedWidth(22)
+        self.search_entry.textChanged.connect(self.on_search)
+
         lang_layout = QHBoxLayout()
         lang_layout.addWidget(lang_label)
         lang_layout.addWidget(self.lang_combo)
-        lang_layout.addStretch()
+        lang_layout.addStretch(1)
+
+        search_layout = QHBoxLayout()
+        search_layout.addWidget(self.search_entry)
+        search_layout.addWidget(self.search_icon)
+        search_layout.setAlignment(Qt.AlignRight)
+        lang_layout.addLayout(search_layout)
 
         splitter = QSplitter(Qt.Horizontal, self)
         self.tree = QTreeWidget()
@@ -51,10 +62,11 @@ class ReadDocumentationDialog(QDialog):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
 
-        # Main layout
         main_layout = QVBoxLayout(self)
-        main_layout.addLayout(lang_layout)
-        main_layout.addWidget(splitter)
+        main_layout.setSpacing(6)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.addLayout(lang_layout, stretch=0)
+        main_layout.addWidget(splitter, stretch=1)
         self.setLayout(main_layout)
 
         self.doc_root_id = os.path.join(BASE_PATH, "documentation", "lang_ID")
@@ -64,6 +76,7 @@ class ReadDocumentationDialog(QDialog):
         self.folder_icon = qta.icon('fa5s.folder', color='#FFA500')
 
         self.current_lang = "id"
+        self.all_md_files = []
         self.populate_tree()
         self.tree.itemClicked.connect(self.on_item_clicked)
         self.lang_combo.currentIndexChanged.connect(self.on_language_changed)
@@ -87,6 +100,7 @@ class ReadDocumentationDialog(QDialog):
 
     def populate_tree(self):
         self.tree.clear()
+        self.all_md_files = []
         root_label = self.get_root_label()
         root_item = QTreeWidgetItem([root_label])
         root_item.setData(0, Qt.UserRole, None)
@@ -124,6 +138,7 @@ class ReadDocumentationDialog(QDialog):
             file_item.setData(0, Qt.UserRole, full_path)
             file_item.setIcon(0, self.file_icon)
             parent_item.addChild(file_item)
+            self.all_md_files.append((display_name, full_path))
         for entry, full_path in dirs:
             dir_item = QTreeWidgetItem([entry.title()])
             dir_item.setData(0, Qt.UserRole, full_path)
@@ -177,5 +192,58 @@ class ReadDocumentationDialog(QDialog):
                 self.viewer.setLineWrapMode(QTextBrowser.WidgetWidth)
             except Exception as e:
                 self.viewer.setPlainText(f"Failed to load file:\n{about_path}\n\nError: {e}")
+        else:
+            self.viewer.clear()
+
+    def on_search(self):
+        keyword = self.search_entry.text().strip()
+        if not keyword:
+            self.populate_tree()
+            self.load_default_markdown()
+            return
+        matches = []
+        for display_name, file_path in self.all_md_files:
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                if keyword.lower() in content.lower():
+                    matches.append((display_name, file_path, content))
+            except Exception as e:
+                print(f"Error reading {file_path}: {e}")
+        self.tree.clear()
+        search_root = QTreeWidgetItem([f"Search Results for '{keyword}'"])
+        search_root.setData(0, Qt.UserRole, None)
+        search_root.setIcon(0, self.folder_icon)
+        self.tree.addTopLevelItem(search_root)
+        for display_name, file_path, _ in matches:
+            file_item = QTreeWidgetItem([display_name])
+            file_item.setData(0, Qt.UserRole, file_path)
+            file_item.setIcon(0, self.file_icon)
+            search_root.addChild(file_item)
+        search_root.setExpanded(True)
+        if matches:
+            first_item = search_root.child(0)
+            self.tree.setCurrentItem(first_item)
+            self.show_search_result(first_item, keyword)
+        else:
+            self.viewer.setPlainText(f"No results found for '{keyword}'.")
+
+        self.tree.itemClicked.disconnect()
+        self.tree.itemClicked.connect(lambda item, col: self.show_search_result(item, keyword))
+
+    def show_search_result(self, item, keyword):
+        file_path = item.data(0, Qt.UserRole)
+        if file_path and os.path.isfile(file_path) and file_path.lower().endswith(".md"):
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    md_text = f.read()
+                self.viewer.setSearchPaths([self.res_images_path])
+                import re
+                pattern = re.compile(re.escape(keyword), re.IGNORECASE)
+                highlighted_md = pattern.sub(lambda m: f"<span style='color:#2ecc40'>{m.group(0)}</span>", md_text)
+                self.viewer.setMarkdown(highlighted_md)
+                self.viewer.setLineWrapMode(QTextBrowser.WidgetWidth)
+            except Exception as e:
+                self.viewer.setPlainText(f"Failed to load file:\n{file_path}\n\nError: {e}")
         else:
             self.viewer.clear()
