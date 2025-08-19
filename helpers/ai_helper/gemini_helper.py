@@ -125,6 +125,7 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             title = meta.get('title', '')
             description = meta.get('description', '')
             tags = ', '.join(meta.get('tags', [])) if isinstance(meta.get('tags'), list) else str(meta.get('tags', ''))
+            tags = tags.lower()
         except Exception as e:
             print(f"[Gemini JSON PARSE ERROR] {e}")
             title = description = tags = ''
