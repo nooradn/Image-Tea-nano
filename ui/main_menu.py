@@ -11,6 +11,7 @@ from dialogs.csv_exporter_dialog import CSVExporterDialog
 from dialogs.edit_prompt_dialog import EditPromptDialog
 from dialogs.custom_prompt_dialog import CustomPromptDialog
 from dialogs.batch_rename_dialog import BatchRenameDialog
+from dialogs.read_documentation_dialog import ReadDocumentationDialog
 
 def setup_main_menu(window):
     menubar = QMenuBar(window)
@@ -124,6 +125,19 @@ def setup_main_menu(window):
         webbrowser.open("https://github.com/mudrikam/Image-Tea-nano")
     repo_action.triggered.connect(open_repo)
     help_menu.addAction(repo_action)
+
+    readme_action = QAction(qta.icon('fa5s.book'), "Open README.md (GitHub)", window)
+    def open_readme():
+        webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md")
+    readme_action.triggered.connect(open_readme)
+    help_menu.addAction(readme_action)
+
+    documentation_action = QAction(qta.icon('fa5s.book-open'), "Read Local Documentation", window)
+    def open_documentation():
+        dialog = ReadDocumentationDialog(window)
+        dialog.exec()
+    documentation_action.triggered.connect(open_documentation)
+    help_menu.addAction(documentation_action)
 
     menubar.addMenu(file_menu)
     menubar.addMenu(edit_menu)
