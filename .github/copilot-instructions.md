@@ -48,6 +48,7 @@ Copilot must not argue, ignore, or bypass these rules for any reason.
 - Use clear variable names and easy-to-understand logic.
 - Always include a brief explanation of the reason for changes.
 - **ABSOLUTE BAN**: No change-tracking comments in code - version control handles this.
+- Untuk penjelasan dalam aplikasi ui maupun backend, gunakan "Kamu" jangan "Anda".
 
 **Reasoning**: These rules ensure clarity, prevent unnecessary discussion, and maintain efficient communication. Copilot must not ignore or argue with these guidelines.
 

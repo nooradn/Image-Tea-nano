@@ -1,6 +1,6 @@
 # Kontak Kami
 
-Jika Kamu tertarik untuk bekerja sama atau ingin melakukan request aplikasi custom, silakan hubungi kami melalui kontak berikut:
+Jika kamu tertarik untuk bekerja sama atau ingin melakukan request aplikasi custom, silakan hubungi kami melalui kontak berikut:
 
 - WhatsApp: [link placeholder]
 - Email: [link placeholder]
