@@ -154,6 +154,20 @@ def batch_generate_metadata(window):
         QMessageBox.information(window, "No Files", "No files to process.")
         return
 
+    # --- FILE EXISTENCE CHECK BEFORE BATCH ---
+    missing_files = []
+    for row in rows:
+        file_path = row[1]
+        if not os.path.isfile(file_path):
+            missing_files.append(file_path)
+    if missing_files:
+        from PySide6.QtWidgets import QMessageBox
+        msg = "The following files were not found on disk and the process has been cancelled:\n\n"
+        msg += "\n".join(missing_files)
+        QMessageBox.critical(window, "File Not Found", msg)
+        return
+    # --- END FILE EXISTENCE CHECK ---
+
     window.table.progress_bar.setVisible(True)
     window.table.progress_bar.setMinimum(0)
     window.table.progress_bar.setMaximum(len(rows))
@@ -262,12 +276,10 @@ def _set_gen_btn_blinking(window, blinking, color=None, text=None):
         def set_bg_color(bg_color):
             btn.setStyleSheet(f"background-color: {bg_color};")
 
-        # Two colors for blinking
         color1 = color if color else "rgba(255, 220, 28, 0.3)"
         color2 = "rgba(255, 255, 255, 0.1)"
         window._gen_btn_blink_state = True
 
-        # Save the previous color to restore after blinking
         window._gen_btn_last_bg = btn.styleSheet()
 
         def blink():
@@ -291,7 +303,6 @@ def _set_gen_btn_blinking(window, blinking, color=None, text=None):
             window._gen_btn_blink_timer.stop()
             window._gen_btn_blink_timer.deleteLater()
             window._gen_btn_blink_timer = None
-        # Restore the last background color if available, else use the provided color
         if hasattr(window, "_gen_btn_last_bg") and window._gen_btn_last_bg:
             btn.setStyleSheet(window._gen_btn_last_bg)
         else:
@@ -469,7 +480,6 @@ def _on_generation_finished(window, errors, stopped=False):
         window.table.progress_bar.setMaximum(1)
         window.table.progress_bar.setValue(1)
         window.table.progress_bar.setVisible(True)
-    # Total time update
     if hasattr(window, "stats_section") and hasattr(window, "_gen_total_time_start"):
         total_time_ms = int((time.perf_counter() - window._gen_total_time_start) * 1000)
         window.stats_section.update_total_time(total_time_ms)
@@ -478,16 +488,13 @@ def _on_generation_finished(window, errors, stopped=False):
     window.table.refresh_table()
     update_token_stats_ui(window)
     if errors:
-        print("[Gemini Errors]")
+        print("[Batch Errors]")
         for err in errors:
             print(err)
     else:
-        print("[Gemini] Metadata generated for all files.")
+        print("[Batch] Metadata generated for all files.")
 
 def update_token_stats_ui(window):
     if hasattr(window, "stats_section") and hasattr(window.stats_section, "update_token_stats"):
         token_input, token_output, token_total = window.db.get_token_stats_sum()
-        window.stats_section.update_token_stats(token_input, token_output, token_total)
-        token_input, token_output, token_total = window.db.get_token_stats_sum()
-        window.stats_section.update_token_stats(token_input, token_output, token_total)
         window.stats_section.update_token_stats(token_input, token_output, token_total)

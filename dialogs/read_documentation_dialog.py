@@ -60,8 +60,8 @@ class ReadDocumentationDialog(QDialog):
         self.doc_root_id = os.path.join(BASE_PATH, "documentation", "lang_ID")
         self.doc_root_en = os.path.join(BASE_PATH, "documentation", "lang_EN")
         self.res_images_path = os.path.join(BASE_PATH, "res", "images")
-        self.file_icon = qta.icon('fa5s.file-alt')
-        self.folder_icon = qta.icon('fa5s.folder')
+        self.file_icon = qta.icon('fa5s.file-alt', color='#2196F3')
+        self.folder_icon = qta.icon('fa5s.folder', color='#FFA500')
 
         self.current_lang = "id"
         self.populate_tree()
@@ -80,18 +80,29 @@ class ReadDocumentationDialog(QDialog):
             return "Documentation"
         return "Dokumentasi"
 
+    def get_lang_label(self):
+        if self.current_lang == "en":
+            return "English"
+        return "Bahasa Indonesia"
+
     def populate_tree(self):
         self.tree.clear()
-        doc_root = self.get_doc_root()
-        if not os.path.isdir(doc_root):
-            return
         root_label = self.get_root_label()
         root_item = QTreeWidgetItem([root_label])
-        root_item.setData(0, Qt.UserRole, doc_root)
+        root_item.setData(0, Qt.UserRole, None)
         root_item.setIcon(0, self.folder_icon)
         self.tree.addTopLevelItem(root_item)
-        self.add_children(doc_root, root_item)
+
+        doc_root = self.get_doc_root()
+        lang_label = self.get_lang_label()
+        lang_item = QTreeWidgetItem([lang_label])
+        lang_item.setData(0, Qt.UserRole, doc_root)
+        lang_item.setIcon(0, self.folder_icon)
+        root_item.addChild(lang_item)
+
+        self.add_children(doc_root, lang_item)
         root_item.setExpanded(True)
+        lang_item.setExpanded(True)
 
     def add_children(self, folder_path, parent_item):
         try:
@@ -122,6 +133,9 @@ class ReadDocumentationDialog(QDialog):
 
     def on_item_clicked(self, item, column):
         file_path = item.data(0, Qt.UserRole)
+        if file_path is None:
+            self.viewer.clear()
+            return
         if os.path.isdir(file_path):
             item.setExpanded(True)
             if item.childCount() > 0:
@@ -136,6 +150,7 @@ class ReadDocumentationDialog(QDialog):
                     md_text = f.read()
                 self.viewer.setSearchPaths([self.res_images_path])
                 self.viewer.setMarkdown(md_text)
+                self.viewer.setLineWrapMode(QTextBrowser.WidgetWidth)
             except Exception as e:
                 self.viewer.setPlainText(f"Failed to load file:\n{file_path}\n\nError: {e}")
         else:
@@ -159,6 +174,7 @@ class ReadDocumentationDialog(QDialog):
                     md_text = f.read()
                 self.viewer.setSearchPaths([self.res_images_path])
                 self.viewer.setMarkdown(md_text)
+                self.viewer.setLineWrapMode(QTextBrowser.WidgetWidth)
             except Exception as e:
                 self.viewer.setPlainText(f"Failed to load file:\n{about_path}\n\nError: {e}")
         else:
