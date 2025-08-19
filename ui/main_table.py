@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbst
 from PySide6.QtCore import Qt, Signal, QPoint
 from PySide6.QtGui import QColor, QBrush, QAction
 from dialogs.file_metadata_dialog import FileMetadataDialog
-from dialogs.donation_dialog import DonateDialog
+from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
 import qtawesome as qta
 import os
 
@@ -177,9 +177,9 @@ class ImageTableWidget(QWidget):
         self._emit_stats()
         total_files = self.table.rowCount()
         if total_files >= 100:
-            if not self._donation_dialog_shown:
+            if not self._donation_dialog_shown and not is_donation_optout_today():
                 self._donation_dialog_shown = True
-                dialog = DonateDialog(self)
+                dialog = DonateDialog(self, show_not_today=True)
                 dialog.setWindowTitle("Support the Development")
                 label = dialog.findChild(QLabel)
                 if label:

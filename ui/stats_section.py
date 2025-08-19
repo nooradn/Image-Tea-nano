@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
+from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
 
 class StatsSectionWidget(QWidget):
     def __init__(self, parent=None):
@@ -60,6 +61,8 @@ class StatsSectionWidget(QWidget):
         self._last_time = 0
         self._total_time = 0
 
+        self._donation_dialog_shown_token = False
+
     def update_stats(self, total, selected, failed, success=0, draft=0):
         self.label_total.setText(f"Total Images: {total}")
         self.label_selected.setText(f"Selected: {selected}")
@@ -71,6 +74,22 @@ class StatsSectionWidget(QWidget):
         self.label_token_input.setText(f"Token Input: {token_input}")
         self.label_token_output.setText(f"Token Output: {token_output}")
         self.label_token_total.setText(f"Token Total: {token_total}")
+        if token_total >= 1_000_000:
+            if not self._donation_dialog_shown_token and not is_donation_optout_today():
+                self._donation_dialog_shown_token = True
+                dialog = DonateDialog(self, show_not_today=True)
+                dialog.setWindowTitle("Support the Development")
+                label = dialog.findChild(QLabel)
+                if label:
+                    label.setText(
+                        "Thank you for trusting Image Tea for your metadata needs!\n\n"
+                        "You're awesome!\n\n"
+                        "Image Tea is possible thanks to the support of users like you.\n"
+                        "If you really love using Image Tea to generate metadata,\nconsider supporting its development!"
+                    )
+                dialog.exec()
+        else:
+            self._donation_dialog_shown_token = False
 
     def _format_time(self, ms):
         if ms >= 60000:
