@@ -2,7 +2,7 @@ import pyexiv2
 from database.db_operation import ImageTeaDB, DB_PATH
 
 from PySide6.QtCore import QThread, Signal, Qt
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QSizePolicy
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QSizePolicy, QTextEdit, QPushButton
 import os
 import exiftool
 from config import BASE_PATH
@@ -27,11 +27,30 @@ class ProgressDialog(QDialog):
 		self.progress = QProgressBar()
 		self.progress.setRange(0, total)
 		layout.addWidget(self.progress)
+		self.error_box = QTextEdit()
+		self.error_box.setReadOnly(True)
+		self.error_box.setVisible(False)
+		self.error_box.setMinimumHeight(80)
+		layout.addWidget(self.error_box)
+		self.close_btn = QPushButton("Close")
+		self.close_btn.setVisible(False)
+		self.close_btn.clicked.connect(self.accept)
+		layout.addWidget(self.close_btn)
 		self.setLayout(layout)
 
 	def update_progress(self, value, filename):
 		self.progress.setValue(value)
 		self.label.setText(f"Writing metadata to:\n{filename}")
+
+	def show_errors(self, errors):
+		if errors:
+			self.error_box.setVisible(True)
+			self.error_box.setPlainText("Error(s) occurred:\n" + "\n".join(errors))
+			self.close_btn.setVisible(True)
+			self.label.setText("Some errors occurred during writing metadata.")
+		else:
+			self.error_box.setVisible(False)
+			self.close_btn.setVisible(False)
 
 class ImageTeaGeneratorThread(QThread):
 	progress = Signal(int, int)
@@ -254,11 +273,11 @@ def write_metadata_to_images(db, parent=None):
 		dialog.repaint()
 		from PySide6.QtCore import QCoreApplication
 		QCoreApplication.processEvents()
-	dialog.close()
 	if errors:
-		print("[Write Metadata Errors]")
-		for err in errors:
-			print(err)
+		dialog.show_errors(errors)
+		dialog.exec()
+	else:
+		dialog.close()
 
 def write_metadata_to_videos(db, parent=None):
 	rows = db.get_all_files()
@@ -294,8 +313,8 @@ def write_metadata_to_videos(db, parent=None):
 		dialog.repaint()
 		from PySide6.QtCore import QCoreApplication
 		QCoreApplication.processEvents()
-	dialog.close()
 	if errors:
-		print("[Write Video Metadata Errors]")
-		for err in errors:
-			print(err)
+		dialog.show_errors(errors)
+		dialog.exec()
+	else:
+		dialog.close()
