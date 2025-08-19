@@ -62,11 +62,20 @@ class ReadDocumentationDialog(QDialog):
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 3)
 
+        self.close_button = QPushButton("Close")
+        self.close_button.setIcon(qta.icon('fa5s.times'))
+        self.close_button.setFixedWidth(100)
+        self.close_button.clicked.connect(self.close)
+
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(6)
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.addLayout(lang_layout, stretch=0)
         main_layout.addWidget(splitter, stretch=1)
+        button_layout = QHBoxLayout()
+        button_layout.addStretch(1)
+        button_layout.addWidget(self.close_button)
+        main_layout.addLayout(button_layout, stretch=0)
         self.setLayout(main_layout)
 
         self.doc_root_id = os.path.join(BASE_PATH, "documentation", "lang_ID")

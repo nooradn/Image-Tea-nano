@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QMenuBar, QMenu, QMessageBox
-from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QMenuBar, QMenu, QMessageBox, QDialog, QVBoxLayout, QLabel, QHBoxLayout
+from PySide6.QtGui import QAction, QPixmap
+from PySide6.QtCore import Qt
 import qtawesome as qta
 import webbrowser
 import sys
@@ -12,6 +13,8 @@ from dialogs.edit_prompt_dialog import EditPromptDialog
 from dialogs.custom_prompt_dialog import CustomPromptDialog
 from dialogs.batch_rename_dialog import BatchRenameDialog
 from dialogs.read_documentation_dialog import ReadDocumentationDialog
+from dialogs.donation_dialog import DonateDialog
+from config import BASE_PATH
 
 def setup_main_menu(window):
     menubar = QMenuBar(window)
@@ -114,6 +117,13 @@ def setup_main_menu(window):
     about_action.triggered.connect(show_about)
     help_menu.addAction(about_action)
 
+    donate_action = QAction(qta.icon('fa5s.donate'), "Donate", window)
+    def show_donate():
+        dialog = DonateDialog(window)
+        dialog.exec()
+    donate_action.triggered.connect(show_donate)
+    help_menu.addAction(donate_action)
+
     wa_action = QAction(qta.icon('fa5b.whatsapp'), "WhatsApp Group", window)
     def open_wa():
         webbrowser.open("https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3")
@@ -132,7 +142,7 @@ def setup_main_menu(window):
     readme_action.triggered.connect(open_readme)
     help_menu.addAction(readme_action)
 
-    documentation_action = QAction(qta.icon('fa5s.book-open'), "Read Local Documentation", window)
+    documentation_action = QAction(qta.icon('fa5s.book-open'), "Help", window)
     def open_documentation():
         dialog = ReadDocumentationDialog(window)
         dialog.exec()

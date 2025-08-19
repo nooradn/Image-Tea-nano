@@ -1,7 +1,8 @@
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel
 from PySide6.QtCore import Qt, Signal, QPoint
 from PySide6.QtGui import QColor, QBrush, QAction
 from dialogs.file_metadata_dialog import FileMetadataDialog
+from dialogs.donation_dialog import DonateDialog
 import qtawesome as qta
 import os
 
@@ -33,6 +34,8 @@ class ImageTableWidget(QWidget):
         self.progress_bar.setVisible(True)
         self.progress_bar.setToolTip("Shows progress for batch operations")
         self.layout.addWidget(self.progress_bar)
+
+        self._donation_dialog_shown = False
 
         # Connect selection change to stats update
         self.table.selectionModel().selectionChanged.connect(self._emit_stats)
@@ -172,6 +175,23 @@ class ImageTableWidget(QWidget):
                 if item:
                     item.setBackground(QBrush(color))
         self._emit_stats()
+        total_files = self.table.rowCount()
+        if total_files >= 100:
+            if not self._donation_dialog_shown:
+                self._donation_dialog_shown = True
+                dialog = DonateDialog(self)
+                dialog.setWindowTitle("Support the Development")
+                label = dialog.findChild(QLabel)
+                if label:
+                    label.setText(
+                        "Thank you for trusting Image Tea for your metadata needs!\n\n"
+                        "You're awesome!\n\n"
+                        "Image Tea is possible thanks to the support of users like you.\n"
+                        "If you really love using Image Tea to generate metadata,\nconsider supporting its development!"
+                    )
+                dialog.exec()
+        else:
+            self._donation_dialog_shown = False
 
     def _emit_stats(self):
         total = self.table.rowCount()
