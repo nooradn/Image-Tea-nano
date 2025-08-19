@@ -56,6 +56,11 @@ class BatchWorker(QThread):
                 image_path = row[1]
                 prompt = None
                 result = self.metadata_func(self.api_key, self.model, image_path, prompt, stop_flag)
+                if isinstance(result, dict) and "category" in result:
+                    print(f"[BATCH] Category for {image_path}: {result['category']}")
+                elif isinstance(result, tuple) and len(result) > 3:
+                    category = result[3]
+                    print(f"[BATCH] Category for {image_path}: {category}")
                 with self._lock:
                     if not self._should_stop and not (stop_flag and stop_flag.get('stop')):
                         results[idx] = (idx, result)
@@ -194,56 +199,53 @@ def batch_generate_metadata(window):
         from helpers.ai_helper.gemini_helper import generate_metadata_gemini, track_gemini_generation_time
         def metadata_func(api_key, model, image_path, prompt=None, stop_flag=None):
             if stop_flag and stop_flag.get('stop'):
-                return {'title': '', 'description': '', 'tags': '', 'token_input': 0, 'token_output': 0, 'token_total': 0, 'image_path': image_path}
+                return {'title': '', 'description': '', 'tags': '', 'category': {}, 'token_input': 0, 'token_output': 0, 'token_total': 0, 'image_path': image_path, 'error_message': ''}
             import time
             t0 = time.perf_counter()
-            title, description, tags, token_input, token_output, token_total = generate_metadata_gemini(api_key, model, image_path, prompt, stop_flag)
+            title, description, tags, category, error_message, token_input, token_output, token_total = generate_metadata_gemini(api_key, model, image_path, prompt, stop_flag)
             t1 = time.perf_counter()
             duration_ms = int((t1 - t0) * 1000)
             gen_time, avg_time, longest_time, last_time = track_gemini_generation_time(duration_ms)
             if hasattr(window, "stats_section"):
                 window.stats_section.update_generation_times(gen_time, avg_time, longest_time, last_time)
+            if error_message:
+                print(f"[Gemini ERROR] {error_message}")
             return {
                 "title": title,
                 "description": description,
                 "tags": tags,
+                "category": category,
                 "token_input": token_input,
                 "token_output": token_output,
                 "token_total": token_total,
-                "image_path": image_path
+                "image_path": image_path,
+                "error_message": error_message
             }
     elif service == "openai":
         from helpers.ai_helper.openai_helper import generate_metadata_openai, track_openai_generation_time
         def metadata_func(api_key, model, image_path, prompt=None, stop_flag=None):
             if stop_flag and stop_flag.get('stop'):
-                return {'title': '', 'description': '', 'tags': '', 'token_input': 0, 'token_output': 0, 'token_total': 0, 'image_path': image_path}
+                return {'title': '', 'description': '', 'tags': '', 'category': {}, 'token_input': 0, 'token_output': 0, 'token_total': 0, 'image_path': image_path, 'error_message': ''}
             import time
             t0 = time.perf_counter()
-            title, description, tags, error_message, token_input, token_output, token_total = generate_metadata_openai(api_key, model, image_path, prompt, stop_flag)
+            title, description, tags, category, error_message, token_input, token_output, token_total = generate_metadata_openai(api_key, model, image_path, prompt, stop_flag)
             t1 = time.perf_counter()
             duration_ms = int((t1 - t0) * 1000)
             gen_time, avg_time, longest_time, last_time = track_openai_generation_time(duration_ms)
             if hasattr(window, "stats_section"):
                 window.stats_section.update_generation_times(gen_time, avg_time, longest_time, last_time)
             if error_message:
-                window.show_ai_unsupported_dialog.emit(error_message)
-                return {
-                    "title": "",
-                    "description": "",
-                    "tags": "",
-                    "token_input": token_input,
-                    "token_output": token_output,
-                    "token_total": token_total,
-                    "image_path": image_path
-                }
+                print(f"[OpenAI ERROR] {error_message}")
             return {
                 "title": title,
                 "description": description,
                 "tags": tags,
+                "category": category,
                 "token_input": token_input,
                 "token_output": token_output,
                 "token_total": token_total,
-                "image_path": image_path
+                "image_path": image_path,
+                "error_message": error_message
             }
     else:
         print(f"[DEBUG] Unknown service: {service}")
@@ -416,6 +418,17 @@ def _run_next_batch(window):
             token_input = result.get("token_input")
             token_output = result.get("token_output")
             token_total = result.get("token_total")
+            category = result.get("category")
+            if category is not None:
+                print(f"[BATCH] Category for {image_path}: {category}")
+                # Cari file_id dari batch row
+                file_id = None
+                for row in batch:
+                    if row[1] == image_path:
+                        file_id = row[0]
+                        break
+                if file_id is not None and isinstance(category, dict) and len(category) > 0:
+                    window.db.save_category_mapping(file_id, category)
             window.db.update_metadata(image_path, title, description, tags, status="success" if title else "failed")
             window.db.insert_api_token_stats(image_path, service, model, token_input, token_output, token_total)
         update_token_stats_ui(window)

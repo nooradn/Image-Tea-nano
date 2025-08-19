@@ -24,6 +24,8 @@ def load_gemini_prompt_vars():
     with open(prompt_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     prompt_data = data["prompt"]
+    shutterstock_map = data["shutterstock_category_map"]
+    adobe_map = data["adobe_stock_category_map"]
     return (
         prompt_data["ai_prompt"],
         prompt_data["negative_prompt"],
@@ -32,10 +34,12 @@ def load_gemini_prompt_vars():
         data["min_title_length"],
         data["max_title_length"],
         data["max_description_length"],
-        data["required_tag_count"]
+        data["required_tag_count"],
+        shutterstock_map,
+        adobe_map
     )
 
-def format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, filename=None):
+def format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map, filename=None):
     prompt = ai_prompt
     prompt = prompt.replace("_MIN_LEN_", str(min_title_length))
     prompt = prompt.replace("_MAX_LEN_", str(max_title_length))
@@ -43,16 +47,24 @@ def format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
     prompt = prompt.replace("_TIMESTAMP_", generate_timestamp())
     prompt = prompt.replace("_TOKEN_", generate_token())
+    prompt += (
+        "\n\nShutterstock categories (number:name):\n"
+        f"{json.dumps(shutterstock_map, indent=2)}\n"
+        "Adobe Stock categories (number:name):\n"
+        f"{json.dumps(adobe_map, indent=2)}\n"
+    )
     if filename:
         prompt = f"Filename: {filename}\n{prompt}"
     if custom_prompt and custom_prompt.strip():
         prompt = f"{prompt}\n\nMANDATORY: {custom_prompt.strip()}\n"
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
+    print("Gemini Prompt:")
+    print(full_prompt)
     return full_prompt
 
 def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=None):
     if stop_flag and stop_flag.get('stop'):
-        return '', '', '', 0, 0, 0
+        return '', '', '', '', 0, 0, 0
     start_time = time.perf_counter()
     try:
         client = genai.Client(api_key=api_key)
@@ -60,8 +72,8 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
         is_video = ext in ['.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp']
         filename = os.path.basename(image_path)
         if not prompt:
-            ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_gemini_prompt_vars()
-            prompt = format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, filename=filename)
+            ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map = load_gemini_prompt_vars()
+            prompt = format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map, filename=filename)
         if is_video:
             myfile = client.files.upload(file=image_path)
             file_id = myfile.name if hasattr(myfile, 'name') else getattr(myfile, 'id', None)
@@ -71,7 +83,7 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             waited = 0
             while waited < max_wait_seconds:
                 if stop_flag and stop_flag.get('stop'):
-                    return '', '', '', 0, 0, 0
+                    return '', '', '', '', 0, 0, 0
                 fileinfo = client.files.get(name=file_id)
                 status = getattr(fileinfo, 'state', None) or getattr(fileinfo, 'status', None)
                 if status == 'ACTIVE':
@@ -80,22 +92,24 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
                 waited += poll_interval
             if status != 'ACTIVE':
                 print(f"[Gemini ERROR] File {file_id} not ACTIVE after upload, status: {status}")
-                return '', '', '', 0, 0, 0
+                return '', '', '', '', 0, 0, 0
             contents = [myfile, prompt]
         else:
             compressed_path = compress_and_save_image(image_path)
             if not compressed_path:
                 print(f"[Gemini ERROR] Failed to compress image: {image_path}")
-                return '', '', '', 0, 0, 0
+                return '', '', '', '', 0, 0, 0
             with open(compressed_path, 'rb') as f:
                 image_bytes = f.read()
             contents = [types.Part.from_bytes(data=image_bytes, mime_type='image/jpeg'), prompt]
         if stop_flag and stop_flag.get('stop'):
-            return '', '', '', 0, 0, 0
+            return '', '', '', '', 0, 0, 0
         response = client.models.generate_content(
             model=model,
             contents=contents
         )
+        print("Gemini RAW response:")
+        print(response)
         token_input = 0
         token_output = 0
         token_total = 0
@@ -116,6 +130,8 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             text = response['text']
         else:
             text = str(response)
+        print("Gemini RAW text:")
+        print(text)
         try:
             if text.strip().startswith('```'):
                 text = text.strip().lstrip('`').lstrip('json').strip()
@@ -126,13 +142,17 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             description = meta.get('description', '')
             tags = ', '.join(meta.get('tags', [])) if isinstance(meta.get('tags'), list) else str(meta.get('tags', ''))
             tags = tags.lower()
+            category = meta.get('category', {})
+            error_message = ''
         except Exception as e:
             print(f"[Gemini JSON PARSE ERROR] {e}")
             title = description = tags = ''
-        return title, description, tags, token_input, token_output, token_total
+            category = {}
+            error_message = f"[Gemini JSON PARSE ERROR] {e}"
+        return title, description, tags, category, error_message, token_input, token_output, token_total
     except Exception as e:
         print(f"[Gemini ERROR] {e}")
-        return '', '', '', 0, 0, 0
+        return '', '', '', {}, f"[Gemini ERROR] {e}", 0, 0, 0
     finally:
         duration_ms = int((time.perf_counter() - start_time) * 1000)
         track_gemini_generation_time(duration_ms)
