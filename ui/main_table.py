@@ -93,7 +93,7 @@ class ImageTableWidget(QWidget):
         elif status == "stopping":
             return QColor(255, 140, 0, int(0.18 * 255))
         elif status == "stopped":
-            return QColor(243, 200, 24, int(0.3 * 255))
+            return QColor(200, 40, 40, int(0.18 * 255))
         return QColor(255, 255, 255, 0)
 
     def set_row_status_color(self, row_idx, status):
