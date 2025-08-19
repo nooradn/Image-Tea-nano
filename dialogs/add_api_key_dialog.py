@@ -395,8 +395,3 @@ class AddApiKeyDialog(QDialog):
         menu.addAction(action_test)
         menu.addAction(action_delete)
         menu.exec(self.api_table.viewport().mapToGlobal(pos))
-        action_test.triggered.connect(self.test_and_save_api_key)
-        action_delete.triggered.connect(self.delete_api_key)
-        menu.addAction(action_test)
-        menu.addAction(action_delete)
-        menu.exec(self.api_table.viewport().mapToGlobal(pos))
