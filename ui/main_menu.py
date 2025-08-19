@@ -15,6 +15,7 @@ from dialogs.batch_rename_dialog import BatchRenameDialog
 from dialogs.read_documentation_dialog import ReadDocumentationDialog
 from dialogs.donation_dialog import DonateDialog
 from dialogs.add_api_key_dialog import AddApiKeyDialog
+from dialogs.about_dialog import AboutDialog
 from config import BASE_PATH
 
 def setup_main_menu(window):
@@ -119,7 +120,8 @@ def setup_main_menu(window):
     help_menu = QMenu("Help", menubar)
     about_action = QAction(qta.icon('fa5s.info-circle'), "About", window)
     def show_about():
-        QMessageBox.about(window, "About", "Image Tea (nano)\nMetadata Generator\n© 2025")
+        dialog = AboutDialog(window)
+        dialog.exec()
     about_action.triggered.connect(show_about)
     help_menu.addAction(about_action)
 
