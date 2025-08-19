@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QDialog, QSpacerItem, QSizePolicy
 import datetime
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from ui.file_dnd_widget import DragDropWidget
@@ -8,6 +8,7 @@ from ui.prompt_section import PromptSectionWidget
 from ui.stats_section import StatsSectionWidget
 from ui.main_menu import setup_main_menu
 from helpers.batch_processing_helper import batch_generate_metadata
+from dialogs.api_call_warning_dialog import ApiCallWarningDialog
 
 def setup_ui(self):
     setup_main_menu(self)
@@ -146,6 +147,7 @@ def setup_ui(self):
 
     api_layout.addWidget(self.api_key_combo)
     api_layout.addWidget(api_refresh_btn)
+    api_layout.addItem(QSpacerItem(24, 1, QSizePolicy.Expanding, QSizePolicy.Minimum))
     api_layout.addWidget(api_save_btn)
     layout.addLayout(api_layout)
 
@@ -214,7 +216,18 @@ def setup_ui(self):
     font.setPointSize(font.pointSize() + 4)
     font.setBold(True)
     self.gen_btn.setFont(font)
-    self.gen_btn.clicked.connect(lambda: batch_generate_metadata(self))
+
+    def on_generate_clicked():
+        mode = self.gen_mode_combo.currentText()
+        total_files = self.table.table.rowCount()
+        if mode == "Generate All" and total_files >= 1000:
+            dialog = ApiCallWarningDialog(self)
+            result = dialog.exec()
+            if result != QDialog.Accepted:
+                return
+        batch_generate_metadata(self)
+
+    self.gen_btn.clicked.connect(on_generate_clicked)
     gen_group_layout.addWidget(self.gen_btn)
 
     btn_row_layout.addLayout(gen_group_layout)

@@ -168,6 +168,19 @@ def batch_generate_metadata(window):
         return
     # --- END FILE EXISTENCE CHECK ---
 
+    # --- WARNING DIALOG FOR > 1000 FILES ---
+    if mode == "all" and len(rows) >= 1000:
+        try:
+            from dialogs.api_call_warning_dialog import ApiCallWarningDialog
+            from PySide6.QtWidgets import QDialog
+            dialog = ApiCallWarningDialog(window, file_count=len(rows))
+            result = dialog.exec()
+            if result != QDialog.Accepted:
+                return
+        except Exception as e:
+            print(f"[DEBUG] Failed to show ApiCallWarningDialog: {e}")
+    # --- END WARNING DIALOG ---
+
     window.table.progress_bar.setVisible(True)
     window.table.progress_bar.setMinimum(0)
     window.table.progress_bar.setMaximum(len(rows))

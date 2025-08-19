@@ -14,6 +14,7 @@ from dialogs.custom_prompt_dialog import CustomPromptDialog
 from dialogs.batch_rename_dialog import BatchRenameDialog
 from dialogs.read_documentation_dialog import ReadDocumentationDialog
 from dialogs.donation_dialog import DonateDialog
+from dialogs.add_api_key_dialog import AddApiKeyDialog
 from config import BASE_PATH
 
 def setup_main_menu(window):
@@ -27,8 +28,31 @@ def setup_main_menu(window):
     import_action.triggered.connect(do_import)
     file_menu.addAction(import_action)
 
-    edit_menu = QMenu("Edit", menubar)
+    relaunch_action = QAction(qta.icon('fa5s.redo'), "Relaunch", window)
+    def relaunch_app():
+        python_exe = sys.executable
+        args = [python_exe] + sys.argv
+        try:
+            subprocess.Popen(args)
+        except Exception as e:
+            print(f"Failed to relaunch: {e}")
+        window.close()
+    relaunch_action.triggered.connect(relaunch_app)
+    file_menu.addAction(relaunch_action)
 
+    exit_action = QAction(qta.icon('fa5s.sign-out-alt'), "Exit", window)
+    exit_action.triggered.connect(window.close)
+    file_menu.addAction(exit_action)
+
+    api_menu = QMenu("API", menubar)
+    add_api_action = QAction(qta.icon('fa5s.key'), "Add API Key", window)
+    def show_api_dialog():
+        dlg = AddApiKeyDialog(window)
+        dlg.exec()
+    add_api_action.triggered.connect(show_api_dialog)
+    api_menu.addAction(add_api_action)
+
+    edit_menu = QMenu("Edit", menubar)
     delete_action = QAction(qta.icon('fa5s.trash'), "Delete Selected", window)
     delete_action.triggered.connect(lambda: window.table.delete_selected())
     edit_menu.addAction(delete_action)
@@ -58,7 +82,6 @@ def setup_main_menu(window):
     edit_menu.addAction(batch_rename_action)
 
     metadata_menu = QMenu("Metadata", menubar)
-
     write_metadata_images_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)
     def do_write_metadata_images():
         write_metadata_to_images(window.db, window)
@@ -78,22 +101,6 @@ def setup_main_menu(window):
     export_metadata_action.triggered.connect(show_export_dialog)
     metadata_menu.addAction(export_metadata_action)
 
-    relaunch_action = QAction(qta.icon('fa5s.redo'), "Relaunch", window)
-    def relaunch_app():
-        python_exe = sys.executable
-        args = [python_exe] + sys.argv
-        try:
-            subprocess.Popen(args)
-        except Exception as e:
-            print(f"Failed to relaunch: {e}")
-        window.close()
-    relaunch_action.triggered.connect(relaunch_app)
-    file_menu.addAction(relaunch_action)
-
-    exit_action = QAction(qta.icon('fa5s.sign-out-alt'), "Exit", window)
-    exit_action.triggered.connect(window.close)
-    file_menu.addAction(exit_action)
-
     prompt_menu = QMenu("Prompt", menubar)
     edit_prompt_action = QAction(qta.icon('fa5s.edit'), "Edit Prompt", window)
     def open_edit_prompt():
@@ -110,7 +117,6 @@ def setup_main_menu(window):
     prompt_menu.addAction(custom_prompt_action)
 
     help_menu = QMenu("Help", menubar)
-
     about_action = QAction(qta.icon('fa5s.info-circle'), "About", window)
     def show_about():
         QMessageBox.about(window, "About", "Image Tea (nano)\nMetadata Generator\n© 2025")
@@ -150,6 +156,7 @@ def setup_main_menu(window):
     help_menu.addAction(documentation_action)
 
     menubar.addMenu(file_menu)
+    menubar.addMenu(api_menu)
     menubar.addMenu(edit_menu)
     menubar.addMenu(metadata_menu)
     menubar.addMenu(prompt_menu)
