@@ -7,6 +7,15 @@ To add image or video files to Image-Tea-nano, follow these steps:
 3. A window will appear to select files. Choose one or more image or video files from your computer.
 4. Click **Open** to add the files to the application.
 
+![Import Files](main_menu_import_files.png)
+
+Alternatively, you can also add files by **dragging & dropping** them directly into the main application area:
+- Select image or video files from your computer.
+- Drag the files to the main window of Image-Tea-nano.
+- Drop the files in the application area, and they will be automatically added to the list.
+
+![Import Files via Drag and Drop](drag_and_drop_to_import_files.png)
+
 ## Supported Image Formats
 - JPG
 - JPEG

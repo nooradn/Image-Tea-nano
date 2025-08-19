@@ -9,4 +9,23 @@ This application was developed by Studio Desainia to meet the studio's internal 
 - Does not store any personal user data.
 - All processes run locally on your computer.
 
-For complete documentation and usage guides, please read the other files in the documentation folder.
+## Source
+
+This project is openly available on GitHub:  
+[https://github.com/mudrikam/Image-Tea-nano/](https://github.com/mudrikam/Image-Tea-nano/)
+
+## Special Thanks
+
+Special thanks to God Almighty, family, the Desainia Studio team, and all WhatsApp group members who have contributed to the development of Image Tea:  
+[**Join Desainia Group**](https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3)
+
+## License
+
+Image-Tea-nano is released under the **MIT License**.  
+In short:
+- **Allowed**: Use, copy, modify, and distribute, including for commercial purposes.
+- **Not allowed**: Remove or alter the MIT license notice from the source code.
+- **No warranty**: Use of this application is entirely at your own risk.
+
+For complete documentation, revisions, or suggestions, please use the WhatsApp group chat or the GitHub issues page.  
+**Do not contact the developer or group admin directly (private message) for questions, revisions, or support requests. Please respect our privacy. The developer/admin reserves the right not to respond to private messages.**

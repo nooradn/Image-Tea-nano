@@ -7,6 +7,15 @@ Untuk menambahkan file gambar atau video ke Image-Tea-nano, ikuti langkah beriku
 3. Akan muncul jendela untuk memilih file. Pilih satu atau beberapa file gambar atau video dari komputer kamu.
 4. Klik **Open** untuk menambahkan file ke dalam aplikasi.
 
+![Import Files](main_menu_import_files.png)
+
+Atau, kamu juga bisa menambahkan file dengan cara **drag & drop** langsung ke area utama aplikasi:
+- Pilih file gambar atau video dari komputer kamu.
+- Seret (drag) file tersebut ke jendela utama Image-Tea-nano.
+- Lepaskan (drop) file di area aplikasi, maka file akan otomatis ditambahkan ke daftar.
+
+![Import Files via Drag and Drop](drag_and_drop_to_import_files.png)
+
 ## Format Gambar yang Didukung
 - JPG
 - JPEG
