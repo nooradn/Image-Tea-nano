@@ -69,3 +69,30 @@ Setelah repository berhasil di-clone, jalankan file `Launcher.bat` dengan cara:
    ```
    Launcher.bat
    ```
+
+## Cara Update
+Untuk memperbarui aplikasi ke versi terbaru, gunakan file `update via git.bat` yang sudah disediakan. Proses update ini juga memberikan opsi untuk menghapus database lama jika ada perubahan struktur database.
+
+### Langkah-langkah Update:
+1. **Pastikan sudah berada di folder `Image-Tea-nano`.**
+2. **Jalankan file `update via git.bat`:**
+   - Klik dua kali `update via git.bat` di Windows Explorer, atau
+   - Jalankan perintah berikut di Command Prompt:
+     ```
+     update via git.bat
+     ```
+3. **Ikuti petunjuk di layar:**
+   - Script akan menampilkan peringatan jika ada kemungkinan perubahan struktur database.
+   - Kamu akan diberi pilihan untuk menghapus database lama (`database\database.db`). Jika database dihapus, semua data dan API key yang tersimpan akan hilang.
+   - Jika memilih untuk tidak menghapus database, lanjutkan update dengan risiko data lama mungkin tidak kompatibel.
+4. **Jika diminta login git:**
+   - Jika belum pernah login git di komputer, masukkan username dan email GitHub kamu saat diminta.
+5. **Script akan menjalankan perintah `git pull` untuk mengambil update terbaru dari repository.**
+6. **Setelah update selesai, aplikasi akan otomatis menjalankan `Launcher.bat` untuk melanjutkan proses seperti biasa.**
+
+### Catatan Penting:
+- **Backup API key dan data penting kamu sebelum update**, terutama jika memilih menghapus database lama.
+- **Aplikasi ini tidak mendukung migrasi database otomatis.** Jika ada perubahan struktur database, data lama bisa jadi tidak terbaca.
+- **Jika update gagal karena Git belum terinstall**, silakan install Git terlebih dahulu seperti pada petunjuk di atas.
+
+Dengan mengikuti langkah-langkah di atas, aplikasi kamu akan selalu terupdate ke versi terbaru dari repository resmi.
