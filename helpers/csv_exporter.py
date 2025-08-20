@@ -38,6 +38,33 @@ def _shutterstock_format(file):
     illustration = "yes"
     return f'{filename},"{description}","{tags}","{categories}",{editorial},{mature_content},{illustration}'
 
+def _123rf_format(file):
+    filename = file[2]
+    title = file[3] if file[3] is not None else ""
+    description = file[4] if file[4] is not None else ""
+    keywords = file[5] if file[5] is not None else ""
+    country = ""
+    return f'"{filename}","{title}","{description}","{keywords}","{country}"'
+
+def _vecteezy_format(file):
+    filename = file[2]
+    title = file[3] if file[3] is not None else ""
+    description = file[4] if file[4] is not None else ""
+    keywords = file[5] if file[5] is not None else ""
+    license_type = "pro"
+    return f'{filename},"{title}","{description}","{keywords}",{license_type}'
+
+def _istock_format(file):
+    filename = file[2]
+    today = datetime.datetime.now()
+    created_date = today.strftime("%m/%d/%Y")
+    description = file[4] if file[4] is not None else ""
+    country = ""
+    brief_code = ""
+    title = file[3] if file[3] is not None else ""
+    keywords = file[5] if file[5] is not None else ""
+    return f'{filename},{created_date},"{description}","{country}","{brief_code}","{title}","""{keywords}"""'
+
 def export_csv_for_platforms(platforms, output_path=None):
     print(f"[csv_exporter] Exporting CSV for platforms: {platforms}")
     print(f"[csv_exporter] Output path: {output_path}")
@@ -91,3 +118,51 @@ def export_csv_for_platforms(platforms, output_path=None):
                 print(f"[csv_exporter] Shutterstock CSV exported to: {csv_path}")
             except Exception as e:
                 print(f"[csv_exporter] Error exporting Shutterstock CSV: {e}")
+    if "123RF" in platforms and output_path:
+        rows = []
+        header = '"oldfilename","123rf_filename","description","keywords","country"'
+        for file in files:
+            rows.append(_123rf_format(file))
+        if rows:
+            csv_filename = generate_export_filename("123rf", output_path)
+            csv_path = os.path.join(output_path, csv_filename)
+            try:
+                with open(csv_path, "w", encoding="utf-8") as f:
+                    f.write(header + "\n")
+                    for row in rows:
+                        f.write(row + "\n")
+                print(f"[csv_exporter] 123rf CSV exported to: {csv_path}")
+            except Exception as e:
+                print(f"[csv_exporter] Error exporting 123rf CSV: {e}")
+    if "Vecteezy" in platforms and output_path:
+        rows = []
+        header = "Filename,Title,Description,Keywords,License"
+        for file in files:
+            rows.append(_vecteezy_format(file))
+        if rows:
+            csv_filename = generate_export_filename("Vecteezy", output_path)
+            csv_path = os.path.join(output_path, csv_filename)
+            try:
+                with open(csv_path, "w", encoding="utf-8") as f:
+                    f.write(header + "\n")
+                    for row in rows:
+                        f.write(row + "\n")
+                print(f"[csv_exporter] Vecteezy CSV exported to: {csv_path}")
+            except Exception as e:
+                print(f"[csv_exporter] Error exporting Vecteezy CSV: {e}")
+    if "iStock" in platforms and output_path:
+        rows = []
+        header = "file name,created date,description,country,brief code,title,keywords"
+        for file in files:
+            rows.append(_istock_format(file))
+        if rows:
+            csv_filename = generate_export_filename("iStock", output_path)
+            csv_path = os.path.join(output_path, csv_filename)
+            try:
+                with open(csv_path, "w", encoding="utf-8") as f:
+                    f.write(header + "\n")
+                    for row in rows:
+                        f.write(row + "\n")
+                print(f"[csv_exporter] iStock CSV exported to: {csv_path}")
+            except Exception as e:
+                print(f"[csv_exporter] Error exporting iStock CSV: {e}")

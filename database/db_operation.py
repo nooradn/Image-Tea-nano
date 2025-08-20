@@ -150,6 +150,10 @@ class ImageTeaDB:
     def clear_files(self):
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
+            c.execute('SELECT id FROM files')
+            file_ids = [row[0] for row in c.fetchall()]
+            if file_ids:
+                c.executemany('DELETE FROM category_mapping WHERE file_id=?', [(fid,) for fid in file_ids])
             c.execute('DELETE FROM files')
             conn.commit()
 
