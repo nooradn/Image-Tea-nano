@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QCheckBox, QLabel, QGridLayout, QWidget, QPushButton, QHBoxLayout, QLineEdit, QFileDialog
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QCheckBox, QLabel, QGridLayout, QWidget, QPushButton, QHBoxLayout, QLineEdit, QFileDialog, QProgressDialog
 from PySide6.QtCore import Qt
 import json
 import os
@@ -93,5 +93,22 @@ class CSVExporterDialog(QDialog):
     def export_csv(self):
         selected = [p for p, cb in self.checkbox_map.items() if cb.isChecked()]
         output_path = self.output_lineedit.text()
-        export_csv_for_platforms(selected, output_path)
+        if not selected or not output_path:
+            self.accept()
+            return
+        from database.db_operation import ImageTeaDB
+        db = ImageTeaDB()
+        files = db.get_all_files()
+        total_files = len(files) * len(selected)
+        progress = QProgressDialog("Exporting CSV...", "Cancel", 0, total_files, self)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setValue(0)
+        progress.setAutoClose(True)
+        progress.setAutoReset(True)
+        def progress_callback():
+            value = progress.value() + 1
+            progress.setValue(value)
+        export_csv_for_platforms(selected, output_path, progress_callback)
+        progress.setValue(total_files)
         self.accept()

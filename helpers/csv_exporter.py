@@ -65,7 +65,7 @@ def _istock_format(file):
     keywords = file[5] if file[5] is not None else ""
     return f'{filename},{created_date},"{description}","{country}","{brief_code}","{title}","""{keywords}"""'
 
-def export_csv_for_platforms(platforms, output_path=None):
+def export_csv_for_platforms(platforms, output_path=None, progress_callback=None):
     print(f"[csv_exporter] Exporting CSV for platforms: {platforms}")
     print(f"[csv_exporter] Output path: {output_path}")
     db = ImageTeaDB()
@@ -75,6 +75,8 @@ def export_csv_for_platforms(platforms, output_path=None):
         header = 'File name;Title;Keywords;Prompt;Model'
         for file in files:
             rows.append(_freepik_format(file))
+            if progress_callback:
+                progress_callback()
         if rows:
             csv_filename = generate_export_filename("Freepik", output_path)
             csv_path = os.path.join(output_path, csv_filename)
@@ -91,6 +93,8 @@ def export_csv_for_platforms(platforms, output_path=None):
         header = "Filename,Title,Keywords,Category,Releases"
         for file in files:
             rows.append(_adobe_stock_format(file))
+            if progress_callback:
+                progress_callback()
         if rows:
             csv_filename = generate_export_filename("Adobe_Stock", output_path)
             csv_path = os.path.join(output_path, csv_filename)
@@ -107,6 +111,8 @@ def export_csv_for_platforms(platforms, output_path=None):
         header = "Filename,Description,Keywords,Categories,Editorial,Mature content,illustration"
         for file in files:
             rows.append(_shutterstock_format(file))
+            if progress_callback:
+                progress_callback()
         if rows:
             csv_filename = generate_export_filename("Shutterstock", output_path)
             csv_path = os.path.join(output_path, csv_filename)
@@ -123,6 +129,8 @@ def export_csv_for_platforms(platforms, output_path=None):
         header = '"oldfilename","123rf_filename","description","keywords","country"'
         for file in files:
             rows.append(_123rf_format(file))
+            if progress_callback:
+                progress_callback()
         if rows:
             csv_filename = generate_export_filename("123rf", output_path)
             csv_path = os.path.join(output_path, csv_filename)
@@ -139,6 +147,8 @@ def export_csv_for_platforms(platforms, output_path=None):
         header = "Filename,Title,Description,Keywords,License"
         for file in files:
             rows.append(_vecteezy_format(file))
+            if progress_callback:
+                progress_callback()
         if rows:
             csv_filename = generate_export_filename("Vecteezy", output_path)
             csv_path = os.path.join(output_path, csv_filename)
@@ -155,6 +165,8 @@ def export_csv_for_platforms(platforms, output_path=None):
         header = "file name,created date,description,country,brief code,title,keywords"
         for file in files:
             rows.append(_istock_format(file))
+            if progress_callback:
+                progress_callback()
         if rows:
             csv_filename = generate_export_filename("iStock", output_path)
             csv_path = os.path.join(output_path, csv_filename)
