@@ -20,9 +20,17 @@ def import_files(parent, db, is_image_file, is_video_file, file_paths=None):
             fname = os.path.basename(path)
             ext = os.path.splitext(path)[1].lower()
             if ext in video_exts:
-                t, d, tg = read_metadata_video(path)
+                try:
+                    t, d, tg = read_metadata_video(path)
+                except Exception as e:
+                    print(f"[IMPORT ERROR] {fname}: {e}")
+                    t, d, tg = None, None, None
             else:
-                t, d, tg = read_metadata_pyexiv2(path)
+                try:
+                    t, d, tg = read_metadata_pyexiv2(path)
+                except Exception as e:
+                    print(f"[IMPORT ERROR] {fname}: {e}")
+                    t, d, tg = None, None, None
             title = t if t else None
             description = d if d else None
             tags = tg if tg else None
