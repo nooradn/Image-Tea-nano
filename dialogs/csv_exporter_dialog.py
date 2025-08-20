@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QCheckBox, QLabel, QGridLayout, QWidget, QPushButton, QHBoxLayout, QLineEdit, QFileDialog, QProgressDialog
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QCheckBox, QLabel, QGridLayout, QWidget, QPushButton, QHBoxLayout, QLineEdit, QFileDialog, QProgressDialog, QApplication
 from PySide6.QtCore import Qt
 import json
 import os
@@ -53,17 +53,35 @@ class CSVExporterDialog(QDialog):
         self.output_lineedit = QLineEdit()
         self.output_lineedit.setPlaceholderText("Select output folder...")
         output_layout.addWidget(self.output_lineedit)
+
+        # Paste button
+        self.paste_output_btn = QPushButton(qta.icon('fa5s.paste'), "")
+        self.paste_output_btn.setToolTip("Paste path from clipboard")
+        self.paste_output_btn.setFixedWidth(32)
+        self.paste_output_btn.clicked.connect(self.paste_output_path)
+        output_layout.addWidget(self.paste_output_btn)
+
+        # Select output button
         self.select_output_btn = QPushButton(qta.icon('fa5s.folder-open'), "Select Output")
+        self.select_output_btn.setToolTip("Select output folder")
         self.select_output_btn.clicked.connect(self.select_output_path)
         output_layout.addWidget(self.select_output_btn)
+
         main_layout.addLayout(output_layout)
 
         btn_layout = QHBoxLayout()
         self.ok_btn = QPushButton(qta.icon('fa5s.file-csv'), "Export")
+        self.ok_btn.setToolTip("Export metadata to CSV")
         self.ok_btn.clicked.connect(self.export_csv)
         btn_layout.addStretch()
         btn_layout.addWidget(self.ok_btn)
         main_layout.addLayout(btn_layout)
+
+    def paste_output_path(self):
+        clipboard = QApplication.clipboard()
+        text = clipboard.text()
+        if text:
+            self.output_lineedit.setText(text)
 
     def select_output_path(self):
         home_dir = os.path.expanduser("~")
