@@ -24,16 +24,16 @@ def import_files(parent, db, is_image_file, is_video_file, file_paths=None):
                     t, d, tg = read_metadata_video(path)
                 except Exception as e:
                     print(f"[IMPORT ERROR] {fname}: {e}")
-                    t, d, tg = "", "", ""
+                    t, d, tg = None, None, None
             else:
                 try:
                     t, d, tg = read_metadata_pyexiv2(path)
                 except Exception as e:
                     print(f"[IMPORT ERROR] {fname}: {e}")
                     t, d, tg = None, None, None
-            title = t if t else ""
-            description = d if d else ""
-            tags = tg if tg else ""
+            title = t if t else None
+            description = d if d else None
+            tags = tg if tg else None
             db.add_file(path, fname, title, description, tags, status="draft", original_filename=fname)
             added += 1
     return bool(added)

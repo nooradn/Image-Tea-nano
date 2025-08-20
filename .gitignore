@@ -211,3 +211,7 @@ database.db
 thumbs.db
 tests/
 temp/
+
+# Allow exiftool_files/lib to be tracked
+!tools/exiftool_files/lib/
+!tools/exiftool_files/lib/**
