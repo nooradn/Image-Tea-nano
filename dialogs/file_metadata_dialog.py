@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QTextEdit, QHBoxLayout, QFormLayout, QSpacerItem, QSizePolicy
-from PySide6.QtGui import QPixmap, QImage
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QTextEdit, QHBoxLayout, QFormLayout, QSpacerItem, QSizePolicy, QToolTip
+from PySide6.QtGui import QPixmap, QImage, QGuiApplication
+from PySide6.QtCore import Qt, QTimer
+import qtawesome as qta
 import os
 
 class FileMetadataDialog(QDialog):
@@ -66,19 +67,48 @@ class FileMetadataDialog(QDialog):
         layout.addWidget(img_label)
 
         form = QFormLayout()
-        # Editable fields
-        self.title_edit = QLineEdit(title)
-        form.addRow("Title:", self.title_edit)
 
+        # Title row with copy button
+        title_row = QHBoxLayout()
+        self.title_edit = QLineEdit(title)
+        title_row.addWidget(self.title_edit)
+        copy_title_btn = QPushButton()
+        copy_title_btn.setIcon(qta.icon("fa5s.copy"))
+        copy_title_btn.setToolTip("Copy Title")
+        copy_title_btn.setFlat(True)
+        copy_title_btn.setFixedWidth(28)
+        copy_title_btn.clicked.connect(lambda: self.copy_with_tooltip(self.title_edit.text(), copy_title_btn, "Title"))
+        title_row.addWidget(copy_title_btn)
+        form.addRow("Title:", title_row)
+
+        # Description row with copy button
+        desc_row = QHBoxLayout()
         self.description_edit = QTextEdit(description)
         self.description_edit.setFixedHeight(60)
         self.description_edit.setLineWrapMode(QTextEdit.WidgetWidth)
-        form.addRow("Description:", self.description_edit)
+        desc_row.addWidget(self.description_edit)
+        copy_desc_btn = QPushButton()
+        copy_desc_btn.setIcon(qta.icon("fa5s.copy"))
+        copy_desc_btn.setToolTip("Copy Description")
+        copy_desc_btn.setFlat(True)
+        copy_desc_btn.setFixedWidth(28)
+        copy_desc_btn.clicked.connect(lambda: self.copy_with_tooltip(self.description_edit.toPlainText(), copy_desc_btn, "Description"))
+        desc_row.addWidget(copy_desc_btn)
+        form.addRow("Description:", desc_row)
 
+        # Tags row with copy button
+        tags_row = QHBoxLayout()
         self.tags_edit = QLineEdit(tags)
-        form.addRow("Tags:", self.tags_edit)
+        tags_row.addWidget(self.tags_edit)
+        copy_tags_btn = QPushButton()
+        copy_tags_btn.setIcon(qta.icon("fa5s.copy"))
+        copy_tags_btn.setToolTip("Copy Tags")
+        copy_tags_btn.setFlat(True)
+        copy_tags_btn.setFixedWidth(28)
+        copy_tags_btn.clicked.connect(lambda: self.copy_with_tooltip(self.tags_edit.text(), copy_tags_btn, "Tags"))
+        tags_row.addWidget(copy_tags_btn)
+        form.addRow("Tags:", tags_row)
 
-        # Non-editable info
         title_length = len(title)
         tag_count = len([t for t in tags.split(",") if t.strip()]) if tags else 0
 
@@ -92,9 +122,19 @@ class FileMetadataDialog(QDialog):
         status_label.setWordWrap(True)
         form.addRow("Status:", status_label)
 
+        # Filename row with copy button
+        filename_row = QHBoxLayout()
         filename_label = QLabel(filename)
         filename_label.setWordWrap(True)
-        form.addRow("Filename:", filename_label)
+        filename_row.addWidget(filename_label)
+        copy_filename_btn = QPushButton()
+        copy_filename_btn.setIcon(qta.icon("fa5s.copy"))
+        copy_filename_btn.setToolTip("Copy Filename")
+        copy_filename_btn.setFlat(True)
+        copy_filename_btn.setFixedWidth(28)
+        copy_filename_btn.clicked.connect(lambda: self.copy_with_tooltip(filename, copy_filename_btn, "Filename"))
+        filename_row.addWidget(copy_filename_btn)
+        form.addRow("Filename:", filename_row)
 
         orig_filename_label = QLabel(original_filename)
         orig_filename_label.setWordWrap(True)
@@ -113,6 +153,31 @@ class FileMetadataDialog(QDialog):
 
         close_btn.clicked.connect(self.reject)
         save_btn.clicked.connect(self.save_metadata)
+
+    def copy_with_tooltip(self, text, btn, label):
+        QGuiApplication.clipboard().setText(text)
+        def shorten(val, maxlen=60):
+            val = val.strip()
+            if len(val) > maxlen:
+                return val[:maxlen-3] + "..."
+            return val
+        if label == "Tags":
+            value = shorten(text)
+            tooltip = f"Copied: {value}" if value else "Copied: (empty)"
+        elif label == "Filename":
+            tooltip = f"Copied: {shorten(text)}" if text else "Copied: (empty)"
+        elif label == "Title":
+            tooltip = f"Copied: {shorten(text)}" if text else "Copied: (empty)"
+        elif label == "Description":
+            tooltip = f"Copied: {shorten(text)}" if text else "Copied: (empty)"
+        else:
+            tooltip = "Copied"
+        old_tooltip = btn.toolTip()
+        btn.setToolTip(tooltip)
+        # Show tooltip at the button position
+        pos = btn.mapToGlobal(btn.rect().center())
+        QToolTip.showText(pos, tooltip, btn)
+        QTimer.singleShot(1200, lambda: btn.setToolTip(old_tooltip))
 
     def save_metadata(self):
         if not self.db:

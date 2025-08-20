@@ -1,5 +1,5 @@
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel, QHBoxLayout, QLineEdit, QPushButton
-from PySide6.QtCore import Qt, Signal, QPoint
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel, QHBoxLayout, QLineEdit, QPushButton, QToolTip
+from PySide6.QtCore import Qt, Signal, QPoint, QTimer
 from PySide6.QtGui import QColor, QBrush, QAction, QGuiApplication
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
@@ -85,6 +85,8 @@ class ImageTableWidget(QWidget):
 
         self._all_rows_cache = []
 
+        self.refresh_table()
+
     def _on_paste_clicked(self):
         clipboard = QGuiApplication.clipboard()
         text = clipboard.text()
@@ -98,6 +100,9 @@ class ImageTableWidget(QWidget):
 
     def _filter_table(self, text):
         text = text.strip().lower()
+        # Always refresh cache if search is empty, so cache is always up-to-date
+        if not text:
+            self._all_rows_cache = list(self.db.get_all_files())
         if not self._all_rows_cache:
             self._all_rows_cache = list(self.db.get_all_files())
         self.table.setRowCount(0)
@@ -174,7 +179,46 @@ class ImageTableWidget(QWidget):
         edit_action = QAction(edit_icon, "Edit metadata", self)
         edit_action.triggered.connect(lambda: self._open_metadata_dialog(index.row()))
         menu.addAction(edit_action)
+
+        row_idx = index.row()
+        filename_item = self.table.item(row_idx, 2)
+        title_item = self.table.item(row_idx, 3)
+        desc_item = self.table.item(row_idx, 4)
+        tags_item = self.table.item(row_idx, 5)
+
+        copy_filename_action = QAction(qta.icon("fa5s.copy"), "Copy Filename", self)
+        copy_filename_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(filename_item.text() if filename_item else "", "Filename", pos))
+        menu.addAction(copy_filename_action)
+
+        copy_title_action = QAction(qta.icon("fa5s.copy"), "Copy Title", self)
+        copy_title_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(title_item.text() if title_item else "", "Title", pos))
+        menu.addAction(copy_title_action)
+
+        copy_desc_action = QAction(qta.icon("fa5s.copy"), "Copy Description", self)
+        copy_desc_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(desc_item.text() if desc_item else "", "Description", pos))
+        menu.addAction(copy_desc_action)
+
+        copy_tags_action = QAction(qta.icon("fa5s.copy"), "Copy Keyword", self)
+        copy_tags_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(tags_item.text() if tags_item else "", "Keyword", pos))
+        menu.addAction(copy_tags_action)
+
         menu.exec(self.table.viewport().mapToGlobal(pos))
+
+    def _copy_to_clipboard_with_tooltip(self, text, label, pos):
+        QGuiApplication.clipboard().setText(text)
+        def shorten(val, maxlen=60):
+            val = val.strip()
+            if len(val) > maxlen:
+                return val[:maxlen-3] + "..."
+            return val
+        value = shorten(text)
+        tooltip = f"Copied {label}: {value}" if value else f"Copied {label}: (empty)"
+        global_pos = self.table.viewport().mapToGlobal(pos)
+        QToolTip.showText(global_pos, tooltip, self.table.viewport())
+        QTimer.singleShot(1200, QToolTip.hideText)
+
+    def _copy_to_clipboard(self, text):
+        QGuiApplication.clipboard().setText(text)
 
     def _on_cell_double_clicked(self, row, column):
         self._open_metadata_dialog(row)
