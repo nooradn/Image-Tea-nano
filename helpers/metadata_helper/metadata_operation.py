@@ -209,42 +209,47 @@ def read_metadata_video(file_path):
 	try:
 		with exiftool.ExifToolHelper(executable=exiftool_path) as et:
 			metadata_list = et.get_metadata([file_path])
-			if metadata_list and len(metadata_list) > 0:
-				data = metadata_list[0]
-				print(f"[DEBUG] All metadata keys: {list(data.keys())}")
-				print(f"[DEBUG] All metadata: {data}")
-				title_keys = ["QuickTime:Title", "XMP:Title", "Title"]
-				description_keys = ["QuickTime:Description", "XMP:Description", "Description"]
-				tags_keys = ["QuickTime:Keywords", "XMP:Keywords", "Keywords"]
-				for k in title_keys:
-					print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
-				for k in description_keys:
-					print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
-				for k in tags_keys:
-					print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
-				title = None
-				for k in title_keys:
-					if k in data:
-						title = data[k]
-						break
-				description = None
-				for k in description_keys:
-					if k in data:
-						description = data[k]
-						break
-				tags = None
-				for k in tags_keys:
-					if k in data:
-						tags = data[k]
-						break
-				if isinstance(tags, list):
-					tags_str = ",".join(str(t) for t in tags)
-				elif isinstance(tags, str):
-					tags_str = tags
-				else:
-					tags_str = ""
-				print(f"[exiftool READ] {file_path} | title: {title} | description: {description} | tags: {tags_str}")
-				return title, description, tags_str
+			if not metadata_list or len(metadata_list) == 0:
+				print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
+				return None, None, None
+			data = metadata_list[0]
+			if not isinstance(data, dict):
+				print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
+				return None, None, None
+			print(f"[DEBUG] All metadata keys: {list(data.keys())}")
+			print(f"[DEBUG] All metadata: {data}")
+			title_keys = ["QuickTime:Title", "XMP:Title", "Title"]
+			description_keys = ["QuickTime:Description", "XMP:Description", "Description"]
+			tags_keys = ["QuickTime:Keywords", "XMP:Keywords", "Keywords"]
+			for k in title_keys:
+				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
+			for k in description_keys:
+				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
+			for k in tags_keys:
+				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
+			title = None
+			for k in title_keys:
+				if k in data and data[k] is not None:
+					title = data[k]
+					break
+			description = None
+			for k in description_keys:
+				if k in data and data[k] is not None:
+					description = data[k]
+					break
+			tags = None
+			for k in tags_keys:
+				if k in data and data[k] is not None:
+					tags = data[k]
+					break
+			if isinstance(tags, list):
+				tags_str = ",".join(str(t) for t in tags)
+			elif isinstance(tags, str):
+				tags_str = tags
+			else:
+				tags_str = ""
+			print(f"[exiftool READ] {file_path} | title: {title} | description: {description} | tags: {tags_str}")
+			return title, description, tags_str
 		print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
 		return None, None, None
 	except Exception as e:
