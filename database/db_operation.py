@@ -232,19 +232,40 @@ class ImageTeaDB:
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
             for platform, category_id in category_dict.items():
-                c.execute('SELECT id FROM platform_list WHERE name=?', (platform,))
-                platform_row = c.fetchone()
-                if platform_row:
-                    platform_id = platform_row[0]
+                if platform == "shutterstock" and isinstance(category_id, dict):
+                    for key in ["primary", "secondary"]:
+                        cat_val = category_id.get(key)
+                        if cat_val is not None:
+                            c.execute('SELECT id FROM platform_list WHERE name=?', (platform,))
+                            platform_row = c.fetchone()
+                            if platform_row:
+                                platform_id = platform_row[0]
+                            else:
+                                c.execute('INSERT INTO platform_list (name) VALUES (?)', (platform,))
+                                platform_id = c.lastrowid
+                            c.execute('SELECT id FROM category_mapping WHERE file_id=? AND platform_id=? AND category_id=?', (file_id, platform_id, cat_val))
+                            mapping_row = c.fetchone()
+                            cat_name = f"{cat_val} ({key})"
+                            if mapping_row:
+                                c.execute('UPDATE category_mapping SET category_id=?, category_name=? WHERE id=?',
+                                          (cat_val, cat_name, mapping_row[0]))
+                            else:
+                                c.execute('INSERT INTO category_mapping (file_id, platform_id, category_id, category_name) VALUES (?, ?, ?, ?)',
+                                          (file_id, platform_id, cat_val, cat_name))
                 else:
-                    c.execute('INSERT INTO platform_list (name) VALUES (?)', (platform,))
-                    platform_id = c.lastrowid
-                c.execute('SELECT id FROM category_mapping WHERE file_id=? AND platform_id=?', (file_id, platform_id))
-                mapping_row = c.fetchone()
-                if mapping_row:
-                    c.execute('UPDATE category_mapping SET category_id=?, category_name=? WHERE id=?',
-                              (category_id, str(category_id), mapping_row[0]))
-                else:
-                    c.execute('INSERT INTO category_mapping (file_id, platform_id, category_id, category_name) VALUES (?, ?, ?, ?)',
-                              (file_id, platform_id, category_id, str(category_id)))
+                    c.execute('SELECT id FROM platform_list WHERE name=?', (platform,))
+                    platform_row = c.fetchone()
+                    if platform_row:
+                        platform_id = platform_row[0]
+                    else:
+                        c.execute('INSERT INTO platform_list (name) VALUES (?)', (platform,))
+                        platform_id = c.lastrowid
+                    c.execute('SELECT id FROM category_mapping WHERE file_id=? AND platform_id=?', (file_id, platform_id))
+                    mapping_row = c.fetchone()
+                    if mapping_row:
+                        c.execute('UPDATE category_mapping SET category_id=?, category_name=? WHERE id=?',
+                                  (category_id, str(category_id), mapping_row[0]))
+                    else:
+                        c.execute('INSERT INTO category_mapping (file_id, platform_id, category_id, category_name) VALUES (?, ?, ?, ?)',
+                                  (file_id, platform_id, category_id, str(category_id)))
             conn.commit()

@@ -49,6 +49,7 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     prompt = prompt.replace("_TOKEN_", generate_token())
     prompt += (
         "\n\nShutterstock categories (number:name):\n"
+        "Select TWO relevant categories for Shutterstock: one as PRIMARY (the most relevant), and one as SECONDARY (the next most relevant). Both must be chosen from the list below and must be related to the content.\n"
         f"{json.dumps(shutterstock_map, indent=2)}\n"
         "Adobe Stock categories (number:name):\n"
         f"{json.dumps(adobe_map, indent=2)}\n"
