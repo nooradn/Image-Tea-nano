@@ -212,6 +212,10 @@ thumbs.db
 tests/
 temp/
 
+Sign-Image-Tea.bat
+Image Tea.bat
+DesainiaStudio.pfx
+
 # Allow exiftool_files/lib to be tracked
 !tools/exiftool_files/lib/
 !tools/exiftool_files/lib/**

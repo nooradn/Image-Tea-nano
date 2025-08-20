@@ -27,7 +27,12 @@ def load_openai_prompt_vars():
     shutterstock_map = data["shutterstock_category_map"]
     adobe_map = data["adobe_stock_category_map"]
     return (
-        prompt_data["ai_prompt"],
+        prompt_data["title_requirements"],
+        prompt_data["description_requirements"],
+        prompt_data["keywords_requirements"],
+        prompt_data["general_guides"],
+        prompt_data["strict_donts"],
+        prompt_data["unique_token"],
         prompt_data["negative_prompt"],
         prompt_data["system_prompt"],
         prompt_data["custom_prompt"],
@@ -39,8 +44,33 @@ def load_openai_prompt_vars():
         adobe_map
     )
 
-def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map, filename=None):
-    prompt = ai_prompt
+def format_openai_prompt(
+    title_requirements,
+    description_requirements,
+    keywords_requirements,
+    general_guides,
+    strict_donts,
+    unique_token,
+    negative_prompt,
+    system_prompt,
+    custom_prompt,
+    min_title_length,
+    max_title_length,
+    max_description_length,
+    required_tag_count,
+    shutterstock_map,
+    adobe_map,
+    filename=None
+):
+    prompt = (
+        "Create high-quality image or video digital assets metadata following these guidelines:\n\n"
+        f"1. Title Requirements:\n{title_requirements}\n\n"
+        f"2. Description Requirements:\n{description_requirements}\n\n"
+        f"3. Keywords Requirements:\n{keywords_requirements}\n\n"
+        f"4. General Guidelines:\n{general_guides}\n\n"
+        f"5. Strict Don'ts:\n{strict_donts}\n\n"
+        f"6. Uniqueness:\n{unique_token}\n"
+    )
     prompt = prompt.replace("_MIN_LEN_", str(min_title_length))
     prompt = prompt.replace("_MAX_LEN_", str(max_title_length))
     prompt = prompt.replace("_MAX_DESC_LEN_", str(max_description_length))
@@ -94,8 +124,41 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
             return '', '', '', {}, error_message, 0, 0, 0
         client = OpenAI(api_key=api_key)
         if not prompt:
-            ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map = load_openai_prompt_vars()
-            prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map, filename=filename)
+            (
+                title_requirements,
+                description_requirements,
+                keywords_requirements,
+                general_guides,
+                strict_donts,
+                unique_token,
+                negative_prompt,
+                system_prompt,
+                custom_prompt,
+                min_title_length,
+                max_title_length,
+                max_description_length,
+                required_tag_count,
+                shutterstock_map,
+                adobe_map
+            ) = load_openai_prompt_vars()
+            prompt = format_openai_prompt(
+                title_requirements,
+                description_requirements,
+                keywords_requirements,
+                general_guides,
+                strict_donts,
+                unique_token,
+                negative_prompt,
+                system_prompt,
+                custom_prompt,
+                min_title_length,
+                max_title_length,
+                max_description_length,
+                required_tag_count,
+                shutterstock_map,
+                adobe_map,
+                filename=filename
+            )
         compressed_path = compress_and_save_image(image_path)
         if not compressed_path:
             error_message = f"[OpenAI ERROR] Failed to compress image: {image_path}"
