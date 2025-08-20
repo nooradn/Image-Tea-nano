@@ -17,22 +17,43 @@ def _freepik_format(file):
     filename = file[2]
     title = file[3] if file[3] is not None else ""
     tags = file[5] if file[5] is not None else ""
-    # Prompt and Model are empty strings as requested
     prompt = ""
     model = ""
     return f'"{filename}";"{title}";"{tags}";"{prompt}";"{model}"'
 
-def _adobe_stock_format(file):
+def _adobe_stock_format(file, adobe_map, category_mapping):
     filename = file[2]
     title = file[3] if file[3] is not None else ""
     tags = file[5] if file[5] is not None else ""
-    return f'{filename},"{title}","{tags}",,'
+    file_id = file[0]
+    adobe_cat_id = None
+    for mapping in category_mapping:
+        if mapping['file_id'] == file_id and mapping['platform'] == 'adobe_stock':
+            adobe_cat_id = mapping['category_id']
+            break
+    category_text = str(adobe_cat_id) if adobe_cat_id is not None else ""
+    return f'{filename},"{title}","{tags}","{category_text}",'
 
-def _shutterstock_format(file):
+def _shutterstock_format(file, shutterstock_map, category_mapping):
     filename = file[2]
     description = file[4] if file[4] is not None else ""
     tags = file[5] if file[5] is not None else ""
+    file_id = file[0]
+    primary = None
+    secondary = None
+    for mapping in category_mapping:
+        if mapping['file_id'] == file_id and mapping['platform'] == 'shutterstock':
+            if mapping['category_name'].endswith('(primary)'):
+                primary = mapping['category_id']
+            elif mapping['category_name'].endswith('(secondary)'):
+                secondary = mapping['category_id']
     categories = ""
+    if primary and secondary:
+        categories = f"{shutterstock_map.get(str(primary), '')},{shutterstock_map.get(str(secondary), '')}"
+    elif primary:
+        categories = shutterstock_map.get(str(primary), '')
+    elif secondary:
+        categories = shutterstock_map.get(str(secondary), '')
     editorial = "no"
     mature_content = "no"
     illustration = "yes"
@@ -70,6 +91,8 @@ def export_csv_for_platforms(platforms, output_path=None, progress_callback=None
     print(f"[csv_exporter] Output path: {output_path}")
     db = ImageTeaDB()
     files = db.get_all_files()
+    shutterstock_map, adobe_map = db.get_category_maps()
+    category_mapping = db.get_category_mapping()
     if "Freepik" in platforms and output_path:
         rows = []
         header = 'File name;Title;Keywords;Prompt;Model'
@@ -92,7 +115,7 @@ def export_csv_for_platforms(platforms, output_path=None, progress_callback=None
         rows = []
         header = "Filename,Title,Keywords,Category,Releases"
         for file in files:
-            rows.append(_adobe_stock_format(file))
+            rows.append(_adobe_stock_format(file, adobe_map, category_mapping))
             if progress_callback:
                 progress_callback()
         if rows:
@@ -110,7 +133,7 @@ def export_csv_for_platforms(platforms, output_path=None, progress_callback=None
         rows = []
         header = "Filename,Description,Keywords,Categories,Editorial,Mature content,illustration"
         for file in files:
-            rows.append(_shutterstock_format(file))
+            rows.append(_shutterstock_format(file, shutterstock_map, category_mapping))
             if progress_callback:
                 progress_callback()
         if rows:

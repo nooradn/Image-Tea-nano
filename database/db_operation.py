@@ -1,7 +1,8 @@
 import sqlite3
-
+import json
 from config import BASE_PATH
 import os
+
 DB_PATH = os.path.join(BASE_PATH, 'database', 'database.db')
 
 class ImageTeaDB:
@@ -269,3 +270,28 @@ class ImageTeaDB:
                         c.execute('INSERT INTO category_mapping (file_id, platform_id, category_id, category_name) VALUES (?, ?, ?, ?)',
                                   (file_id, platform_id, category_id, str(category_id)))
             conn.commit()
+
+    def get_category_maps(self):
+        config_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        shutterstock_map = config["shutterstock_category_map"]
+        adobe_map = config["adobe_stock_category_map"]
+        return shutterstock_map, adobe_map
+
+    def get_category_mapping(self):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            c.execute('SELECT file_id, platform_id, category_id, category_name FROM category_mapping')
+            rows = c.fetchall()
+            c.execute('SELECT id, name FROM platform_list')
+            platform_map = {row[0]: row[1] for row in c.fetchall()}
+            mapping = []
+            for row in rows:
+                mapping.append({
+                    'file_id': row[0],
+                    'platform': platform_map.get(row[1], ''),
+                    'category_id': row[2],
+                    'category_name': row[3]
+                })
+            return mapping
