@@ -12,7 +12,7 @@ class EditPromptDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Edit Prompt")
-        self.setFixedSize(600, 500)
+        self.setFixedSize(600, 700)
         main_layout = QVBoxLayout(self)
 
         top_widget = QWidget(self)
@@ -21,33 +21,55 @@ class EditPromptDialog(QDialog):
         top_grid.setColumnStretch(1, 1)
         top_grid.setContentsMargins(0, 0, 0, 0)
 
-        self.ai_prompt_label = QLabel("AI Prompt:")
-        self.ai_prompt_edit = QTextEdit(self)
-        self.ai_prompt_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-        self.ai_prompt_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
-        self.ai_prompt_edit.setAcceptRichText(False)
+        self.title_req_label = QLabel("Title Requirements:")
+        self.title_req_edit = QTextEdit(self)
+        self.title_req_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.title_req_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self.title_req_edit.setAcceptRichText(False)
+
+        self.desc_req_label = QLabel("Description Requirements:")
+        self.desc_req_edit = QTextEdit(self)
+        self.desc_req_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.desc_req_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self.desc_req_edit.setAcceptRichText(False)
+
+        self.keywords_req_label = QLabel("Keywords Requirements:")
+        self.keywords_req_edit = QTextEdit(self)
+        self.keywords_req_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.keywords_req_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self.keywords_req_edit.setAcceptRichText(False)
+
+        top_grid.addWidget(self.title_req_label, 0, 0)
+        top_grid.addWidget(self.desc_req_label, 0, 1)
+        top_grid.addWidget(self.title_req_edit, 1, 0)
+        top_grid.addWidget(self.desc_req_edit, 1, 1)
+        top_grid.addWidget(self.keywords_req_label, 2, 0)
+        top_grid.addWidget(self.keywords_req_edit, 3, 0, 1, 2)
+        main_layout.addWidget(top_widget, 2)
+
+        self.general_guides_label = QLabel("General Guides:")
+        self.general_guides_edit = QTextEdit(self)
+        self.general_guides_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.general_guides_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self.general_guides_edit.setAcceptRichText(False)
+        main_layout.addWidget(self.general_guides_label)
+        main_layout.addWidget(self.general_guides_edit, 1)
+
+        self.strict_donts_label = QLabel("Strict Don'ts:")
+        self.strict_donts_edit = QTextEdit(self)
+        self.strict_donts_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
+        self.strict_donts_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
+        self.strict_donts_edit.setAcceptRichText(False)
+        main_layout.addWidget(self.strict_donts_label)
+        main_layout.addWidget(self.strict_donts_edit, 1)
 
         self.negative_prompt_label = QLabel("Negative Prompt:")
         self.negative_prompt_edit = QTextEdit(self)
         self.negative_prompt_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
         self.negative_prompt_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
         self.negative_prompt_edit.setAcceptRichText(False)
-
-        top_grid.addWidget(self.ai_prompt_label, 0, 0)
-        top_grid.addWidget(self.negative_prompt_label, 0, 1)
-        top_grid.addWidget(self.ai_prompt_edit, 1, 0)
-        top_grid.addWidget(self.negative_prompt_edit, 1, 1)
-        main_layout.addWidget(top_widget, 2)
-
-        self.system_prompt_label = QLabel("System Prompt (do not modify):")
-        self.system_prompt_edit = QTextEdit(self)
-        self.system_prompt_edit.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-        self.system_prompt_edit.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
-        self.system_prompt_edit.setAcceptRichText(False)
-        self.system_prompt_edit.setReadOnly(True)
-        self.system_prompt_edit.setContentsMargins(0, 0, 0, 0)
-        main_layout.addWidget(self.system_prompt_label)
-        main_layout.addWidget(self.system_prompt_edit, 1)
+        main_layout.addWidget(self.negative_prompt_label)
+        main_layout.addWidget(self.negative_prompt_edit, 1)
 
         placeholder_info = QLabel(
             "Prompt Placeholders:\n"
@@ -78,9 +100,12 @@ class EditPromptDialog(QDialog):
             with open(self.config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             prompt_data = data["prompt"]
-            self.ai_prompt_edit.setPlainText(prompt_data["ai_prompt"])
-            self.negative_prompt_edit.setPlainText(prompt_data["negative_prompt"])
-            self.system_prompt_edit.setPlainText(prompt_data["system_prompt"])
+            self.title_req_edit.setPlainText(prompt_data.get("title_requirements", ""))
+            self.desc_req_edit.setPlainText(prompt_data.get("description_requirements", ""))
+            self.keywords_req_edit.setPlainText(prompt_data.get("keywords_requirements", ""))
+            self.general_guides_edit.setPlainText(prompt_data.get("general_guides", ""))
+            self.strict_donts_edit.setPlainText(prompt_data.get("strict_donts", ""))
+            self.negative_prompt_edit.setPlainText(prompt_data.get("negative_prompt", ""))
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to load prompt: {e}")
 
@@ -90,7 +115,11 @@ class EditPromptDialog(QDialog):
                 data = json.load(f)
             if "prompt" not in data:
                 data["prompt"] = {}
-            data["prompt"]["ai_prompt"] = self.ai_prompt_edit.toPlainText()
+            data["prompt"]["title_requirements"] = self.title_req_edit.toPlainText()
+            data["prompt"]["description_requirements"] = self.desc_req_edit.toPlainText()
+            data["prompt"]["keywords_requirements"] = self.keywords_req_edit.toPlainText()
+            data["prompt"]["general_guides"] = self.general_guides_edit.toPlainText()
+            data["prompt"]["strict_donts"] = self.strict_donts_edit.toPlainText()
             data["prompt"]["negative_prompt"] = self.negative_prompt_edit.toPlainText()
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
