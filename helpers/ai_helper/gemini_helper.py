@@ -63,6 +63,20 @@ def format_gemini_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     print(full_prompt)
     return full_prompt
 
+def title_case_except(text):
+    exceptions = {"to", "and", "at", "in", "on", "for", "with", "of", "the", "a", "an", "but", "or", "nor", "so", "yet", "as", "by", "from", "into", "over", "per", "via"}
+    words = text.split()
+    if not words:
+        return text
+    result = [words[0].capitalize()]
+    for w in words[1:]:
+        lw = w.lower()
+        if lw in exceptions:
+            result.append(lw)
+        else:
+            result.append(w.capitalize())
+    return " ".join(result)
+
 def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=None):
     if stop_flag and stop_flag.get('stop'):
         return '', '', '', '', 0, 0, 0
@@ -150,6 +164,8 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             title = description = tags = ''
             category = {}
             error_message = f"[Gemini JSON PARSE ERROR] {e}"
+        if title:
+            title = title_case_except(title)
         return title, description, tags, category, error_message, token_input, token_output, token_total
     except Exception as e:
         print(f"[Gemini ERROR] {e}")
