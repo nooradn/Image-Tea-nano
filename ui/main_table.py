@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel, QHBoxLayout, QLineEdit, QPushButton
 from PySide6.QtCore import Qt, Signal, QPoint
-from PySide6.QtGui import QColor, QBrush, QAction
+from PySide6.QtGui import QColor, QBrush, QAction, QGuiApplication
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
 import qtawesome as qta
@@ -12,8 +12,46 @@ class ImageTableWidget(QWidget):
     def __init__(self, parent=None, db=None):
         super().__init__(parent)
         self.db = db
+
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
+
+        # Search bar layout
+        search_layout = QHBoxLayout()
+        self.search_edit = QLineEdit(self)
+        self.search_edit.setPlaceholderText("Search...")
+        self.search_edit.setClearButtonEnabled(False)
+        self.search_edit.textChanged.connect(self._on_search_text_changed)
+
+        search_icon_btn = QPushButton(self)
+        search_icon_btn.setIcon(qta.icon("fa5s.search"))
+        search_icon_btn.setFlat(True)
+        search_icon_btn.setFocusPolicy(Qt.NoFocus)
+        search_icon_btn.setEnabled(False)
+        search_icon_btn.setFixedWidth(28)
+
+        paste_btn = QPushButton(self)
+        paste_btn.setIcon(qta.icon("fa5s.clipboard"))
+        paste_btn.setFlat(True)
+        paste_btn.setFocusPolicy(Qt.NoFocus)
+        paste_btn.setFixedWidth(28)
+        paste_btn.setToolTip("Paste text from clipboard ke kolom pencarian")
+        paste_btn.clicked.connect(self._on_paste_clicked)
+
+        clear_btn = QPushButton(self)
+        clear_btn.setIcon(qta.icon("fa5s.times"))
+        clear_btn.setFlat(True)
+        clear_btn.setFocusPolicy(Qt.NoFocus)
+        clear_btn.setFixedWidth(28)
+        clear_btn.setToolTip("Bersihkan kolom pencarian")
+        clear_btn.clicked.connect(self._on_clear_search)
+
+        search_layout.addWidget(search_icon_btn)
+        search_layout.addWidget(self.search_edit)
+        search_layout.addWidget(paste_btn)
+        search_layout.addWidget(clear_btn)
+        self.layout.addLayout(search_layout)
+
         self.table = QTableWidget(0, 9, self)
         self.table.setHorizontalHeaderLabels([
             "", "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count", "Status"
@@ -44,6 +82,71 @@ class ImageTableWidget(QWidget):
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
+
+        self._all_rows_cache = []
+
+    def _on_paste_clicked(self):
+        clipboard = QGuiApplication.clipboard()
+        text = clipboard.text()
+        self.search_edit.setText(text)
+
+    def _on_clear_search(self):
+        self.search_edit.clear()
+
+    def _on_search_text_changed(self, text):
+        self._filter_table(text)
+
+    def _filter_table(self, text):
+        text = text.strip().lower()
+        if not self._all_rows_cache:
+            self._all_rows_cache = list(self.db.get_all_files())
+        self.table.setRowCount(0)
+        for row in self._all_rows_cache:
+            if not text or self._row_matches_search(row, text):
+                row_idx = self.table.rowCount()
+                self.table.insertRow(row_idx)
+                checkbox_item = QTableWidgetItem()
+                checkbox_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
+                checkbox_item.setCheckState(Qt.Unchecked)
+                checkbox_item.setData(Qt.UserRole, row[0])
+                self.table.setItem(row_idx, 0, checkbox_item)
+                display_values = list(row[1:7])
+                if len(display_values) > 0:
+                    short_fp = self._shorten_filepath(display_values[0])
+                    fp_item = QTableWidgetItem(short_fp)
+                    fp_item.setData(Qt.UserRole, display_values[0])
+                    self.table.setItem(row_idx, 1, fp_item)
+                    for col, val in enumerate(display_values[1:], start=2):
+                        item = QTableWidgetItem(str(val) if val is not None else "")
+                        if col == 2:
+                            item.setTextAlignment(Qt.AlignCenter)
+                        self.table.setItem(row_idx, col, item)
+                title_val = row[3] if len(row) > 3 and row[3] is not None else ""
+                title_len = len(title_val)
+                title_len_item = QTableWidgetItem(str(title_len))
+                title_len_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(row_idx, 6, title_len_item)
+                tags_val = row[5] if len(row) > 5 and row[5] is not None else ""
+                tag_count = len([t for t in tags_val.split(",") if t.strip()]) if tags_val else 0
+                tag_count_item = QTableWidgetItem(str(tag_count))
+                tag_count_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(row_idx, 7, tag_count_item)
+                status_val = row[6] if len(row) > 6 and row[6] is not None else ""
+                status_item = QTableWidgetItem(str(status_val))
+                status_item.setTextAlignment(Qt.AlignCenter)
+                self.table.setItem(row_idx, 8, status_item)
+                color = self._status_color(status_val)
+                for col in range(self.table.columnCount()):
+                    item = self.table.item(row_idx, col)
+                    if item:
+                        item.setBackground(QBrush(color))
+        self._emit_stats()
+
+    def _row_matches_search(self, row, text):
+        for value in row[1:6]:
+            if value and text in str(value).lower():
+                return True
+        return False
 
     def _shorten_filepath(self, path):
         if not path:
@@ -134,47 +237,9 @@ class ImageTableWidget(QWidget):
             status_item.setText(str(status_val))
 
     def refresh_table(self):
-        self.table.setRowCount(0)
-        for row in self.db.get_all_files():
-            row_idx = self.table.rowCount()
-            self.table.insertRow(row_idx)
-            # Checkbox with id as data
-            checkbox_item = QTableWidgetItem()
-            checkbox_item.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-            checkbox_item.setCheckState(Qt.Unchecked)
-            checkbox_item.setData(Qt.UserRole, row[0])
-            self.table.setItem(row_idx, 0, checkbox_item)
-            display_values = list(row[1:7])
-            if len(display_values) > 0:
-                short_fp = self._shorten_filepath(display_values[0])
-                fp_item = QTableWidgetItem(short_fp)
-                fp_item.setData(Qt.UserRole, display_values[0])
-                self.table.setItem(row_idx, 1, fp_item)
-                for col, val in enumerate(display_values[1:], start=2):
-                    item = QTableWidgetItem(str(val) if val is not None else "")
-                    if col == 2:
-                        item.setTextAlignment(Qt.AlignCenter)
-                    self.table.setItem(row_idx, col, item)
-            title_val = row[3] if len(row) > 3 and row[3] is not None else ""
-            title_len = len(title_val)
-            title_len_item = QTableWidgetItem(str(title_len))
-            title_len_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_idx, 6, title_len_item)
-            tags_val = row[5] if len(row) > 5 and row[5] is not None else ""
-            tag_count = len([t for t in tags_val.split(",") if t.strip()]) if tags_val else 0
-            tag_count_item = QTableWidgetItem(str(tag_count))
-            tag_count_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_idx, 7, tag_count_item)
-            status_val = row[6] if len(row) > 6 and row[6] is not None else ""
-            status_item = QTableWidgetItem(str(status_val))
-            status_item.setTextAlignment(Qt.AlignCenter)
-            self.table.setItem(row_idx, 8, status_item)
-            color = self._status_color(status_val)
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row_idx, col)
-                if item:
-                    item.setBackground(QBrush(color))
-        self._emit_stats()
+        self._all_rows_cache = list(self.db.get_all_files())
+        self._filter_table(self.search_edit.text())
+
         total_files = self.table.rowCount()
         if total_files >= 100:
             if not self._donation_dialog_shown and not is_donation_optout_today():

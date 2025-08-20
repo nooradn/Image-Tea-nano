@@ -51,6 +51,10 @@ class ImageTeaMainWindow(QMainWindow):
             batch_generate_metadata(self)
 
 if __name__ == '__main__':
+    if sys.platform == "win32":
+        import ctypes
+        app_id = u"image-tea.nano"
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
     app = QApplication(sys.argv)
     window = ImageTeaMainWindow()
     window.resize(900, 600)
