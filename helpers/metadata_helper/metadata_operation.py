@@ -205,17 +205,17 @@ def read_metadata_video(file_path):
 	video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
 	ext = os.path.splitext(file_path)[1].lower()
 	if ext not in video_exts:
-		return None, None, None
+		return "", "", ""
 	try:
 		with exiftool.ExifToolHelper(executable=exiftool_path) as et:
 			metadata_list = et.get_metadata([file_path])
 			if not metadata_list or len(metadata_list) == 0:
 				print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
-				return None, None, None
+				return "", "", ""
 			data = metadata_list[0]
 			if not isinstance(data, dict):
 				print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
-				return None, None, None
+				return "", "", ""
 			print(f"[DEBUG] All metadata keys: {list(data.keys())}")
 			print(f"[DEBUG] All metadata: {data}")
 			title_keys = ["QuickTime:Title", "XMP:Title", "Title"]
@@ -227,17 +227,17 @@ def read_metadata_video(file_path):
 				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
 			for k in tags_keys:
 				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
-			title = None
+			title = ""
 			for k in title_keys:
 				if k in data and data[k] is not None:
 					title = data[k]
 					break
-			description = None
+			description = ""
 			for k in description_keys:
 				if k in data and data[k] is not None:
 					description = data[k]
 					break
-			tags = None
+			tags = ""
 			for k in tags_keys:
 				if k in data and data[k] is not None:
 					tags = data[k]
@@ -249,12 +249,12 @@ def read_metadata_video(file_path):
 			else:
 				tags_str = ""
 			print(f"[exiftool READ] {file_path} | title: {title} | description: {description} | tags: {tags_str}")
-			return title, description, tags_str
+			return title if title else "", description if description else "", tags_str
 		print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
-		return None, None, None
+		return "", "", ""
 	except Exception as e:
 		print(f"[exiftool READ ERROR] {file_path}: {e}")
-		return None, None, None
+		return "", "", ""
 
 def write_metadata_to_images(db, parent=None):
 	rows = db.get_all_files()
