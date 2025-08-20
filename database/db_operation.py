@@ -41,6 +41,19 @@ class ImageTeaDB:
                 token_total INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )''')
+            c.execute('''CREATE TABLE IF NOT EXISTS platform_list (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE
+            )''')
+            c.execute('''CREATE TABLE IF NOT EXISTS category_mapping (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id INTEGER,
+                platform_id INTEGER,
+                category_id INTEGER,
+                category_name TEXT,
+                FOREIGN KEY(file_id) REFERENCES files(id),
+                FOREIGN KEY(platform_id) REFERENCES platform_list(id)
+            )''')
             conn.commit()
 
     def set_api_key(self, service, api_key, note=None, last_tested=None, status=None, model=None):
@@ -137,6 +150,10 @@ class ImageTeaDB:
     def clear_files(self):
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
+            c.execute('SELECT id FROM files')
+            file_ids = [row[0] for row in c.fetchall()]
+            if file_ids:
+                c.executemany('DELETE FROM category_mapping WHERE file_id=?', [(fid,) for fid in file_ids])
             c.execute('DELETE FROM files')
             conn.commit()
 
@@ -209,4 +226,25 @@ class ImageTeaDB:
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
             c.execute('UPDATE files SET title=NULL, description=NULL, tags=NULL, status="draft"')
+            conn.commit()
+
+    def save_category_mapping(self, file_id, category_dict):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            for platform, category_id in category_dict.items():
+                c.execute('SELECT id FROM platform_list WHERE name=?', (platform,))
+                platform_row = c.fetchone()
+                if platform_row:
+                    platform_id = platform_row[0]
+                else:
+                    c.execute('INSERT INTO platform_list (name) VALUES (?)', (platform,))
+                    platform_id = c.lastrowid
+                c.execute('SELECT id FROM category_mapping WHERE file_id=? AND platform_id=?', (file_id, platform_id))
+                mapping_row = c.fetchone()
+                if mapping_row:
+                    c.execute('UPDATE category_mapping SET category_id=?, category_name=? WHERE id=?',
+                              (category_id, str(category_id), mapping_row[0]))
+                else:
+                    c.execute('INSERT INTO category_mapping (file_id, platform_id, category_id, category_name) VALUES (?, ?, ?, ?)',
+                              (file_id, platform_id, category_id, str(category_id)))
             conn.commit()

@@ -45,14 +45,6 @@ def setup_main_menu(window):
     exit_action.triggered.connect(window.close)
     file_menu.addAction(exit_action)
 
-    api_menu = QMenu("API", menubar)
-    add_api_action = QAction(qta.icon('fa5s.key'), "Add API Key", window)
-    def show_api_dialog():
-        dlg = AddApiKeyDialog(window)
-        dlg.exec()
-    add_api_action.triggered.connect(show_api_dialog)
-    api_menu.addAction(add_api_action)
-
     edit_menu = QMenu("Edit", menubar)
     delete_action = QAction(qta.icon('fa5s.trash'), "Delete Selected", window)
     delete_action.triggered.connect(lambda: window.table.delete_selected())
@@ -117,6 +109,14 @@ def setup_main_menu(window):
     custom_prompt_action.triggered.connect(open_custom_prompt)
     prompt_menu.addAction(custom_prompt_action)
 
+    api_menu = QMenu("API", menubar)
+    add_api_action = QAction(qta.icon('fa5s.key'), "Add API Key", window)
+    def show_api_dialog():
+        dlg = AddApiKeyDialog(window)
+        dlg.exec()
+    add_api_action.triggered.connect(show_api_dialog)
+    api_menu.addAction(add_api_action)
+
     help_menu = QMenu("Help", menubar)
     about_action = QAction(qta.icon('fa5s.info-circle'), "About", window)
     def show_about():
@@ -158,9 +158,9 @@ def setup_main_menu(window):
     help_menu.addAction(documentation_action)
 
     menubar.addMenu(file_menu)
-    menubar.addMenu(api_menu)
     menubar.addMenu(edit_menu)
     menubar.addMenu(metadata_menu)
     menubar.addMenu(prompt_menu)
+    menubar.addMenu(api_menu)
     menubar.addMenu(help_menu)
     window.setMenuBar(menubar)

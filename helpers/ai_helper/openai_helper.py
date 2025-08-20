@@ -24,6 +24,8 @@ def load_openai_prompt_vars():
     with open(prompt_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     prompt_data = data["prompt"]
+    shutterstock_map = data["shutterstock_category_map"]
+    adobe_map = data["adobe_stock_category_map"]
     return (
         prompt_data["ai_prompt"],
         prompt_data["negative_prompt"],
@@ -32,10 +34,12 @@ def load_openai_prompt_vars():
         data["min_title_length"],
         data["max_title_length"],
         data["max_description_length"],
-        data["required_tag_count"]
+        data["required_tag_count"],
+        shutterstock_map,
+        adobe_map
     )
 
-def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, filename=None):
+def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map, filename=None):
     prompt = ai_prompt
     prompt = prompt.replace("_MIN_LEN_", str(min_title_length))
     prompt = prompt.replace("_MAX_LEN_", str(max_title_length))
@@ -43,16 +47,24 @@ def format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_promp
     prompt = prompt.replace("_TAGS_COUNT_", str(required_tag_count))
     prompt = prompt.replace("_TIMESTAMP_", generate_timestamp())
     prompt = prompt.replace("_TOKEN_", generate_token())
+    prompt += (
+        "\n\nShutterstock categories (number:name):\n"
+        f"{json.dumps(shutterstock_map, indent=2)}\n"
+        "Adobe Stock categories (number:name):\n"
+        f"{json.dumps(adobe_map, indent=2)}\n"
+    )
     if filename:
         prompt = f"Filename: {filename}\n{prompt}"
     if custom_prompt and custom_prompt.strip():
         prompt = f"{prompt}\n\nMANDATORY: {custom_prompt.strip()}\n"
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
+    print("OpenAI Prompt:")
+    print(full_prompt)
     return full_prompt
 
 def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=None):
     if stop_flag and stop_flag.get('stop'):
-        return '', '', '', '', 0, 0, 0
+        return '', '', '', {}, '', 0, 0, 0
     start_time = time.perf_counter()
     try:
         ext = os.path.splitext(image_path)[1].lower()
@@ -64,15 +76,15 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
                 "Silakan gunakan gambar atau pilih layanan Gemini untuk video. "
                 "Jika di masa depan OpenAI sudah mendukung video, fitur ini akan segera ditambahkan."
             )
-            return '', '', '', error_message, 0, 0, 0
+            return '', '', '', {}, error_message, 0, 0, 0
         client = OpenAI(api_key=api_key)
         if not prompt:
-            ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count = load_openai_prompt_vars()
-            prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, filename=filename)
+            ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map = load_openai_prompt_vars()
+            prompt = format_openai_prompt(ai_prompt, negative_prompt, system_prompt, custom_prompt, min_title_length, max_title_length, max_description_length, required_tag_count, shutterstock_map, adobe_map, filename=filename)
         compressed_path = compress_and_save_image(image_path)
         if not compressed_path:
             error_message = f"[OpenAI ERROR] Failed to compress image: {image_path}"
-            return '', '', '', error_message, 0, 0, 0
+            return '', '', '', {}, error_message, 0, 0, 0
         with open(compressed_path, "rb") as f:
             image_bytes = f.read()
         image_b64 = base64.b64encode(image_bytes).decode("utf-8")
@@ -87,11 +99,13 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
             }
         ]
         if stop_flag and stop_flag.get('stop'):
-            return '', '', '', '', 0, 0, 0
+            return '', '', '', {}, '', 0, 0, 0
         response = client.responses.create(
             model=model,
             input=messages
         )
+        print("OpenAI RAW response:")
+        print(response)
         token_input = 0
         token_output = 0
         token_total = 0
@@ -114,6 +128,8 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
             text = getattr(response, "output_text", None)
         if not text:
             text = str(response)
+        print("OpenAI RAW text:")
+        print(text)
         try:
             if text.strip().startswith('```'):
                 text = text.strip().lstrip('`').lstrip('json').strip()
@@ -124,13 +140,18 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
             description = meta.get('description', '')
             tags = ', '.join(meta.get('tags', [])) if isinstance(meta.get('tags'), list) else str(meta.get('tags', ''))
             tags = tags.lower()
+            category = meta.get('category', {})
+            error_message = ''
         except Exception as e:
             print(f"[OpenAI JSON PARSE ERROR] {e}")
             title = description = tags = ''
-        return title, description, tags, '', token_input, token_output, token_total
+            category = {}
+            error_message = f"[OpenAI JSON PARSE ERROR] {e}"
+        return title, description, tags, category, error_message, token_input, token_output, token_total
     except Exception as e:
         error_message = f"[OpenAI ERROR] {e}"
-        return '', '', '', error_message, 0, 0, 0
+        print(error_message)
+        return '', '', '', {}, error_message, 0, 0, 0
     finally:
         duration_ms = int((time.perf_counter() - start_time) * 1000)
         track_openai_generation_time(duration_ms)
