@@ -215,6 +215,7 @@ temp/
 Sign-Image-Tea.bat
 Image Tea.bat
 DesainiaStudio.pfx
+code.bat
 
 # Allow exiftool_files/lib to be tracked
 !tools/exiftool_files/lib/
