@@ -12,6 +12,7 @@ class ImageTableWidget(QWidget):
     def __init__(self, parent=None, db=None):
         super().__init__(parent)
         self.db = db
+        self._properties_widget = getattr(parent, "properties_widget", None)
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -77,6 +78,7 @@ class ImageTableWidget(QWidget):
 
         # Connect selection change to stats update
         self.table.selectionModel().selectionChanged.connect(self._emit_stats)
+        self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self.table.itemChanged.connect(self._on_item_changed)
 
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -327,6 +329,29 @@ class ImageTableWidget(QWidget):
     def _on_item_changed(self, item):
         if item.column() == 0:
             self._emit_stats()
+
+    def _on_selection_changed(self, selected, deselected):
+        if self._properties_widget is None:
+            self._properties_widget = getattr(self.parent(), "properties_widget", None)
+        if self._properties_widget is None:
+            return
+        selected_rows = self.table.selectionModel().selectedRows()
+        if selected_rows:
+            idx = selected_rows[0].row()
+            # Ambil data asli dari cache, bukan dari tabel (agar mapping sinkron)
+            if 0 <= idx < len(self._all_rows_cache):
+                row = self._all_rows_cache[idx]
+                title = row[3] if len(row) > 3 and row[3] is not None else ""
+                tags = row[5] if len(row) > 5 and row[5] is not None else ""
+                title_length = len(title)
+                tag_count = len([t for t in tags.split(",") if t.strip()]) if tags else 0
+                # Sertakan file_id di row_data[0]
+                row_data = [row[0]] + list(row[1:7]) + [row[7] if len(row) > 7 else ""] + [str(title_length), str(tag_count)]
+                self._properties_widget.set_properties(row_data)
+            else:
+                self._properties_widget.set_properties(None)
+        else:
+            self._properties_widget.set_properties(None)
 
     def delete_selected(self):
         selected = self.table.selectionModel().selectedRows()

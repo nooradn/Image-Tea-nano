@@ -7,11 +7,14 @@ from ui.main_table import ImageTableWidget
 from ui.prompt_section import PromptSectionWidget
 from ui.stats_section import StatsSectionWidget
 from ui.main_menu import setup_main_menu
+from ui.main_toolbar import setup_main_toolbar
 from helpers.batch_processing_helper import batch_generate_metadata
 from dialogs.api_call_warning_dialog import ApiCallWarningDialog
+from ui.properties_widget import PropertiesWidget
 
 def setup_ui(self):
     setup_main_menu(self)
+    setup_main_toolbar(self)
     from database.db_operation import ImageTeaDB
     self.db = getattr(self, 'db', None) or ImageTeaDB()
     central = QWidget()
@@ -160,22 +163,18 @@ def setup_ui(self):
     self.prompt_section = PromptSectionWidget(self)
     layout.addWidget(self.prompt_section)
 
-    # Grup tombol import/delete/clear di kiri dan write metadata di kanan atas tabel
-    top_btn_layout = QHBoxLayout()
-    left_btn_group = QHBoxLayout()
-    right_btn_group = QHBoxLayout()
-
-    # Tombol Write Metadata dihapus karena sudah di menu Metadata
-    top_btn_layout.addLayout(left_btn_group)
-    top_btn_layout.addStretch()
-    top_btn_layout.addLayout(right_btn_group)
-    layout.addLayout(top_btn_layout)
-
-    self.table = ImageTableWidget(self, db=self.db)
-    layout.addWidget(self.table)
-
     self.dnd_widget = DragDropWidget(self)
     layout.addWidget(self.dnd_widget)
+
+    # Konten utama: tabel dan properties di dalam QHBoxLayout
+    main_content_layout = QHBoxLayout()
+    self.table = ImageTableWidget(self, db=self.db)
+    self.properties_widget = PropertiesWidget(self)
+    self.table._properties_widget = self.properties_widget
+    self.properties_widget.db = self.db  # Explicitly set db attribute for properties_widget
+    main_content_layout.addWidget(self.table, stretch=3)
+    main_content_layout.addWidget(self.properties_widget, stretch=1)
+    layout.addLayout(main_content_layout)
 
     # Grup generate metadata: stats_section di kiri sebaris dengan tombol generate di kanan bawah tabel
     btn_row_layout = QHBoxLayout()

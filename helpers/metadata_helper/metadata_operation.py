@@ -140,6 +140,10 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
 			exif_update['Exif.Photo.UserComment'] = ', '.join(tag_list)
 			exif_update['Exif.Image.XPSubject'] = subject_str
 
+		# Tambahkan program name "Image Tea"
+		xmp_update['Xmp.xmp.CreatorTool'] = "Image Tea"
+		exif_update['Exif.Image.Software'] = "Image Tea"
+
 		with pyexiv2.Image(file_path) as metadata:
 			metadata.modify_xmp(xmp_update)
 			metadata.modify_iptc(iptc_update)
@@ -304,6 +308,10 @@ def write_metadata_to_videos(db, parent=None):
 				metadata_args.append(f"-QuickTime:Comment={description}")
 			if tags is not None:
 				metadata_args.append(f"-Keywords={tags}")
+			# Tambahkan program name "Image Tea" ke metadata video
+			metadata_args.append(f"-QuickTime:Software=Image Tea")
+			metadata_args.append(f"-XMP:CreatorTool=Image Tea")
+			metadata_args.append(f"-Software=Image Tea")
 			metadata_args.append("-overwrite_original")
 			metadata_args.append(filepath)
 			with exiftool.ExifTool(executable=exiftool_path) as et:
