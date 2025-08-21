@@ -11,6 +11,7 @@ class FileMetadataDialog(QDialog):
         self.setFixedWidth(400)
         self.filepath = filepath
         self.db = getattr(parent, 'db', None)
+        self._properties_widget = getattr(parent, "properties_widget", None)
         file_data = None
         if self.db:
             for row in self.db.get_all_files():
@@ -50,7 +51,6 @@ class FileMetadataDialog(QDialog):
                     else:
                         img_label.setText("Cannot preview video")
                 except Exception as e:
-                    print(f"Video preview error: {e}")
                     img_label.setText("Cannot preview video")
             else:
                 pixmap = QPixmap(filepath)
@@ -211,7 +211,6 @@ class FileMetadataDialog(QDialog):
 
     def save_metadata(self):
         if not self.db:
-            print("No database connection for saving metadata.")
             return
         title = self.title_edit.text()
         description = self.description_edit.toPlainText()
@@ -237,25 +236,16 @@ class FileMetadataDialog(QDialog):
                 cat_dict["adobe_stock"] = int(adobe_val)
             if cat_dict:
                 self.db.save_category_mapping(file_id, cat_dict)
-        self.accept()
-        file_id = None
-        for row in self.db.get_all_files():
-            if row[1] == self.filepath:
-                file_id = row[0]
-                break
-        if file_id is not None:
-            cat_dict = {}
-            primary_val = self.shutterstock_primary_combo.currentData()
-            secondary_val = self.shutterstock_secondary_combo.currentData()
-            adobe_val = self.adobe_combo.currentData()
-            if primary_val or secondary_val:
-                cat_dict["shutterstock"] = {}
-                if primary_val:
-                    cat_dict["shutterstock"]["primary"] = int(primary_val)
-                if secondary_val:
-                    cat_dict["shutterstock"]["secondary"] = int(secondary_val)
-            if adobe_val:
-                cat_dict["adobe_stock"] = int(adobe_val)
-            if cat_dict:
-                self.db.save_category_mapping(file_id, cat_dict)
+        if self._properties_widget is None and self.parent() is not None:
+            self._properties_widget = getattr(self.parent(), "properties_widget", None)
+        if self._properties_widget is not None:
+            for row in self.db.get_all_files():
+                if row[1] == self.filepath:
+                    title = row[3] if len(row) > 3 and row[3] is not None else ""
+                    tags = row[5] if len(row) > 5 and row[5] is not None else ""
+                    title_length = len(title)
+                    tag_count = len([t for t in tags.split(",") if t.strip()]) if tags else 0
+                    row_data = [row[0]] + list(row[1:7]) + [row[7] if len(row) > 7 else ""] + [str(title_length), str(tag_count)]
+                    self._properties_widget.set_properties(row_data)
+                    break
         self.accept()

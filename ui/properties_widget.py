@@ -76,7 +76,6 @@ class PropertiesWidget(QWidget):
             self.preview_label.clear()
             for value_label in self.fields:
                 value_label.setText("")
-            # Load first row if available
             if self.db:
                 files = self.db.get_all_files()
                 if files:
@@ -118,8 +117,8 @@ class PropertiesWidget(QWidget):
             tags,
             str(row_data[6]) if len(row_data) > 6 else "",
             str(row_data[7]) if len(row_data) > 7 else "",
-            "",  # Placeholder for Shutterstock Category
-            ""   # Placeholder for Adobe Stock Category
+            "",
+            ""
         ]
 
         shutterstock_cat_text = ""

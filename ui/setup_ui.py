@@ -172,6 +172,18 @@ def setup_ui(self):
     self.properties_widget = PropertiesWidget(self)
     self.table._properties_widget = self.properties_widget
     self.properties_widget.db = self.db  # Explicitly set db attribute for properties_widget
+
+    # --- Tambahkan koneksi sinyal untuk refresh properties ---
+    def on_table_selection_changed():
+        selected_row = self.table.get_selected_row_data() if hasattr(self.table, "get_selected_row_data") else None
+        self.properties_widget.set_properties(selected_row)
+
+    if hasattr(self.table, "selectionModel"):
+        self.table.selectionModel().selectionChanged.connect(lambda *_: on_table_selection_changed())
+
+    if hasattr(self.table, "data_refreshed"):
+        self.table.data_refreshed.connect(lambda: on_table_selection_changed())
+
     main_content_layout.addWidget(self.table, stretch=3)
     main_content_layout.addWidget(self.properties_widget, stretch=1)
     layout.addLayout(main_content_layout)
@@ -225,6 +237,8 @@ def setup_ui(self):
             if result != QDialog.Accepted:
                 return
         batch_generate_metadata(self)
+        # Setelah batch generate, refresh properties
+        on_table_selection_changed()
 
     self.gen_btn.clicked.connect(on_generate_clicked)
     gen_group_layout.addWidget(self.gen_btn)
@@ -239,3 +253,5 @@ def setup_ui(self):
         on_model_combo_changed(self.model_combo.currentIndex())
     else:
         refresh_api_key_combo(None)
+    # Inisialisasi properties pertama kali
+    on_table_selection_changed()

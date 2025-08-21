@@ -8,11 +8,13 @@ import os
 
 class ImageTableWidget(QWidget):
     stats_changed = Signal(int, int, int, int, int)  # total, selected, failed, success, draft
+    data_refreshed = Signal()
 
     def __init__(self, parent=None, db=None):
         super().__init__(parent)
         self.db = db
         self._properties_widget = getattr(parent, "properties_widget", None)
+        self._main_window = parent  # Simpan parent utama (MainWindow)
 
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -232,7 +234,9 @@ class ImageTableWidget(QWidget):
         filepath = filepath_item.data(Qt.UserRole)
         if not filepath:
             filepath = filepath_item.text()
-        dialog = FileMetadataDialog(filepath, parent=self)
+        # Gunakan parent utama (MainWindow) sebagai parent dialog
+        parent_for_dialog = self._main_window if self._main_window is not None else self
+        dialog = FileMetadataDialog(filepath, parent=parent_for_dialog)
         dialog.exec()
 
     def _status_color(self, status):
@@ -303,6 +307,14 @@ class ImageTableWidget(QWidget):
                 dialog.exec()
         else:
             self._donation_dialog_shown = False
+        self.data_refreshed.emit()
+
+    def get_selected_row_data(self):
+        selected = self.table.selectedItems()
+        if selected:
+            row = selected[0].row()
+            return [self.table.item(row, col).data(Qt.DisplayRole) if self.table.item(row, col) else "" for col in range(self.table.columnCount())]
+        return None
 
     def _emit_stats(self):
         total = self.table.rowCount()
