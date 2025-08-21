@@ -32,7 +32,16 @@ def setup_main_toolbar(window: QWidget):
     toolbar.setMovable(False)
     toolbar.setFloatable(False)
     toolbar.setIconSize(window.style().standardIcon(QStyle.SP_DesktopIcon).actualSize(toolbar.iconSize()))
-    toolbar.setStyleSheet("QToolBar { padding: 5px; }")
+    toolbar.setStyleSheet("""
+        QToolBar { padding: 5px; }
+        QToolButton {
+            padding: 4px;
+            border-radius: 6px;
+        }
+        QToolButton:hover {
+            background-color: rgba(128,128,128,0.3);
+        }
+    """)
 
     import_action = QAction(qta.icon('fa5s.folder-open'), "Import Files", window)
     import_action.triggered.connect(lambda: (
