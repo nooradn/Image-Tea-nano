@@ -16,6 +16,7 @@ from dialogs.read_documentation_dialog import ReadDocumentationDialog
 from dialogs.donation_dialog import DonateDialog
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from dialogs.about_dialog import AboutDialog
+from dialogs.file_metadata_dialog import FileMetadataDialog
 from config import BASE_PATH
 
 def setup_main_menu(window):
@@ -73,6 +74,22 @@ def setup_main_menu(window):
         dialog.exec()
     batch_rename_action.triggered.connect(open_batch_rename)
     edit_menu.addAction(batch_rename_action)
+
+    # Tambahkan Edit Metadata
+    edit_metadata_action = QAction(qta.icon('fa5s.edit'), "Edit Metadata", window)
+    def open_edit_metadata():
+        selected = window.table.table.selectionModel().selectedRows()
+        if selected:
+            idx = selected[0].row()
+            filepath_item = window.table.table.item(idx, 1)
+            if filepath_item:
+                filepath = filepath_item.data(Qt.UserRole)
+                if not filepath:
+                    filepath = filepath_item.text()
+                dialog = FileMetadataDialog(filepath, parent=window)
+                dialog.exec()
+    edit_metadata_action.triggered.connect(open_edit_metadata)
+    edit_menu.addAction(edit_metadata_action)
 
     metadata_menu = QMenu("Metadata", menubar)
     write_metadata_images_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)

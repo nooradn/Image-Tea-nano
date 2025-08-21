@@ -10,6 +10,7 @@ from dialogs.read_documentation_dialog import ReadDocumentationDialog
 from dialogs.donation_dialog import DonateDialog
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from dialogs.about_dialog import AboutDialog
+from dialogs.file_metadata_dialog import FileMetadataDialog
 from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images, write_metadata_to_videos
 
@@ -39,15 +40,16 @@ def setup_main_toolbar(window: QWidget):
     ))
     toolbar.addAction(import_action)
 
+    # Grup: Clear All dan Delete Selected
+    clear_all_action = QAction(qta.icon('fa5s.broom'), "Clear All", window)
+    clear_all_action.triggered.connect(lambda: window.table.clear_all())
+    toolbar.addAction(clear_all_action)
+
     delete_selected_action = QAction(qta.icon('fa5s.trash'), "Delete Selected", window)
     delete_selected_action.triggered.connect(lambda: window.table.delete_selected())
     toolbar.addAction(delete_selected_action)
 
     add_vertical_separator(toolbar)
-
-    clear_all_action = QAction(qta.icon('fa5s.broom'), "Clear All", window)
-    clear_all_action.triggered.connect(lambda: window.table.clear_all())
-    toolbar.addAction(clear_all_action)
 
     clear_metadata_action = QAction(qta.icon('fa5s.eraser'), "Clear Existing Metadata", window)
     def clear_existing_metadata():
@@ -66,6 +68,22 @@ def setup_main_toolbar(window: QWidget):
     batch_rename_action = QAction(qta.icon('fa5s.i-cursor'), "Batch Rename", window)
     batch_rename_action.triggered.connect(lambda: BatchRenameDialog(window, table_widget=window.table, db=window.db).exec())
     toolbar.addAction(batch_rename_action)
+
+    # Tambahkan Edit Metadata
+    edit_metadata_action = QAction(qta.icon('fa5s.edit'), "Edit Metadata", window)
+    def open_edit_metadata():
+        selected = window.table.table.selectionModel().selectedRows()
+        if selected:
+            idx = selected[0].row()
+            filepath_item = window.table.table.item(idx, 1)
+            if filepath_item:
+                filepath = filepath_item.data(0x0100)
+                if not filepath:
+                    filepath = filepath_item.text()
+                dialog = FileMetadataDialog(filepath, parent=window)
+                dialog.exec()
+    edit_metadata_action.triggered.connect(open_edit_metadata)
+    toolbar.addAction(edit_metadata_action)
 
     add_vertical_separator(toolbar)
 
