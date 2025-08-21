@@ -2,6 +2,15 @@ from PySide6.QtWidgets import QLabel
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
 from helpers.file_importer import import_files
+import os
+
+try:
+    from PIL import Image
+    PILLOW_FORMATS = set()
+    for ext, fmt in Image.registered_extensions().items():
+        PILLOW_FORMATS.add(ext.lower())
+except ImportError:
+    PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
 
 class DragDropWidget(QLabel):
 	"""
@@ -18,13 +27,25 @@ class DragDropWidget(QLabel):
 		self._default_style = "border: 2px dashed #aaa; padding: 20px; font-size: 16px;"
 		self._accept_style = "border: 2px dashed rgba(121, 202, 12, 0.3); padding: 20px; font-size: 16px; background-color: rgba(121, 202, 12, 0.3);"
 		self._reject_style = "border: 2px dashed rgba(224, 23, 23, 0.3); padding: 20px; font-size: 16px; background-color: rgba(224, 23, 23, 0.3);"
-		self._supported_exts = {
-			".jpg", ".jpeg", ".png", ".bmp", ".gif",
+		video_exts = {
 			".mp4", ".mpeg", ".mov", ".avi", ".flv",
 			".mpg", ".webm", ".wmv", ".3gp", ".3gpp"
 		}
+		self._supported_exts = PILLOW_FORMATS | video_exts
 		self._default_text = "Drag and drop images or videos here"
-		self._supported_text = "<span style='font-size:10px;color:#888;'>Supported: jpg, jpeg, png, bmp, gif, mp4, mpeg, mov, avi, flv, mpg, webm, wmv, 3gp, 3gpp</span>"
+		# Daftar ekstensi umum
+		common_exts = [
+			"jpg", "jpeg", "png", "eps", "svg", "tiff", "webp",
+			"mp4", "mpeg", "mov", "avi", "flv", "mpg", "webm", "wmv", "3gp", "3gpp"
+		]
+		# Ekstensi yang benar-benar didukung
+		supported_common = [ext for ext in common_exts if f".{ext}" in self._supported_exts]
+		# Jika ada ekstensi lain yang didukung, tambahkan "..."
+		has_other = len(self._supported_exts - set(f".{ext}" for ext in supported_common)) > 0
+		supported_text = ", ".join(supported_common)
+		if has_other:
+			supported_text += ", ..."
+		self._supported_text = "<span style='font-size:10px;color:#888;'>Supported: " + supported_text + "</span>"
 
 	def dragEnterEvent(self, event: QDragEnterEvent):
 		if event.mimeData().hasUrls():
@@ -71,5 +92,5 @@ class DragDropWidget(QLabel):
 						mainwin.table.refresh_table()
 
 	def _is_supported_file(self, path):
-		ext = path.lower().rsplit('.', 1)[-1] if '.' in path else ''
-		return f".{ext}" in self._supported_exts
+		ext = os.path.splitext(path)[1].lower()
+		return ext in self._supported_exts

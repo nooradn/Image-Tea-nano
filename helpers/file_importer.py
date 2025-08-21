@@ -2,12 +2,10 @@ from PySide6.QtWidgets import QFileDialog
 import os
 from helpers.metadata_helper.metadata_operation import read_metadata_pyexiv2, read_metadata_video
 
-# Tambahkan: ambil format gambar yang didukung Pillow
 try:
     from PIL import Image
     PILLOW_FORMATS = set()
     for ext, fmt in Image.registered_extensions().items():
-        # exclude 'ICO' (icon) jika tidak ingin, atau biarkan semua
         PILLOW_FORMATS.add(ext.lower())
 except ImportError:
     PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
@@ -15,10 +13,8 @@ except ImportError:
 def import_files(parent, db, file_paths=None):
     if file_paths is None:
         home_dir = os.path.expanduser("~")
-        # Gabungkan ekstensi gambar Pillow dengan ekstensi video
-        video_exts = {'.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp', '.mkv'}
+        video_exts = {'.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp'}
         all_exts = sorted(PILLOW_FORMATS | video_exts)
-        # Buat filter string
         filter_str = "Images/Videos (" + " ".join(f"*{ext}" for ext in all_exts) + ")"
         files, _ = QFileDialog.getOpenFileNames(
             parent,
@@ -29,8 +25,7 @@ def import_files(parent, db, file_paths=None):
     else:
         files = file_paths
     added = 0
-    video_exts = {'.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp', '.mkv'}
-    # Gunakan PILLOW_FORMATS untuk validasi gambar
+    video_exts = {'.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp'}
     for path in files:
         if os.path.isfile(path):
             fname = os.path.basename(path)
@@ -48,7 +43,6 @@ def import_files(parent, db, file_paths=None):
                     print(f"[IMPORT ERROR] {fname}: {e}")
                     t, d, tg = None, None, None
             else:
-                # Lewati file yang tidak didukung
                 print(f"[IMPORT SKIP] {fname}: Unsupported file extension {ext}")
                 continue
             title = t if t else None

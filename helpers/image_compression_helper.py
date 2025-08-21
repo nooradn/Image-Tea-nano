@@ -4,6 +4,9 @@ from PIL import Image
 import config
 
 BASE_PATH = config.BASE_PATH
+PILLOW_FORMATS = set()
+for ext, fmt in Image.registered_extensions().items():
+    PILLOW_FORMATS.add(ext.lower())
 
 def ensure_temp_folder():
     temp_folder = os.path.join(BASE_PATH, "temp", "images")
@@ -30,6 +33,10 @@ def compress_and_save_image(image_path):
     cleanup_temp_folder()
     temp_folder = ensure_temp_folder()
     quality = get_compression_quality()
+    ext = os.path.splitext(image_path)[1].lower()
+    if ext not in PILLOW_FORMATS:
+        print(f"Error: File extension {ext} is not supported by Pillow.")
+        return None
     try:
         with Image.open(image_path) as img:
             rgb_img = img.convert("RGB")
