@@ -211,12 +211,10 @@ database.db
 thumbs.db
 tests/
 temp/
+tools/exiftool/
+tools/ghostscript/
 
 Sign-Image-Tea.bat
 Image Tea.bat
 DesainiaStudio.pfx
 vs code.bat
-
-# Allow exiftool_files/lib to be tracked
-!tools/exiftool_files/lib/
-!tools/exiftool_files/lib/**

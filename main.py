@@ -16,6 +16,9 @@ from helpers.batch_processing_helper import (
     stop_generate_metadata,
     update_token_stats_ui
 )
+from tools.tools_checker import check_folders
+
+check_folders()
 
 class ImageTeaMainWindow(QMainWindow):
     show_ai_unsupported_dialog = Signal(str)

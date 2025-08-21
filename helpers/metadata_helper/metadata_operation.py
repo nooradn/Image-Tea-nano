@@ -205,7 +205,7 @@ def read_metadata_pyexiv2(file_path):
 		return None, None, None
 
 def read_metadata_video(file_path):
-	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool.exe")
+	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool", "exiftool.exe")
 	video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
 	ext = os.path.splitext(file_path)[1].lower()
 	if ext not in video_exts:
@@ -292,7 +292,7 @@ def write_metadata_to_videos(db, parent=None):
 	rows = db.get_all_files()
 	errors = []
 	video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
-	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool.exe")
+	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool", "exiftool.exe")
 	video_rows = [row for row in rows if os.path.splitext(row[1])[1].lower() in video_exts]
 	dialog = ProgressDialog(parent, len(video_rows), "Writing Metadata to Videos")
 	dialog.show()
