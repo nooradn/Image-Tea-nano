@@ -39,117 +39,110 @@ def setup_main_toolbar(window: QWidget):
             border-radius: 6px;
         }
         QToolButton:hover {
-            background-color: rgba(128,128,128,0.3);
+            background-color: rgba(174, 174, 174, 0.4);
+        }
+        QToolButton:hover .qicon {
+            color: #fff;
         }
     """)
 
-    import_action = QAction(qta.icon('fa5s.folder-open'), "Import Files", window)
-    import_action.triggered.connect(lambda: (
+    icon_color = "#888"
+    icon_color_hover = "#4e9e20"
+
+    def make_action(icon_name, text, triggered_func):
+        icon = qta.icon(icon_name, color=icon_color, color_active=icon_color_hover)
+        action = QAction(icon, text, window)
+        action.triggered.connect(triggered_func)
+        return action
+
+    import_action = make_action('fa5s.folder-open', "Import Files", lambda: (
         import_files(window, window.db, None, None) and window.table.refresh_table()
     ))
     toolbar.addAction(import_action)
 
-    # Grup: Clear All dan Delete Selected
-    clear_all_action = QAction(qta.icon('fa5s.broom'), "Clear All", window)
-    clear_all_action.triggered.connect(lambda: window.table.clear_all())
+    clear_all_action = make_action('fa5s.broom', "Clear All", lambda: window.table.clear_all())
     toolbar.addAction(clear_all_action)
 
-    delete_selected_action = QAction(qta.icon('fa5s.trash'), "Delete Selected", window)
-    delete_selected_action.triggered.connect(lambda: window.table.delete_selected())
+    delete_selected_action = make_action('fa5s.trash', "Delete Selected", lambda: window.table.delete_selected())
     toolbar.addAction(delete_selected_action)
 
     add_vertical_separator(toolbar)
 
-    clear_metadata_action = QAction(qta.icon('fa5s.eraser'), "Clear Existing Metadata", window)
-    def clear_existing_metadata():
-        from PySide6.QtWidgets import QMessageBox
-        msg = (
-            "Are you sure you want to clear all metadata (title, description, tags, status)?\n\n"
-            "This will NOT remove metadata embedded in the image files, only metadata stored in the database."
-        )
-        reply = QMessageBox.question(window, "Clear Metadata", msg, QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            window.db.clear_all_metadata()
-            window.table.refresh_table()
-    clear_metadata_action.triggered.connect(clear_existing_metadata)
+    clear_metadata_action = make_action('fa5s.eraser', "Clear Existing Metadata", lambda: clear_existing_metadata(window))
     toolbar.addAction(clear_metadata_action)
 
-    batch_rename_action = QAction(qta.icon('fa5s.i-cursor'), "Batch Rename", window)
-    batch_rename_action.triggered.connect(lambda: BatchRenameDialog(window, table_widget=window.table, db=window.db).exec())
+    batch_rename_action = make_action('fa5s.i-cursor', "Batch Rename", lambda: BatchRenameDialog(window, table_widget=window.table, db=window.db).exec())
     toolbar.addAction(batch_rename_action)
 
-    # Tambahkan Edit Metadata
-    edit_metadata_action = QAction(qta.icon('fa5s.edit'), "Edit Metadata", window)
-    def open_edit_metadata():
-        selected = window.table.table.selectionModel().selectedRows()
-        if selected:
-            idx = selected[0].row()
-            filepath_item = window.table.table.item(idx, 1)
-            if filepath_item:
-                filepath = filepath_item.data(0x0100)
-                if not filepath:
-                    filepath = filepath_item.text()
-                dialog = FileMetadataDialog(filepath, parent=window)
-                dialog.exec()
-    edit_metadata_action.triggered.connect(open_edit_metadata)
+    edit_metadata_action = make_action('fa5s.edit', "Edit Metadata", lambda: open_edit_metadata(window))
     toolbar.addAction(edit_metadata_action)
 
     add_vertical_separator(toolbar)
 
-    write_metadata_images_action = QAction(qta.icon('fa5s.image'), "Write Metadata to Images", window)
-    write_metadata_images_action.triggered.connect(lambda: write_metadata_to_images(window.db, window))
+    write_metadata_images_action = make_action('fa5s.image', "Write Metadata to Images", lambda: write_metadata_to_images(window.db, window))
     toolbar.addAction(write_metadata_images_action)
 
-    write_metadata_videos_action = QAction(qta.icon('fa5s.film'), "Write Metadata to Videos", window)
-    write_metadata_videos_action.triggered.connect(lambda: write_metadata_to_videos(window.db, window))
+    write_metadata_videos_action = make_action('fa5s.film', "Write Metadata to Videos", lambda: write_metadata_to_videos(window.db, window))
     toolbar.addAction(write_metadata_videos_action)
 
-    export_metadata_action = QAction(qta.icon('fa5s.file-csv'), "Export Metadata to CSV", window)
-    export_metadata_action.triggered.connect(lambda: CSVExporterDialog(window).exec())
+    export_metadata_action = make_action('fa5s.file-csv', "Export Metadata to CSV", lambda: CSVExporterDialog(window).exec())
     toolbar.addAction(export_metadata_action)
 
     add_vertical_separator(toolbar)
 
-    edit_prompt_action = QAction(qta.icon('fa5s.edit'), "Edit Prompt", window)
-    edit_prompt_action.triggered.connect(lambda: EditPromptDialog(window).exec())
+    edit_prompt_action = make_action('fa5s.edit', "Edit Prompt", lambda: EditPromptDialog(window).exec())
     toolbar.addAction(edit_prompt_action)
 
-    custom_prompt_action = QAction(qta.icon('fa5s.comment-alt'), "Custom Prompt", window)
-    custom_prompt_action.triggered.connect(lambda: CustomPromptDialog(window).exec())
+    custom_prompt_action = make_action('fa5s.comment-alt', "Custom Prompt", lambda: CustomPromptDialog(window).exec())
     toolbar.addAction(custom_prompt_action)
 
-    add_api_action = QAction(qta.icon('fa5s.key'), "Add API Key", window)
-    add_api_action.triggered.connect(lambda: AddApiKeyDialog(window).exec())
+    add_api_action = make_action('fa5s.key', "Add API Key", lambda: AddApiKeyDialog(window).exec())
     toolbar.addAction(add_api_action)
 
     add_vertical_separator(toolbar)
 
-    about_action = QAction(qta.icon('fa5s.info-circle'), "About", window)
-    about_action.triggered.connect(lambda: AboutDialog(window).exec())
+    about_action = make_action('fa5s.info-circle', "About", lambda: AboutDialog(window).exec())
     toolbar.addAction(about_action)
 
-    donate_action = QAction(qta.icon('fa5s.donate'), "Donate", window)
-    donate_action.triggered.connect(lambda: DonateDialog(window).exec())
+    donate_action = make_action('fa5s.donate', "Donate", lambda: DonateDialog(window).exec())
     toolbar.addAction(donate_action)
 
-    wa_action = QAction(qta.icon('fa5b.whatsapp'), "WhatsApp Group", window)
-    wa_action.triggered.connect(lambda: webbrowser.open("https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3"))
+    wa_action = make_action('fa5b.whatsapp', "WhatsApp Group", lambda: webbrowser.open("https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3"))
     toolbar.addAction(wa_action)
 
-    repo_action = QAction(qta.icon('fa5b.github'), "Repository", window)
-    repo_action.triggered.connect(lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano"))
+    repo_action = make_action('fa5b.github', "Repository", lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano"))
     toolbar.addAction(repo_action)
 
-    website_action = QAction(qta.icon('fa5s.globe'), "Website", window)
-    website_action.triggered.connect(lambda: webbrowser.open("https://www.image-tea.cloud/"))
+    website_action = make_action('fa5s.globe', "Website", lambda: webbrowser.open("https://www.image-tea.cloud/"))
     toolbar.addAction(website_action)
 
-    readme_action = QAction(qta.icon('fa5s.book'), "Open README.md (GitHub)", window)
-    readme_action.triggered.connect(lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md"))
+    readme_action = make_action('fa5s.book', "Open README.md (GitHub)", lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md"))
     toolbar.addAction(readme_action)
 
-    documentation_action = QAction(qta.icon('fa5s.book-open'), "Help", window)
-    documentation_action.triggered.connect(lambda: ReadDocumentationDialog(window).exec())
+    documentation_action = make_action('fa5s.book-open', "Help", lambda: ReadDocumentationDialog(window).exec())
     toolbar.addAction(documentation_action)
 
     window.addToolBar(toolbar)
+
+def clear_existing_metadata(window):
+    from PySide6.QtWidgets import QMessageBox
+    msg = (
+        "Are you sure you want to clear all metadata (title, description, tags, status and categories)?\n\n"
+        "This will NOT remove metadata embedded in the image files, only metadata stored in the database."
+    )
+    reply = QMessageBox.question(window, "Clear Metadata", msg, QMessageBox.Yes | QMessageBox.No)
+    if reply == QMessageBox.Yes:
+        window.db.clear_all_metadata()
+        window.table.refresh_table()
+
+def open_edit_metadata(window):
+    selected = window.table.table.selectionModel().selectedRows()
+    if selected:
+        idx = selected[0].row()
+        filepath_item = window.table.table.item(idx, 1)
+        if filepath_item:
+            filepath = filepath_item.data(0x0100)
+            if not filepath:
+                filepath = filepath_item.text()
+            dialog = FileMetadataDialog(filepath, parent=window)
+            dialog.exec()

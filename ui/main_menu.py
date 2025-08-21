@@ -58,7 +58,7 @@ def setup_main_menu(window):
     clear_metadata_action = QAction(qta.icon('fa5s.eraser'), "Clear Existing Metadata", window)
     def clear_existing_metadata():
         msg = (
-            "Are you sure you want to clear all metadata (title, description, tags, status)?\n\n"
+            "Are you sure you want to clear all metadata (title, description, tags, status and categories)?\n\n"
             "This will NOT remove metadata embedded in the image files, only metadata stored in the database."
         )
         reply = QMessageBox.question(window, "Clear Metadata", msg, QMessageBox.Yes | QMessageBox.No)

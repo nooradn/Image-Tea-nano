@@ -227,6 +227,7 @@ class ImageTeaDB:
         with sqlite3.connect(self.db_path) as conn:
             c = conn.cursor()
             c.execute('UPDATE files SET title=NULL, description=NULL, tags=NULL, status="draft"')
+            c.execute('DELETE FROM category_mapping WHERE file_id IN (SELECT id FROM files)')
             conn.commit()
 
     def save_category_mapping(self, file_id, category_dict):

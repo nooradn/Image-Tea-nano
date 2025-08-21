@@ -89,8 +89,8 @@ def format_gemini_prompt(
     if custom_prompt and custom_prompt.strip():
         prompt = f"{prompt}\n\nMANDATORY: {custom_prompt.strip()}\n"
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
-    print("Gemini Prompt:")
-    print(full_prompt)
+    # print("Gemini Prompt:")
+    # print(full_prompt)
     return full_prompt
 
 def title_case_except(text):

@@ -135,7 +135,7 @@ class BatchRenameDialog(QDialog):
         layout.addWidget(self.rename_group)
 
         self.info_label = QLabel(
-            "<b>Warning:</b> After renaming, you can restore the previous filename using Undo Rename if needed.",
+            "<b>Info:</b> After renaming, you can restore the previous filename using Undo Rename if needed.",
             self
         )
         self.info_label.setWordWrap(True)
@@ -297,6 +297,10 @@ class BatchRenameDialog(QDialog):
 
         self.preview_label.setText(f"Preview: {preview_html}")
 
+    def _sanitize_windows_filename(self, name):
+        # Windows forbidden chars: <>:"/\|?* and non-printable
+        return re.sub(r'[<>:"/\\|?*\x00-\x1F]', '', name)
+
     def do_rename(self):
         mode = self.combo_mode.currentText()
         if mode == "Rename All":
@@ -313,7 +317,6 @@ class BatchRenameDialog(QDialog):
 
         files = []
         for row in file_rows:
-            # Use the original filepath from UserRole, not the truncated display text
             filepath_item = self.table_widget.table.item(row, 1)
             filepath = filepath_item.data(Qt.UserRole) if filepath_item else None
             filename = self.table_widget.table.item(row, 2).text()
@@ -336,6 +339,9 @@ class BatchRenameDialog(QDialog):
                 return title
             return re.sub(r'[.,\-]', '', title)
 
+        def sanitize_windows_filename(name):
+            return self._sanitize_windows_filename(name)
+
         if self.radio_same_as_title.isChecked():
             def pattern_func(file_info, idx):
                 base, ext = os.path.splitext(file_info['filename'])
@@ -347,7 +353,8 @@ class BatchRenameDialog(QDialog):
                     title = re.sub(r'[^A-Za-z0-9_-]', '', title)
                 if replace_space:
                     title = title.replace(' ', '_')
-                return f"{title}{ext}"
+                safe_title = sanitize_windows_filename(title)
+                return f"{safe_title}{ext}"
         else:
             def pattern_func(file_info, idx):
                 pattern = self.pattern_edit.text()
@@ -390,7 +397,8 @@ class BatchRenameDialog(QDialog):
                     new_base = re.sub(r'[^A-Za-z0-9_-]', '', new_base)
                 if replace_space:
                     new_base = new_base.replace(' ', '_')
-                return f"{new_base}{ext}"
+                safe_base = sanitize_windows_filename(new_base)
+                return f"{safe_base}{ext}"
 
         confirm = QMessageBox.question(
             self,
