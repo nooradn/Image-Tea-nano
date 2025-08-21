@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QTextEdit, QHBoxLayout, QFormLayout, QSpacerItem, QSizePolicy, QToolTip
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QLineEdit, QTextEdit, QHBoxLayout, QFormLayout, QSpacerItem, QSizePolicy, QToolTip, QComboBox
 from PySide6.QtGui import QPixmap, QImage, QGuiApplication
 from PySide6.QtCore import Qt, QTimer
 import qtawesome as qta
@@ -24,13 +24,10 @@ class FileMetadataDialog(QDialog):
         title = title or ""
         description = description or ""
         tags = tags or ""
-        status = status or ""
         filename = filename or ""
-        original_filename = original_filename or ""
 
         layout = QVBoxLayout(self)
 
-        # Image/video preview
         img_label = QLabel()
         img_label.setAlignment(Qt.AlignCenter)
         video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
@@ -68,7 +65,6 @@ class FileMetadataDialog(QDialog):
 
         form = QFormLayout()
 
-        # Title row with copy button
         title_row = QHBoxLayout()
         self.title_edit = QLineEdit(title)
         title_row.addWidget(self.title_edit)
@@ -81,7 +77,6 @@ class FileMetadataDialog(QDialog):
         title_row.addWidget(copy_title_btn)
         form.addRow("Title:", title_row)
 
-        # Description row with copy button
         desc_row = QHBoxLayout()
         self.description_edit = QTextEdit(description)
         self.description_edit.setFixedHeight(60)
@@ -96,7 +91,6 @@ class FileMetadataDialog(QDialog):
         desc_row.addWidget(copy_desc_btn)
         form.addRow("Description:", desc_row)
 
-        # Tags row with copy button
         tags_row = QHBoxLayout()
         self.tags_edit = QLineEdit(tags)
         tags_row.addWidget(self.tags_edit)
@@ -109,20 +103,6 @@ class FileMetadataDialog(QDialog):
         tags_row.addWidget(copy_tags_btn)
         form.addRow("Tags:", tags_row)
 
-        title_length = len(title)
-        tag_count = len([t for t in tags.split(",") if t.strip()]) if tags else 0
-
-        title_length_label = QLabel(str(title_length))
-        form.addRow("Title Length:", title_length_label)
-
-        tag_count_label = QLabel(str(tag_count))
-        form.addRow("Tag Count:", tag_count_label)
-
-        status_label = QLabel(status)
-        status_label.setWordWrap(True)
-        form.addRow("Status:", status_label)
-
-        # Filename row with copy button
         filename_row = QHBoxLayout()
         filename_label = QLabel(filename)
         filename_label.setWordWrap(True)
@@ -136,12 +116,63 @@ class FileMetadataDialog(QDialog):
         filename_row.addWidget(copy_filename_btn)
         form.addRow("Filename:", filename_row)
 
-        orig_filename_label = QLabel(original_filename)
-        orig_filename_label.setWordWrap(True)
-        form.addRow("Original Filename:", orig_filename_label)
+        # --- CATEGORY COMBOS ---
+        self.shutterstock_primary_combo = QComboBox()
+        self.shutterstock_secondary_combo = QComboBox()
+        self.adobe_combo = QComboBox()
+        self.shutterstock_primary_combo.setEditable(False)
+        self.shutterstock_secondary_combo.setEditable(False)
+        self.adobe_combo.setEditable(False)
+
+        shutterstock_map = {}
+        adobe_map = {}
+        primary_val = None
+        secondary_val = None
+        adobe_val = None
+        if self.db:
+            shutterstock_map, adobe_map = self.db.get_category_maps()
+            file_id = file_data[0]
+            if file_id is not None:
+                mapping = self.db.get_category_mapping_for_file(file_id)
+                for m in mapping:
+                    if m["platform"] == "shutterstock":
+                        cat_name = str(m["category_name"]).lower()
+                        if cat_name.endswith("(primary)"):
+                            primary_val = str(m["category_id"])
+                        elif cat_name.endswith("(secondary)"):
+                            secondary_val = str(m["category_id"])
+                    elif m["platform"] == "adobe_stock":
+                        adobe_val = str(m["category_id"])
+
+        self.shutterstock_primary_combo.addItem("-", "")
+        for k, v in shutterstock_map.items():
+            self.shutterstock_primary_combo.addItem(v, k)
+        if primary_val:
+            idx = self.shutterstock_primary_combo.findData(primary_val)
+            if idx >= 0:
+                self.shutterstock_primary_combo.setCurrentIndex(idx)
+
+        self.shutterstock_secondary_combo.addItem("-", "")
+        for k, v in shutterstock_map.items():
+            self.shutterstock_secondary_combo.addItem(v, k)
+        if secondary_val:
+            idx = self.shutterstock_secondary_combo.findData(secondary_val)
+            if idx >= 0:
+                self.shutterstock_secondary_combo.setCurrentIndex(idx)
+
+        self.adobe_combo.addItem("-", "")
+        for k, v in adobe_map.items():
+            self.adobe_combo.addItem(v, k)
+        if adobe_val:
+            idx = self.adobe_combo.findData(adobe_val)
+            if idx >= 0:
+                self.adobe_combo.setCurrentIndex(idx)
+
+        form.addRow("Shutterstock Primary:", self.shutterstock_primary_combo)
+        form.addRow("Shutterstock Secondary:", self.shutterstock_secondary_combo)
+        form.addRow("Adobe Stock Category:", self.adobe_combo)
 
         layout.addLayout(form)
-
         layout.addItem(QSpacerItem(20, 10, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         btn_layout = QHBoxLayout()
@@ -174,7 +205,6 @@ class FileMetadataDialog(QDialog):
             tooltip = "Copied"
         old_tooltip = btn.toolTip()
         btn.setToolTip(tooltip)
-        # Show tooltip at the button position
         pos = btn.mapToGlobal(btn.rect().center())
         QToolTip.showText(pos, tooltip, btn)
         QTimer.singleShot(1200, lambda: btn.setToolTip(old_tooltip))
@@ -187,4 +217,45 @@ class FileMetadataDialog(QDialog):
         description = self.description_edit.toPlainText()
         tags = self.tags_edit.text()
         self.db.update_metadata(self.filepath, title, description, tags)
+        file_id = None
+        for row in self.db.get_all_files():
+            if row[1] == self.filepath:
+                file_id = row[0]
+                break
+        if file_id is not None:
+            cat_dict = {}
+            primary_val = self.shutterstock_primary_combo.currentData()
+            secondary_val = self.shutterstock_secondary_combo.currentData()
+            adobe_val = self.adobe_combo.currentData()
+            if primary_val or secondary_val:
+                cat_dict["shutterstock"] = {}
+                if primary_val:
+                    cat_dict["shutterstock"]["primary"] = int(primary_val)
+                if secondary_val:
+                    cat_dict["shutterstock"]["secondary"] = int(secondary_val)
+            if adobe_val:
+                cat_dict["adobe_stock"] = int(adobe_val)
+            if cat_dict:
+                self.db.save_category_mapping(file_id, cat_dict)
+        self.accept()
+        file_id = None
+        for row in self.db.get_all_files():
+            if row[1] == self.filepath:
+                file_id = row[0]
+                break
+        if file_id is not None:
+            cat_dict = {}
+            primary_val = self.shutterstock_primary_combo.currentData()
+            secondary_val = self.shutterstock_secondary_combo.currentData()
+            adobe_val = self.adobe_combo.currentData()
+            if primary_val or secondary_val:
+                cat_dict["shutterstock"] = {}
+                if primary_val:
+                    cat_dict["shutterstock"]["primary"] = int(primary_val)
+                if secondary_val:
+                    cat_dict["shutterstock"]["secondary"] = int(secondary_val)
+            if adobe_val:
+                cat_dict["adobe_stock"] = int(adobe_val)
+            if cat_dict:
+                self.db.save_category_mapping(file_id, cat_dict)
         self.accept()
