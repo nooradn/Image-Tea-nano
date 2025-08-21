@@ -69,6 +69,7 @@ class PropertiesWidget(QWidget):
         sep.setFrameShape(QFrame.HLine)
         sep.setFrameShadow(QFrame.Sunken)
         sep.setFixedHeight(8)
+        sep.setStyleSheet("border-top: 1px solid rgba(128,128,128,0.3);")
         self.content_layout.addWidget(sep)
 
     def set_properties(self, row_data):
