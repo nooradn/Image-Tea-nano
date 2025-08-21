@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QSpinBox, QSizePolicy, QLabel, QSpacerItem, QLineEdit, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QSpinBox, QSizePolicy, QLabel, QSpacerItem, QVBoxLayout
 from PySide6.QtCore import Qt
 import json
 import os
@@ -65,17 +65,6 @@ class PromptSectionWidget(QWidget):
         main_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Expanding, QSizePolicy.Minimum))
 
         outer_layout.addLayout(main_layout)
-
-        custom_prompt_layout = QHBoxLayout()
-        custom_prompt_label = QLabel("Custom Prompt")
-        self.custom_prompt_edit = QLineEdit()
-        self.custom_prompt_edit.setPlaceholderText("Enter custom prompt (optional)")
-        self.custom_prompt_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.custom_prompt_edit.setToolTip("Custom prompt for AI generation.\nLeave blank to use the default prompt.")
-        custom_prompt_layout.addWidget(custom_prompt_label)
-        custom_prompt_layout.addWidget(self.custom_prompt_edit)
-        outer_layout.addLayout(custom_prompt_layout)
-
         self.setLayout(outer_layout)
 
         self.config_path = os.path.join(BASE_PATH, "configs", "ai_config.json")
@@ -85,7 +74,6 @@ class PromptSectionWidget(QWidget):
         self.tag_count_spin.valueChanged.connect(self.save_prompt_config)
         self.batch_size_spin.valueChanged.connect(self.save_prompt_config)
         self.cache_spin.valueChanged.connect(self.save_prompt_config)
-        self.custom_prompt_edit.editingFinished.connect(self.save_prompt_config)
         self.load_prompt_config()
 
     def load_prompt_config(self):
@@ -99,8 +87,6 @@ class PromptSectionWidget(QWidget):
             self.tag_count_spin.setValue(data["required_tag_count"])
             self.batch_size_spin.setValue(min(max(data["batch_size"], 1), 20))
             self.cache_spin.setValue(data["compression_quality"])
-            prompt = data["prompt"]
-            self.custom_prompt_edit.setText(prompt["custom_prompt"])
         except Exception as e:
             print(f"Failed to load prompt config: {e}")
         self._loading = False
@@ -119,9 +105,6 @@ class PromptSectionWidget(QWidget):
         data["required_tag_count"] = self.tag_count_spin.value()
         data["batch_size"] = self.batch_size_spin.value()
         data["compression_quality"] = self.cache_spin.value()
-        if "prompt" not in data:
-            data["prompt"] = {}
-        data["prompt"]["custom_prompt"] = self.custom_prompt_edit.text()
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)

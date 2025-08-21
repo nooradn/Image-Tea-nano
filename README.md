@@ -1,5 +1,6 @@
 # Image-Tea-nano
 ![WhatsApp Group](https://img.shields.io/badge/Join%20WhatsApp-Group-25D366?logo=whatsapp&style=for-the-badge&link=https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3)
+[![Web](https://img.shields.io/badge/Web-image--tea.cloud-blue?style=for-the-badge&logo=google-chrome&logoColor=white&link=https://www.image-tea.cloud/)](https://www.image-tea.cloud/)
 `Join grup WhatsApp untuk dapat API key gratis!`
 
 **Image-Tea-nano** adalah generator metadata ringan, simpel, dan mudah digunakan. Fokus utamanya fungsi, bukan tampilan fancy.

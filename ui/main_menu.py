@@ -144,6 +144,12 @@ def setup_main_menu(window):
     repo_action.triggered.connect(open_repo)
     help_menu.addAction(repo_action)
 
+    website_action = QAction(qta.icon('fa5s.globe'), "Website", window)
+    def open_website():
+        webbrowser.open("https://www.image-tea.cloud/")
+    website_action.triggered.connect(open_website)
+    help_menu.addAction(website_action)
+
     readme_action = QAction(qta.icon('fa5s.book'), "Open README.md (GitHub)", window)
     def open_readme():
         webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md")

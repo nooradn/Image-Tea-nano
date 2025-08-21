@@ -295,3 +295,20 @@ class ImageTeaDB:
                     'category_name': row[3]
                 })
             return mapping
+
+    def get_category_mapping_for_file(self, file_id):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            c.execute('SELECT file_id, platform_id, category_id, category_name FROM category_mapping WHERE file_id=?', (file_id,))
+            rows = c.fetchall()
+            c.execute('SELECT id, name FROM platform_list')
+            platform_map = {row[0]: row[1] for row in c.fetchall()}
+            mapping = []
+            for row in rows:
+                mapping.append({
+                    'file_id': row[0],
+                    'platform': platform_map.get(row[1], ''),
+                    'category_id': row[2],
+                    'category_name': row[3]
+                })
+            return mapping
