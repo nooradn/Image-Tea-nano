@@ -188,9 +188,9 @@ class ReadDocumentationDialog(QDialog):
     def load_default_markdown(self):
         doc_root = self.get_doc_root()
         if self.current_lang == "en":
-            default_md = "about_image_tea.md"
+            default_md = "1. about_image_tea.md"
         else:
-            default_md = "tentang_image_tea.md"
+            default_md = "1. tentang_image_tea.md"
         about_path = os.path.join(doc_root, default_md)
         if os.path.isfile(about_path):
             try:

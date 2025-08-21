@@ -109,8 +109,6 @@ def setup_main_toolbar(window: QWidget):
     custom_prompt_action.triggered.connect(lambda: CustomPromptDialog(window).exec())
     toolbar.addAction(custom_prompt_action)
 
-    add_vertical_separator(toolbar)
-
     add_api_action = QAction(qta.icon('fa5s.key'), "Add API Key", window)
     add_api_action.triggered.connect(lambda: AddApiKeyDialog(window).exec())
     toolbar.addAction(add_api_action)
