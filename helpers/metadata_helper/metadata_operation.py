@@ -140,7 +140,6 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
 			exif_update['Exif.Photo.UserComment'] = ', '.join(tag_list)
 			exif_update['Exif.Image.XPSubject'] = subject_str
 
-		# Tambahkan program name "Image Tea"
 		xmp_update['Xmp.xmp.CreatorTool'] = "Image Tea"
 		exif_update['Exif.Image.Software'] = "Image Tea"
 
@@ -214,23 +213,13 @@ def read_metadata_video(file_path):
 		with exiftool.ExifToolHelper(executable=exiftool_path) as et:
 			metadata_list = et.get_metadata([file_path])
 			if not metadata_list or len(metadata_list) == 0:
-				print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
 				return None, None, None
 			data = metadata_list[0]
 			if not isinstance(data, dict):
-				print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
 				return None, None, None
-			print(f"[DEBUG] All metadata keys: {list(data.keys())}")
-			print(f"[DEBUG] All metadata: {data}")
 			title_keys = ["QuickTime:Title", "XMP:Title", "Title"]
 			description_keys = ["QuickTime:Description", "XMP:Description", "Description"]
 			tags_keys = ["QuickTime:Keywords", "XMP:Keywords", "Keywords"]
-			for k in title_keys:
-				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
-			for k in description_keys:
-				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
-			for k in tags_keys:
-				print(f"[DEBUG] {k}: {repr(data.get(k))} type: {type(data.get(k))}")
 			title = None
 			for k in title_keys:
 				if k in data and data[k] is not None:
@@ -252,9 +241,7 @@ def read_metadata_video(file_path):
 				tags_str = tags
 			else:
 				tags_str = ""
-			print(f"[exiftool READ] {file_path} | title: {title} | description: {description} | tags: {tags_str}")
 			return title, description, tags_str
-		print(f"[exiftool READ] {file_path} | title: None | description: None | tags: ")
 		return None, None, None
 	except Exception as e:
 		print(f"[exiftool READ ERROR] {file_path}: {e}")
@@ -308,7 +295,6 @@ def write_metadata_to_videos(db, parent=None):
 				metadata_args.append(f"-QuickTime:Comment={description}")
 			if tags is not None:
 				metadata_args.append(f"-Keywords={tags}")
-			# Tambahkan program name "Image Tea" ke metadata video
 			metadata_args.append(f"-QuickTime:Software=Image Tea")
 			metadata_args.append(f"-XMP:CreatorTool=Image Tea")
 			metadata_args.append(f"-Software=Image Tea")
@@ -316,12 +302,9 @@ def write_metadata_to_videos(db, parent=None):
 			metadata_args.append(filepath)
 			with exiftool.ExifTool(executable=exiftool_path) as et:
 				result = et.execute(*[arg.encode('utf-8') for arg in metadata_args])
-				print(f"[DEBUG] exiftool result for {filename}: {result}")
 				if result is None:
-					print(f"[DEBUG] exiftool error: No result returned for {filename}")
 					errors.append(f"{filename}: exiftool error (no result)")
 		except Exception as e:
-			print(f"[DEBUG] Exception: {e}")
 			errors.append(f"{filename}: {e}")
 		dialog.repaint()
 		from PySide6.QtCore import QCoreApplication

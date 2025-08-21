@@ -5,3 +5,5 @@ google-genai
 pyexiv2
 pillow
 PyExifTool
+opencv-python
+CairoSVG

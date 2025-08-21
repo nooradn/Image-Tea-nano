@@ -1,6 +1,7 @@
 import os
 import urllib.request
 import zipfile
+import sys
 from config import BASE_PATH
 
 expected = [
@@ -8,6 +9,34 @@ expected = [
     "ghostscript"
 ]
 expected_full = [os.path.join(BASE_PATH, "tools", f) for f in expected]
+
+def print_progress_bar(downloaded, total_length):
+    if total_length > 0:
+        percent = int(downloaded * 100 / total_length)
+        bar_length = 40
+        filled_length = int(bar_length * percent // 100)
+        green = '\033[92m'
+        red = '\033[91m'
+        reset = '\033[0m'
+        bar = f"{green}{'+' * filled_length}{reset}{red}{'-' * (bar_length - filled_length)}{reset}"
+        print(f"\r|{bar}| {percent}% ({downloaded}/{total_length} bytes)", end='', flush=True)
+        if downloaded >= total_length:
+            print()
+    else:
+        print(f"\rDownloading... ({downloaded} bytes)", end='', flush=True)
+
+def download_with_progress(url, filename):
+    def reporthook(block_num, block_size, total_size):
+        downloaded = block_num * block_size
+        if total_size > 0 and downloaded > total_size:
+            downloaded = total_size
+        print_progress_bar(downloaded, total_size)
+    print(f"Downloading from {url} to {filename} ...")
+    try:
+        urllib.request.urlretrieve(url, filename, reporthook)
+        print("Download finished.")
+    except Exception as e:
+        print(f"Failed to download: {e}")
 
 def check_folders():
     for folder in expected_full:
@@ -23,23 +52,19 @@ def download_ghostscript(target_folder):
     url = "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10051/gs10051w64.exe"
     filename = os.path.join(target_folder, "gs10051w64.exe")
     if not os.path.isfile(filename):
-        print(f"Downloading Ghostscript to {filename} ...")
-        try:
-            urllib.request.urlretrieve(url, filename)
+        download_with_progress(url, filename)
+        if os.path.isfile(filename):
             print("Ghostscript downloaded successfully.")
-        except Exception as e:
-            print(f"Failed to download Ghostscript: {e}")
 
 def download_and_extract_exiftool(target_folder):
     url = "https://github.com/mudrikam/exiftool-for-image-tea/archive/refs/heads/main.zip"
     zip_path = os.path.join(target_folder, "exiftool.zip")
     print(f"Downloading Exiftool to {zip_path} ...")
     try:
-        urllib.request.urlretrieve(url, zip_path)
+        download_with_progress(url, zip_path)
         print("Download complete. Extracting...")
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
             zip_ref.extractall(target_folder)
-            # Move extracted files from subfolder to target_folder
             extracted_root = None
             for name in zip_ref.namelist():
                 root = name.split('/')[0]

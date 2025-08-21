@@ -56,7 +56,7 @@ def setup_main_toolbar(window: QWidget):
         return action
 
     import_action = make_action('fa5s.folder-open', "Import Files", lambda: (
-        import_files(window, window.db, None, None) and window.table.refresh_table()
+        import_files(window, window.db) and window.table.refresh_table()
     ))
     toolbar.addAction(import_action)
 

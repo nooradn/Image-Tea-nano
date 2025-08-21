@@ -25,7 +25,7 @@ def setup_main_menu(window):
 
     import_action = QAction(qta.icon('fa5s.folder-open'), "Import Files", window)
     def do_import():
-        if import_files(window, window.db, None, None):
+        if import_files(window, window.db):
             window.table.refresh_table()
     import_action.triggered.connect(do_import)
     file_menu.addAction(import_action)
