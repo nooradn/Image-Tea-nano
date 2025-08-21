@@ -17,6 +17,7 @@ from helpers.batch_processing_helper import (
     update_token_stats_ui
 )
 from tools.tools_checker import check_folders
+from dialogs.disclaimer_dialog import DisclaimerDialog
 
 check_folders()
 
@@ -59,7 +60,10 @@ if __name__ == '__main__':
         app_id = u"image-tea.nano"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
     app = QApplication(sys.argv)
-    window = ImageTeaMainWindow()
-    window.resize(900, 600)
-    window.show()
-    sys.exit(app.exec())
+    if DisclaimerDialog.check_and_show():
+        window = ImageTeaMainWindow()
+        window.resize(900, 600)
+        window.show()
+        sys.exit(app.exec())
+    else:
+        sys.exit(0)
