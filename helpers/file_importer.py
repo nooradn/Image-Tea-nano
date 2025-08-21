@@ -8,13 +8,14 @@ try:
     for ext, fmt in Image.registered_extensions().items():
         PILLOW_FORMATS.add(ext.lower())
 except ImportError:
-    PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+    PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp', '.eps', '.svg', '.pdf'}
 
 def import_files(parent, db, file_paths=None):
     if file_paths is None:
         home_dir = os.path.expanduser("~")
         video_exts = {'.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp'}
-        all_exts = sorted(PILLOW_FORMATS | video_exts)
+        extra_exts = {'.svg', '.eps', '.pdf'}
+        all_exts = sorted(PILLOW_FORMATS | video_exts | extra_exts)
         filter_str = "Images/Videos (" + " ".join(f"*{ext}" for ext in all_exts) + ")"
         files, _ = QFileDialog.getOpenFileNames(
             parent,
@@ -26,6 +27,7 @@ def import_files(parent, db, file_paths=None):
         files = file_paths
     added = 0
     video_exts = {'.mp4', '.mpeg', '.mov', '.avi', '.flv', '.mpg', '.webm', '.wmv', '.3gp', '.3gpp'}
+    extra_exts = {'.svg', '.eps', '.pdf'}
     for path in files:
         if os.path.isfile(path):
             fname = os.path.basename(path)
@@ -36,7 +38,7 @@ def import_files(parent, db, file_paths=None):
                 except Exception as e:
                     print(f"[IMPORT ERROR] {fname}: {e}")
                     t, d, tg = None, None, None
-            elif ext in PILLOW_FORMATS:
+            elif ext in PILLOW_FORMATS or ext in extra_exts:
                 try:
                     t, d, tg = read_metadata_pyexiv2(path)
                 except Exception as e:

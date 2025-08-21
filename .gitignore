@@ -213,6 +213,7 @@ tests/
 temp/
 tools/exiftool/
 tools/ghostscript/
+tools/cairo
 
 Sign-Image-Tea.bat
 Image Tea.bat

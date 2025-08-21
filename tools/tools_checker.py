@@ -2,11 +2,13 @@ import os
 import urllib.request
 import zipfile
 import sys
+import shutil
 from config import BASE_PATH
 
 expected = [
     "exiftool",
-    "ghostscript"
+    "ghostscript",
+    "cairo"
 ]
 expected_full = [os.path.join(BASE_PATH, "tools", f) for f in expected]
 
@@ -44,17 +46,44 @@ def check_folders():
             print(f"Missing folder: {folder}")
             os.makedirs(folder, exist_ok=True)
             if folder.endswith("ghostscript"):
-                download_ghostscript(folder)
+                download_and_extract_ghostscript(folder)
             elif folder.endswith("exiftool"):
                 download_and_extract_exiftool(folder)
+            elif folder.endswith("cairo"):
+                download_and_extract_cairo(folder)
 
-def download_ghostscript(target_folder):
-    url = "https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10051/gs10051w64.exe"
-    filename = os.path.join(target_folder, "gs10051w64.exe")
-    if not os.path.isfile(filename):
-        download_with_progress(url, filename)
-        if os.path.isfile(filename):
-            print("Ghostscript downloaded successfully.")
+def download_and_extract_ghostscript(target_folder):
+    url = "https://github.com/mudrikam/ghostscript-for-image-tea/archive/refs/heads/main.zip"
+    zip_path = os.path.join(target_folder, "ghostscript.zip")
+    print(f"Downloading Ghostscript to {zip_path} ...")
+    try:
+        download_with_progress(url, zip_path)
+        print("Download complete. Extracting...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(target_folder)
+            extracted_root = None
+            for name in zip_ref.namelist():
+                root = name.split('/')[0]
+                if root:
+                    extracted_root = os.path.join(target_folder, root)
+                    break
+            if extracted_root and os.path.isdir(extracted_root):
+                for item in os.listdir(extracted_root):
+                    src = os.path.join(extracted_root, item)
+                    dst = os.path.join(target_folder, item)
+                    if os.path.isdir(src):
+                        if not os.path.exists(dst):
+                            os.rename(src, dst)
+                    else:
+                        os.replace(src, dst)
+                try:
+                    os.rmdir(extracted_root)
+                except Exception:
+                    pass
+        os.remove(zip_path)
+        print("Ghostscript extracted successfully.")
+    except Exception as e:
+        print(f"Failed to download or extract Ghostscript: {e}")
 
 def download_and_extract_exiftool(target_folder):
     url = "https://github.com/mudrikam/exiftool-for-image-tea/archive/refs/heads/main.zip"
@@ -88,6 +117,20 @@ def download_and_extract_exiftool(target_folder):
         print("Exiftool extracted successfully.")
     except Exception as e:
         print(f"Failed to download or extract Exiftool: {e}")
+
+def download_and_extract_cairo(target_folder):
+    url = "https://github.com/preshing/cairo-windows/releases/download/with-tee/cairo-windows-1.17.2.zip"
+    zip_path = os.path.join(target_folder, "cairo.zip")
+    print(f"Downloading Cairo to {zip_path} ...")
+    try:
+        download_with_progress(url, zip_path)
+        print("Download complete. Extracting...")
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(target_folder)
+        os.remove(zip_path)
+        print("Cairo extracted successfully.")
+    except Exception as e:
+        print(f"Failed to download or extract Cairo: {e}")
 
 if __name__ == "__main__":
     check_folders()

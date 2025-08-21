@@ -3,6 +3,14 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QImage
 import os
 
+try:
+    from PIL import Image
+    PILLOW_FORMATS = set()
+    for ext, fmt in Image.registered_extensions().items():
+        PILLOW_FORMATS.add(ext.lower())
+except ImportError:
+    PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp', '.eps', '.svg', '.pdf'}
+
 class PropertiesWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -190,13 +198,54 @@ class PropertiesWidget(QWidget):
                 except Exception as e:
                     print(f"Video preview error: {e}")
                     self.preview_label.setText("Cannot preview video")
-            else:
+            elif ext in {'.svg', '.eps', '.pdf'}:
+                try:
+                    temp_jpg = None
+                    from helpers.image_compression_helper import ensure_temp_folder, convert_eps_pdf_to_jpg, convert_svg_to_jpg, get_compression_quality
+                    temp_folder = ensure_temp_folder()
+                    quality = get_compression_quality()
+                    filename = os.path.splitext(os.path.basename(filepath))[0] + "_preview.jpg"
+                    temp_jpg_path = os.path.join(temp_folder, filename)
+                    if not os.path.exists(temp_jpg_path):
+                        if ext == '.svg':
+                            temp_jpg = convert_svg_to_jpg(filepath, temp_jpg_path, quality)
+                        elif ext in ('.eps', '.pdf'):
+                            temp_jpg = convert_eps_pdf_to_jpg(filepath, temp_jpg_path, quality)
+                    else:
+                        temp_jpg = temp_jpg_path
+                    if temp_jpg and os.path.exists(temp_jpg):
+                        pixmap = QPixmap(temp_jpg)
+                        if not pixmap.isNull():
+                            preview_width = self.preview_label.width() if self.preview_label.width() > 0 else 220
+                            pixmap = pixmap.scaled(preview_width, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                            self.preview_label.setPixmap(pixmap)
+                        else:
+                            self.preview_label.setText("Cannot preview image")
+                    else:
+                        self.preview_label.setText("Cannot preview image")
+                except Exception as e:
+                    print(f"Vector preview error: {e}")
+                    self.preview_label.setText("Cannot preview image")
+            elif ext in PILLOW_FORMATS:
                 pixmap = QPixmap(filepath)
                 if not pixmap.isNull():
                     preview_width = self.preview_label.width() if self.preview_label.width() > 0 else 220
                     pixmap = pixmap.scaled(preview_width, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     self.preview_label.setPixmap(pixmap)
                 else:
-                    self.preview_label.setText("Cannot preview image")
+                    try:
+                        with Image.open(filepath) as img:
+                            img = img.convert("RGBA")
+                            data = img.tobytes("raw", "RGBA")
+                            qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+                            pixmap = QPixmap.fromImage(qimg)
+                            preview_width = self.preview_label.width() if self.preview_label.width() > 0 else 220
+                            pixmap = pixmap.scaled(preview_width, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                            self.preview_label.setPixmap(pixmap)
+                    except Exception as e:
+                        print(f"Pillow preview error: {e}")
+                        self.preview_label.setText("Cannot preview image")
+            else:
+                self.preview_label.setText("Cannot preview image")
         else:
             self.preview_label.setText("No preview")

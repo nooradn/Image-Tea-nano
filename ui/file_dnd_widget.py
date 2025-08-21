@@ -10,7 +10,7 @@ try:
     for ext, fmt in Image.registered_extensions().items():
         PILLOW_FORMATS.add(ext.lower())
 except ImportError:
-    PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp'}
+    PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp', '.eps', '.svg', '.pdf'}
 
 class DragDropWidget(QLabel):
 	"""
@@ -31,11 +31,13 @@ class DragDropWidget(QLabel):
 			".mp4", ".mpeg", ".mov", ".avi", ".flv",
 			".mpg", ".webm", ".wmv", ".3gp", ".3gpp"
 		}
-		self._supported_exts = PILLOW_FORMATS | video_exts
+		# Tambahkan .svg, .eps, .pdf ke PILLOW_FORMATS jika belum ada
+		extra_exts = {'.svg', '.eps', '.pdf'}
+		self._supported_exts = PILLOW_FORMATS | video_exts | extra_exts
 		self._default_text = "Drag and drop images or videos here"
 		# Daftar ekstensi umum
 		common_exts = [
-			"jpg", "jpeg", "png", "eps", "svg", "tiff", "webp",
+			"jpg", "jpeg", "png", "eps", "svg", "pdf", "tiff", "webp",
 			"mp4", "mpeg", "mov", "avi", "flv", "mpg", "webm", "wmv", "3gp", "3gpp"
 		]
 		# Ekstensi yang benar-benar didukung
@@ -88,7 +90,7 @@ class DragDropWidget(QLabel):
 			else:
 				mainwin = self.window()
 				if hasattr(mainwin, "db") and hasattr(mainwin, "table"):
-					if import_files(mainwin, mainwin.db, None, None, file_paths=paths):
+					if import_files(mainwin, mainwin.db, file_paths=paths):
 						mainwin.table.refresh_table()
 
 	def _is_supported_file(self, path):

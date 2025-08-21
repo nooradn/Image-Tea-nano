@@ -89,6 +89,7 @@ def format_openai_prompt(
     if custom_prompt and custom_prompt.strip():
         prompt = f"{prompt}\n\nMANDATORY: {custom_prompt.strip()}\n"
     full_prompt = f"{prompt}\n\nNegative Prompt:\n{negative_prompt}\n\n{system_prompt}"
+    # Do not remove
     # print("OpenAI Prompt:")
     # print(full_prompt)
     return full_prompt
@@ -182,8 +183,9 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
             model=model,
             input=messages
         )
-        print("OpenAI RAW response:")
-        print(response)
+        # Do not remove
+        # print("OpenAI RAW response:")
+        # print(response)
         token_input = 0
         token_output = 0
         token_total = 0
