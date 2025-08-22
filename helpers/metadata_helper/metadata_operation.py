@@ -1,7 +1,7 @@
 import pyexiv2
 from database.db_operation import ImageTeaDB, DB_PATH
 
-from PySide6.QtCore import QThread, Signal, Qt
+from PySide6.QtCore import QThread, Signal, Qt, QObject, QTimer
 from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QProgressBar, QSizePolicy, QTextEdit, QPushButton
 import os
 import exiftool
@@ -36,7 +36,15 @@ class ProgressDialog(QDialog):
 		self.close_btn.setVisible(False)
 		self.close_btn.clicked.connect(self.accept)
 		layout.addWidget(self.close_btn)
+		self.cancel_btn = QPushButton("Cancel")
+		self.cancel_btn.setVisible(True)
+		self.cancel_btn.clicked.connect(self._cancel_thread)
+		layout.addWidget(self.cancel_btn)
 		self.setLayout(layout)
+		self._thread = None
+
+	def set_thread(self, thread):
+		self._thread = thread
 
 	def update_progress(self, value, filename):
 		self.progress.setValue(value)
@@ -47,10 +55,26 @@ class ProgressDialog(QDialog):
 			self.error_box.setVisible(True)
 			self.error_box.setPlainText("Error(s) occurred:\n" + "\n".join(errors))
 			self.close_btn.setVisible(True)
+			self.cancel_btn.setVisible(False)
 			self.label.setText("Some errors occurred during writing metadata.")
 		else:
 			self.error_box.setVisible(False)
 			self.close_btn.setVisible(False)
+			self.cancel_btn.setVisible(True)
+
+	def _cancel_thread(self):
+		if self._thread is not None and self._thread.isRunning():
+			self._thread.requestInterruption()
+			self._thread.quit()
+			self._thread.wait()
+		self.reject()
+
+	def closeEvent(self, event):
+		if self._thread is not None and self._thread.isRunning():
+			self._thread.requestInterruption()
+			self._thread.quit()
+			self._thread.wait()
+		super().closeEvent(event)
 
 class ImageTeaGeneratorThread(QThread):
 	progress = Signal(int, int)
@@ -71,6 +95,8 @@ class ImageTeaGeneratorThread(QThread):
 		db = ImageTeaDB(self.db_path)
 		total = len(self.rows)
 		for idx, row in enumerate(self.rows):
+			if self.isInterruptionRequested():
+				break
 			id_, filepath, filename, title, description, tags, status, _ = row
 			visual_idx = self.row_map.get(id_, idx)
 			self.row_status.emit(visual_idx, "processing")
@@ -247,93 +273,125 @@ def read_metadata_video(file_path):
 		print(f"[exiftool READ ERROR] {file_path}: {e}")
 		return None, None, None
 
-def write_metadata_to_images(db, parent=None):
-	rows = db.get_all_files()
-	errors = []
-	dialog = ProgressDialog(parent, len(rows), "Writing Metadata to Images")
-	dialog.show()
-	for idx, row in enumerate(rows):
-		id_, filepath, filename, title, description, tags, status, _ = row
-		dialog.update_progress(idx + 1, filename)
-		if title or description or tags:
+class ImageMetadataWriterThread(QThread):
+	progress = Signal(int, int, str)
+	finished = Signal(list)
+
+	def __init__(self, db, rows):
+		super().__init__()
+		self.db = db
+		self.rows = rows
+		self.errors = []
+
+	def run(self):
+		total = len(self.rows)
+		for idx, row in enumerate(self.rows):
+			if self.isInterruptionRequested():
+				break
+			id_, filepath, filename, title, description, tags, status, _ = row
+			self.progress.emit(idx + 1, total, filename)
 			try:
 				tag_list = [t.strip() for t in tags.split(',')] if tags else []
 				write_metadata_pyexiv2(filepath, title, description, tag_list)
 			except Exception as e:
-				errors.append(f"{filename}: {e}")
-		else:
+				self.errors.append(f"{filename}: {e}")
+		self.finished.emit(self.errors)
+
+class VideoMetadataWriterThread(QThread):
+	progress = Signal(int, int, str)
+	finished = Signal(list)
+
+	def __init__(self, db, rows):
+		super().__init__()
+		self.db = db
+		self.rows = rows
+		self.errors = []
+
+	def run(self):
+		video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
+		exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool", "exiftool.exe")
+		video_rows = [row for row in self.rows if os.path.splitext(row[1])[1].lower() in video_exts]
+		total = len(video_rows)
+		for idx, row in enumerate(video_rows):
+			if self.isInterruptionRequested():
+				break
+			id_, filepath, filename, title, description, tags, status, _ = row
+			self.progress.emit(idx + 1, total, filename)
 			try:
-				write_metadata_pyexiv2(filepath, '', '', [])
+				metadata_args = []
+				if title is not None:
+					metadata_args.append(f"-Title={title}")
+					metadata_args.append(f"-QuickTime:Title={title}")
+					metadata_args.append(f"-XMP:Title={title}")
+				if description is not None:
+					metadata_args.append(f"-Description={description}")
+					metadata_args.append(f"-QuickTime:Description={description}")
+					metadata_args.append(f"-XMP:Description={description}")
+					metadata_args.append(f"-QuickTime:Comment={description}")
+				if tags is not None:
+					if isinstance(tags, str):
+						tag_list = [t.strip() for t in tags.split(',') if t.strip()]
+					elif isinstance(tags, list):
+						tag_list = tags
+					else:
+						tag_list = []
+					if tag_list:
+						joined_tags = ",".join(tag_list)
+						metadata_args.append(f"-Keywords={joined_tags}")
+						metadata_args.append(f"-QuickTime:Keywords={joined_tags}")
+						metadata_args.append(f"-XMP:Keywords={joined_tags}")
+				metadata_args.append(f"-QuickTime:Software=Image Tea")
+				metadata_args.append(f"-XMP:CreatorTool=Image Tea")
+				metadata_args.append(f"-Software=Image Tea")
+				metadata_args.append("-overwrite_original")
+				metadata_args.append(filepath)
+				with exiftool.ExifTool(executable=exiftool_path) as et:
+					result = et.execute(*[arg.encode('utf-8') for arg in metadata_args])
+					if result is None:
+						self.errors.append(f"{filename}: exiftool error (no result)")
 			except Exception as e:
-				errors.append(f"{filename}: {e}")
+				self.errors.append(f"{filename}: {e}")
+		self.finished.emit(self.errors)
+
+def write_metadata_to_images(db, parent=None):
+	rows = db.get_all_files()
+	errors = []
+	dialog = ProgressDialog(parent, len(rows), "Writing Metadata to Images")
+	def on_progress(idx, total, filename):
+		dialog.update_progress(idx, filename)
 		dialog.repaint()
 		from PySide6.QtCore import QCoreApplication
 		QCoreApplication.processEvents()
-	if errors:
-		dialog.show_errors(errors)
-		dialog.exec()
-	else:
-		dialog.close()
+	def on_finished(errors):
+		if errors:
+			dialog.show_errors(errors)
+		else:
+			dialog.close()
+	thread = ImageMetadataWriterThread(db, rows)
+	thread.progress.connect(on_progress)
+	thread.finished.connect(on_finished)
+	dialog.set_thread(thread)
+	QTimer.singleShot(0, thread.start)
+	dialog.exec()
 
 def write_metadata_to_videos(db, parent=None):
 	rows = db.get_all_files()
-	errors = []
 	video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
-	exiftool_path = os.path.join(BASE_PATH, "tools", "exiftool", "exiftool.exe")
 	video_rows = [row for row in rows if os.path.splitext(row[1])[1].lower() in video_exts]
 	dialog = ProgressDialog(parent, len(video_rows), "Writing Metadata to Videos")
-	dialog.show()
-	for idx, row in enumerate(video_rows):
-		id_, filepath, filename, title, description, tags, status, _ = row
-		dialog.update_progress(idx + 1, filename)
-		try:
-			metadata_args = []
-			if title is not None:
-				metadata_args.append(f"-Title={title}")
-				metadata_args.append(f"-QuickTime:Title={title}")
-				metadata_args.append(f"-XMP:Title={title}")
-			if description is not None:
-				metadata_args.append(f"-Description={description}")
-				metadata_args.append(f"-QuickTime:Description={description}")
-				metadata_args.append(f"-XMP:Description={description}")
-				metadata_args.append(f"-QuickTime:Comment={description}")
-			if tags is not None:
-				if isinstance(tags, str):
-					tag_list = [t.strip() for t in tags.split(',') if t.strip()]
-				elif isinstance(tags, list):
-					tag_list = tags
-				else:
-					tag_list = []
-				if tag_list:
-					joined_tags = ",".join(tag_list)
-					metadata_args.append(f"-Keywords={joined_tags}")
-					metadata_args.append(f"-QuickTime:Keywords={joined_tags}")
-					metadata_args.append(f"-XMP:Keywords={joined_tags}")
-			metadata_args.append(f"-QuickTime:Software=Image Tea")
-			metadata_args.append(f"-XMP:CreatorTool=Image Tea")
-			metadata_args.append(f"-Software=Image Tea")
-			metadata_args.append("-overwrite_original")
-			metadata_args.append(filepath)
-			with exiftool.ExifTool(executable=exiftool_path) as et:
-				result = et.execute(*[arg.encode('utf-8') for arg in metadata_args])
-				if result is None:
-					errors.append(f"{filename}: exiftool error (no result)")
-			try:
-				with exiftool.ExifToolHelper(executable=exiftool_path) as et_read:
-					meta_list = et_read.get_metadata([filepath])
-					if meta_list and isinstance(meta_list[0], dict):
-						print(f"\n[DEBUG] Metadata fields for {filename}:")
-						for k, v in meta_list[0].items():
-							print(f"{k}: {v}")
-			except Exception as e:
-				print(f"[DEBUG] Failed to read metadata fields for {filename}: {e}")
-		except Exception as e:
-			errors.append(f"{filename}: {e}")
+	def on_progress(idx, total, filename):
+		dialog.update_progress(idx, filename)
 		dialog.repaint()
 		from PySide6.QtCore import QCoreApplication
 		QCoreApplication.processEvents()
-	if errors:
-		dialog.show_errors(errors)
-		dialog.exec()
-	else:
-		dialog.close()
+	def on_finished(errors):
+		if errors:
+			dialog.show_errors(errors)
+		else:
+			dialog.close()
+	thread = VideoMetadataWriterThread(db, rows)
+	thread.progress.connect(on_progress)
+	thread.finished.connect(on_finished)
+	dialog.set_thread(thread)
+	QTimer.singleShot(0, thread.start)
+	dialog.exec()
