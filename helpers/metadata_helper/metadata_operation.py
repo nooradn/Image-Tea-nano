@@ -16,7 +16,8 @@ class ProgressDialog(QDialog):
 	def __init__(self, parent, total, title):
 		super().__init__(parent)
 		self.setWindowTitle(title)
-		self.setFixedWidth(400)
+		self.setMinimumWidth(400)
+		self.setMinimumHeight(180)
 		self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 		self.setModal(True)
 		layout = QVBoxLayout()
