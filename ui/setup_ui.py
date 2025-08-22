@@ -48,7 +48,7 @@ def setup_ui(self):
 
     self.tested_label = QLabel()
     self.tested_label.setText(" - | -")
-    self.tested_label.setToolTip("Menampilkan waktu terakhir API key ini dites dan modelnya")
+    self.tested_label.setToolTip("Shows the last time this API key was tested and its model")
     api_layout.addWidget(self.api_key_combo)
     api_layout.addWidget(self.tested_label)
     api_layout.addItem(QSpacerItem(24, 1, QSizePolicy.Expanding, QSizePolicy.Minimum))
