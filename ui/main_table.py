@@ -38,7 +38,7 @@ class ImageTableWidget(QWidget):
         paste_btn.setFlat(True)
         paste_btn.setFocusPolicy(Qt.NoFocus)
         paste_btn.setFixedWidth(28)
-        paste_btn.setToolTip("Paste text from clipboard ke kolom pencarian")
+        paste_btn.setToolTip("Paste text from clipboard to search field")
         paste_btn.clicked.connect(self._on_paste_clicked)
 
         clear_btn = QPushButton(self)
@@ -46,7 +46,7 @@ class ImageTableWidget(QWidget):
         clear_btn.setFlat(True)
         clear_btn.setFocusPolicy(Qt.NoFocus)
         clear_btn.setFixedWidth(28)
-        clear_btn.setToolTip("Bersihkan kolom pencarian")
+        clear_btn.setToolTip("Clear the search field")
         clear_btn.clicked.connect(self._on_clear_search)
 
         search_layout.addWidget(search_icon_btn)
