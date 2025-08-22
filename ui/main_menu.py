@@ -75,7 +75,6 @@ def setup_main_menu(window):
     batch_rename_action.triggered.connect(open_batch_rename)
     edit_menu.addAction(batch_rename_action)
 
-    # Tambahkan Edit Metadata
     edit_metadata_action = QAction(qta.icon('fa5s.edit'), "Edit Metadata", window)
     def open_edit_metadata():
         selected = window.table.table.selectionModel().selectedRows()
@@ -141,6 +140,16 @@ def setup_main_menu(window):
         dialog.exec()
     about_action.triggered.connect(show_about)
     help_menu.addAction(about_action)
+
+    update_now_action = QAction(qta.icon('fa5s.download'), "Update Now", window)
+    def run_updater():
+        updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
+        try:
+            subprocess.Popen([updater_path])
+        except Exception as e:
+            print(f"Failed to run updater: {e}")
+    update_now_action.triggered.connect(run_updater)
+    help_menu.addAction(update_now_action)
 
     donate_action = QAction(qta.icon('fa5s.donate'), "Donate", window)
     def show_donate():

@@ -2,6 +2,9 @@ from PySide6.QtWidgets import QToolBar, QStyle, QWidget, QFrame, QWidgetAction, 
 from PySide6.QtGui import QAction
 import qtawesome as qta
 import webbrowser
+import os
+import subprocess
+from config import BASE_PATH
 from dialogs.csv_exporter_dialog import CSVExporterDialog
 from dialogs.edit_prompt_dialog import EditPromptDialog
 from dialogs.custom_prompt_dialog import CustomPromptDialog
@@ -103,6 +106,15 @@ def setup_main_toolbar(window: QWidget):
 
     about_action = make_action('fa5s.info-circle', "About", lambda: AboutDialog(window).exec())
     toolbar.addAction(about_action)
+
+    def run_updater():
+        updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
+        try:
+            subprocess.Popen([updater_path])
+        except Exception as e:
+            print(f"Failed to run updater: {e}")
+    update_now_action = make_action('fa5s.download', "Update Now", run_updater)
+    toolbar.addAction(update_now_action)
 
     donate_action = make_action('fa5s.donate', "Donate", lambda: DonateDialog(window).exec())
     toolbar.addAction(donate_action)
