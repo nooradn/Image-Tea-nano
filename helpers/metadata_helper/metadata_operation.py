@@ -290,11 +290,25 @@ def write_metadata_to_videos(db, parent=None):
 			metadata_args = []
 			if title is not None:
 				metadata_args.append(f"-Title={title}")
+				metadata_args.append(f"-QuickTime:Title={title}")
+				metadata_args.append(f"-XMP:Title={title}")
 			if description is not None:
 				metadata_args.append(f"-Description={description}")
+				metadata_args.append(f"-QuickTime:Description={description}")
+				metadata_args.append(f"-XMP:Description={description}")
 				metadata_args.append(f"-QuickTime:Comment={description}")
 			if tags is not None:
-				metadata_args.append(f"-Keywords={tags}")
+				if isinstance(tags, str):
+					tag_list = [t.strip() for t in tags.split(',') if t.strip()]
+				elif isinstance(tags, list):
+					tag_list = tags
+				else:
+					tag_list = []
+				if tag_list:
+					joined_tags = ",".join(tag_list)
+					metadata_args.append(f"-Keywords={joined_tags}")
+					metadata_args.append(f"-QuickTime:Keywords={joined_tags}")
+					metadata_args.append(f"-XMP:Keywords={joined_tags}")
 			metadata_args.append(f"-QuickTime:Software=Image Tea")
 			metadata_args.append(f"-XMP:CreatorTool=Image Tea")
 			metadata_args.append(f"-Software=Image Tea")
@@ -304,6 +318,15 @@ def write_metadata_to_videos(db, parent=None):
 				result = et.execute(*[arg.encode('utf-8') for arg in metadata_args])
 				if result is None:
 					errors.append(f"{filename}: exiftool error (no result)")
+			try:
+				with exiftool.ExifToolHelper(executable=exiftool_path) as et_read:
+					meta_list = et_read.get_metadata([filepath])
+					if meta_list and isinstance(meta_list[0], dict):
+						print(f"\n[DEBUG] Metadata fields for {filename}:")
+						for k, v in meta_list[0].items():
+							print(f"{k}: {v}")
+			except Exception as e:
+				print(f"[DEBUG] Failed to read metadata fields for {filename}: {e}")
 		except Exception as e:
 			errors.append(f"{filename}: {e}")
 		dialog.repaint()
