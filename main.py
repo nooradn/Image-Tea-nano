@@ -18,15 +18,23 @@ from helpers.batch_processing_helper import (
 )
 from tools.tools_checker import check_folders
 from dialogs.disclaimer_dialog import DisclaimerDialog
+import json
 
 check_folders()
+
+def get_app_version():
+    config_path = os.path.join(BASE_PATH, "configs", "app_config.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    return config.get("version", "")
 
 class ImageTeaMainWindow(QMainWindow):
     show_ai_unsupported_dialog = Signal(str)
 
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Image Tea (nano) Metadata Generator")
+        version = get_app_version()
+        self.setWindowTitle(f"Image Tea (nano) Metadata Generator v{version}")
         icon_path = os.path.join(BASE_PATH, "res", "image_tea.ico")
         self.setWindowIcon(QIcon(icon_path))
         from database.db_operation import ImageTeaDB
