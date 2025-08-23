@@ -1,5 +1,5 @@
-from PySide6.QtCore import QThread, Signal, Qt, QPoint
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QApplication
+from PySide6.QtCore import QThread, Signal, Qt, QPoint, QTimer
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QApplication, QWidget
 from PySide6.QtGui import QColor, QBrush, QAction
 from database.db_operation import ImageTeaDB
 import datetime
@@ -122,8 +122,8 @@ class AddApiKeyDialog(QDialog):
         note_layout.addWidget(self.note_edit)
         layout.addLayout(note_layout)
         self.api_table = QTableWidget()
-        self.api_table.setColumnCount(4)
-        self.api_table.setHorizontalHeaderLabels(["Service", "API", "Last Tested", "Note"])
+        self.api_table.setColumnCount(5)
+        self.api_table.setHorizontalHeaderLabels(["Service", "API", "Last Tested", "Note", ""])
         self.api_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.api_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.api_table.setSelectionBehavior(QTableWidget.SelectRows)
@@ -131,6 +131,10 @@ class AddApiKeyDialog(QDialog):
         self.api_table.setMinimumHeight(100)
         self.api_table.setToolTip("List of all API keys you have added")
         layout.addWidget(self.api_table)
+        self._row_testing = None
+        self._blink_timer = QTimer(self)
+        self._blink_timer.timeout.connect(self._blink_row)
+        self._blink_state = False
         self._refresh_api_table()
         self.progress_bar = QProgressBar()
         self.progress_bar.setMinimum(0)
@@ -145,13 +149,14 @@ class AddApiKeyDialog(QDialog):
         self.test_and_save_btn.setIcon(qta.icon('fa5s.play'))
         self.test_and_save_btn.setIconSize(self.test_and_save_btn.iconSize())
         self.test_and_save_btn.setToolTip("Test the API key and save it if valid")
-        self.delete_btn = QPushButton()
-        self.delete_btn.setIcon(qta.icon('fa5s.trash'))
-        self.delete_btn.setFixedWidth(32)
-        self.delete_btn.setToolTip("Delete this API Key")
-        self.delete_btn.clicked.connect(self.delete_api_key)
+        self.close_btn = QPushButton()
+        self.close_btn.setText("Close")
+        self.close_btn.setIcon(qta.icon('fa5s.times'))
+        self.close_btn.setIconSize(self.close_btn.iconSize())
+        self.close_btn.setToolTip("Close this dialog")
+        self.close_btn.clicked.connect(self.close)
         btn_layout.addWidget(self.test_and_save_btn)
-        btn_layout.addWidget(self.delete_btn)
+        btn_layout.addWidget(self.close_btn)
         layout.addLayout(btn_layout)
         self.setLayout(layout)
         self.test_and_save_btn.clicked.connect(self.test_and_save_api_key)
@@ -198,7 +203,6 @@ class AddApiKeyDialog(QDialog):
                 last_tested = row["last_tested"]
                 status = row["status"]
             else:
-                # Handle 6 columns (service, api_key, note, last_tested, status, model)
                 if len(row) == 6:
                     service, api, note, last_tested, status, model = row
                 elif len(row) == 5:
@@ -212,6 +216,25 @@ class AddApiKeyDialog(QDialog):
             self.api_table.setItem(row_idx, 1, QTableWidgetItem(str(api)))
             self.api_table.setItem(row_idx, 2, QTableWidgetItem(str(last_tested)))
             self.api_table.setItem(row_idx, 3, QTableWidgetItem(str(note)))
+            action_widget = QWidget()
+            action_layout = QHBoxLayout(action_widget)
+            action_layout.setContentsMargins(0, 0, 0, 0)
+            test_btn = QPushButton()
+            test_btn.setIcon(qta.icon('fa5s.play'))
+            test_btn.setToolTip("Test this API Key")
+            test_btn.setFixedWidth(28)
+            test_btn.setProperty("row", row_idx)
+            test_btn.clicked.connect(lambda _, r=row_idx: self._test_api_key_row(r))
+            delete_btn = QPushButton()
+            delete_btn.setIcon(qta.icon('fa5s.trash'))
+            delete_btn.setToolTip("Delete this API Key")
+            delete_btn.setFixedWidth(28)
+            delete_btn.setProperty("row", row_idx)
+            delete_btn.clicked.connect(lambda _, r=row_idx: self._delete_api_key_row(r))
+            action_layout.addWidget(test_btn)
+            action_layout.addWidget(delete_btn)
+            action_layout.addStretch()
+            self.api_table.setCellWidget(row_idx, 4, action_widget)
             if status == "active":
                 brush = QBrush(QColor(91, 184, 16, int(0.4 * 255)))
             elif status == "invalid":
@@ -223,8 +246,104 @@ class AddApiKeyDialog(QDialog):
                     item = self.api_table.item(row_idx, col)
                     if item:
                         item.setBackground(brush)
+        self._stop_blinking()
+
+    def _test_api_key_row(self, row):
+        if self._row_testing is not None:
+            return
+        service_item = self.api_table.item(row, 0)
+        api_item = self.api_table.item(row, 1)
+        if not service_item or not api_item:
+            return
+        service = service_item.text().lower()
+        api_key = api_item.text().strip()
+        model = None
+        try:
+            rows = self.db.get_all_api_keys()
+            if row < len(rows):
+                if isinstance(rows[row], dict):
+                    model = rows[row].get("model")
+                elif len(rows[row]) == 6:
+                    model = rows[row][5]
+        except Exception:
+            pass
+        test_btn = self._get_action_btn(row, 0)
+        if test_btn:
+            test_btn.setIcon(qta.icon('fa5s.stop'))
+            test_btn.setToolTip("Stop testing")
+        self._row_testing = row
+        self._blink_state = False
+        self._blink_timer.start(300)
+        self._test_thread_row = ApiKeyTestThread(api_key, service, model)
+        self._test_thread_row.result.connect(lambda status, service, text: self._on_test_row_result(row, status, service, text))
+        self._test_thread_row.finished.connect(lambda: self._stop_blinking())
+        self._test_thread_row.start()
+
+    def _on_test_row_result(self, row, status, service, text):
+        self._stop_blinking()
+        self._refresh_api_table()
+        if status == 'success':
+            QMessageBox.information(self, "API Key Test", "API Key is valid and active.")
+        else:
+            QMessageBox.critical(self, "API Key Test", "API Key invalid or not supported.")
+
+    def _get_action_btn(self, row, btn_idx):
+        widget = self.api_table.cellWidget(row, 4)
+        if widget:
+            layout = widget.layout()
+            if layout and layout.count() > btn_idx:
+                return layout.itemAt(btn_idx).widget()
+        return None
+
+    def _blink_row(self):
+        if self._row_testing is None:
+            return
+        color1 = QColor(255, 255, 128, 180)
+        color2 = QColor(255, 255, 255, 0)
+        color = color1 if self._blink_state else color2
+        for col in range(4):
+            item = self.api_table.item(self._row_testing, col)
+            if item:
+                item.setBackground(QBrush(color))
+        self._blink_state = not self._blink_state
+
+    def _stop_blinking(self):
+        if self._row_testing is not None:
+            test_btn = self._get_action_btn(self._row_testing, 0)
+            if test_btn:
+                test_btn.setIcon(qta.icon('fa5s.play'))
+                test_btn.setToolTip("Test this API Key")
+        self._blink_timer.stop()
+        if self._row_testing is not None:
+            for col in range(4):
+                item = self.api_table.item(self._row_testing, col)
+                if item:
+                    item.setBackground(QBrush())
+        self._row_testing = None
+        self._blink_state = False
+
+    def _delete_api_key_row(self, row):
+        if self._row_testing == row:
+            self._stop_blinking()
+        service_item = self.api_table.item(row, 0)
+        api_item = self.api_table.item(row, 1)
+        if not service_item or not api_item:
+            return
+        service = service_item.text().lower()
+        api_key = api_item.text().strip()
+        if not api_key or not service:
+            QMessageBox.warning(self, "Delete API Key", "No API Key selected to delete.")
+            return
+        confirm = QMessageBox.question(self, "Delete API Key", f"Delete API Key for '{service}'?\nThis cannot be undone.", QMessageBox.Yes | QMessageBox.No)
+        if confirm == QMessageBox.Yes:
+            self.db.delete_api_key(service, api_key)
+            self._refresh_api_table()
+            self.key_edit.clear()
+            self.note_edit.clear()
 
     def _on_api_table_row_clicked(self, row, column):
+        if column == 4:
+            return
         service_item = self.api_table.item(row, 0)
         api_item = self.api_table.item(row, 1)
         note_item = self.api_table.item(row, 3)
@@ -401,9 +520,6 @@ class AddApiKeyDialog(QDialog):
             self._detected_service = None
         menu = QMenu(self)
         action_test = QAction(qta.icon('fa5s.play'), "Test and Save", self)
-        action_delete = QAction(qta.icon('fa5s.trash'), "Delete", self)
         action_test.triggered.connect(self.test_and_save_api_key)
-        action_delete.triggered.connect(self.delete_api_key)
         menu.addAction(action_test)
-        menu.addAction(action_delete)
         menu.exec(self.api_table.viewport().mapToGlobal(pos))

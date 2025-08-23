@@ -11,6 +11,7 @@ from ui.main_toolbar import setup_main_toolbar
 from helpers.batch_processing_helper import batch_generate_metadata
 from dialogs.api_call_warning_dialog import ApiCallWarningDialog
 from ui.properties_widget import PropertiesWidget
+from ui.api_key_section import ApiKeySectionWidget
 
 def setup_ui(self):
     setup_main_menu(self)
@@ -20,93 +21,21 @@ def setup_ui(self):
     central = QWidget()
     layout = QVBoxLayout()
     api_layout = QHBoxLayout()
-    from PySide6.QtWidgets import QSizePolicy
 
-    api_keys = self.db.get_all_api_keys()
-    model_set = []
-    for entry in api_keys:
-        service, api_key, note, last_tested, status, model = entry
-        service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
-        if service_disp.capitalize() not in model_set:
-            model_set.append(service_disp.capitalize())
-
-    self.model_combo = QComboBox()
-    self.model_combo.setEditable(False)
-    self.model_combo.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    self.model_combo.setFixedWidth(120)
-    self.model_combo.setToolTip("Select the model/service to filter API keys")
-    for model in model_set:
-        self.model_combo.addItem(model)
-    api_layout.addWidget(self.model_combo)
-
-    self.api_key_combo = QComboBox()
-    self.api_key_combo.setEditable(False)
-    self.api_key_combo.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-    self.api_key_combo.setToolTip("Select the API key to use for the selected model")
-    self.api_key_combo.setMaximumWidth(550)
-    self.api_key_map = {}
-
-    self.tested_label = QLabel()
-    self.tested_label.setText(" - | -")
-    self.tested_label.setToolTip("Shows the last time this API key was tested and its model")
-    api_layout.addWidget(self.api_key_combo)
-    api_layout.addWidget(self.tested_label)
-    api_layout.addItem(QSpacerItem(24, 1, QSizePolicy.Expanding, QSizePolicy.Minimum))
+    self.api_key_section = ApiKeySectionWidget(self.db, self)
+    api_layout.addWidget(self.api_key_section)
     layout.addLayout(api_layout)
 
-    def refresh_api_key_combo(selected_model=None):
-        self.api_key_combo.clear()
-        self.api_key_map.clear()
-        api_keys = self.db.get_all_api_keys()
-        for entry in api_keys:
-            service, api_key, note, last_tested, status, model = entry
-            service_disp = service.lower() if service.lower() in ("openai", "gemini") else service
-            if selected_model is None or service_disp.capitalize() == selected_model:
-                if api_key and len(api_key) > 5:
-                    masked_key = '*' * (len(api_key) - 5) + api_key[-5:]
-                else:
-                    masked_key = api_key
-                label = f"{masked_key} ({note})" if note else masked_key
-                self.api_key_combo.addItem(label, api_key)
-                self.api_key_map[api_key] = {'service': service_disp, 'note': note, 'last_tested': last_tested, 'model': model}
-        if self.api_key_combo.count() > 0:
-            self.api_key_combo.setCurrentIndex(0)
-            api_key = self.api_key_combo.currentData()
-            self.api_key = api_key
-            if hasattr(self, 'tested_label'):
-                last_tested = self.api_key_map[api_key]['last_tested']
-                model = self.api_key_map[api_key]['model']
-                self.tested_label.setText(f"{last_tested if last_tested else '-'} | {model if model else '-'}")
-        else:
-            self.api_key = None
-            if hasattr(self, 'tested_label'):
-                self.tested_label.setText(" - | -")
+    def on_api_key_changed(api_key, service, model):
+        self.api_key = api_key
+        self.selected_service = service
+        self.selected_model_name = model
 
-    def on_model_combo_changed(idx):
-        selected_model = self.model_combo.currentText()
-        refresh_api_key_combo(selected_model)
-        self.selected_model = selected_model
-
-    self.model_combo.currentIndexChanged.connect(on_model_combo_changed)
-
-    def on_api_combo_changed(idx):
-        api_key = self.api_key_combo.itemData(idx)
-        if api_key and api_key in self.api_key_map:
-            self.api_key = api_key
-            self.selected_service = self.api_key_map[api_key]['service']
-            self.selected_model_name = self.api_key_map[api_key]['model']
-            if hasattr(self, 'tested_label'):
-                last_tested = self.api_key_map[api_key]['last_tested']
-                model = self.api_key_map[api_key]['model']
-                self.tested_label.setText(f"{last_tested if last_tested else '-'} | {model if model else '-'}")
-        else:
-            self.api_key = None
-            self.selected_service = None
-            self.selected_model_name = None
-            if hasattr(self, 'tested_label'):
-                self.tested_label.setText("- | -")
-
-    self.api_key_combo.currentIndexChanged.connect(on_api_combo_changed)
+    self.api_key_section.api_key_changed.connect(on_api_key_changed)
+    # Set initial values
+    self.api_key = self.api_key_section.get_current_api_key()
+    self.selected_service = self.api_key_section.get_current_service()
+    self.selected_model_name = self.api_key_section.get_current_model()
 
     self.prompt_section = PromptSectionWidget(self)
     layout.addWidget(self.prompt_section)
@@ -192,8 +121,4 @@ def setup_ui(self):
     central.setLayout(layout)
     self.setCentralWidget(central)
 
-    if self.model_combo.count() > 0:
-        on_model_combo_changed(self.model_combo.currentIndex())
-    else:
-        refresh_api_key_combo(None)
     on_table_selection_changed()
