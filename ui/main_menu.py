@@ -145,7 +145,14 @@ def setup_main_menu(window):
     def run_updater():
         updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
         try:
-            subprocess.Popen([updater_path])
+            if sys.platform == "win32":
+                # Jalankan dengan elevation jika di Windows
+                subprocess.Popen(
+                    f'powershell Start-Process -Verb runAs "{updater_path}"',
+                    shell=True
+                )
+            else:
+                subprocess.Popen([updater_path])
         except Exception as e:
             print(f"Failed to run updater: {e}")
     update_now_action.triggered.connect(run_updater)

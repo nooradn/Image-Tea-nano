@@ -3,6 +3,7 @@ from PySide6.QtGui import QAction
 import qtawesome as qta
 import webbrowser
 import os
+import sys
 import subprocess
 from config import BASE_PATH
 from dialogs.csv_exporter_dialog import CSVExporterDialog
@@ -110,7 +111,13 @@ def setup_main_toolbar(window: QWidget):
     def run_updater():
         updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
         try:
-            subprocess.Popen([updater_path])
+            if sys.platform == "win32":
+                subprocess.Popen(
+                    f'powershell Start-Process -Verb runAs "{updater_path}"',
+                    shell=True
+                )
+            else:
+                subprocess.Popen([updater_path])
         except Exception as e:
             print(f"Failed to run updater: {e}")
     update_now_action = make_action('fa5s.download', "Update Now", run_updater)
