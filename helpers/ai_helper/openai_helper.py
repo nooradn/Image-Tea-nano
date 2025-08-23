@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import time
+import re
 from openai import OpenAI
 from config import BASE_PATH
 from helpers.ai_helper.ai_variation_helper import generate_timestamp, generate_token
@@ -107,6 +108,15 @@ def title_case_except(text):
         else:
             result.append(w.capitalize())
     return " ".join(result)
+
+def sanitize_text(text):
+    if not text:
+        return text
+    text = text.replace('"', '').replace("'", "")
+    text = re.sub(r'[\\/:*?<>|]', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    text = text.strip()
+    return text
 
 def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=None):
     if stop_flag and stop_flag.get('stop'):
@@ -229,6 +239,9 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
             error_message = f"[OpenAI JSON PARSE ERROR] {e}"
         if title:
             title = title_case_except(title)
+            title = sanitize_text(title)
+        if description:
+            description = sanitize_text(description)
         return title, description, tags, category, error_message, token_input, token_output, token_total
     except Exception as e:
         error_message = f"[OpenAI ERROR] {e}"

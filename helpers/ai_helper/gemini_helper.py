@@ -1,6 +1,7 @@
 import time
 import os
 import json
+import re
 import google.genai as genai
 from google.genai import types
 from config import BASE_PATH
@@ -107,6 +108,15 @@ def title_case_except(text):
         else:
             result.append(w.capitalize())
     return " ".join(result)
+
+def sanitize_text(text):
+    if not text:
+        return text
+    text = text.replace('"', '').replace("'", "")
+    text = re.sub(r'[\\/:*?<>|]', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    text = text.strip()
+    return text
 
 def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=None):
     if stop_flag and stop_flag.get('stop'):
@@ -231,6 +241,9 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             error_message = f"[Gemini JSON PARSE ERROR] {e}"
         if title:
             title = title_case_except(title)
+            title = sanitize_text(title)
+        if description:
+            description = sanitize_text(description)
         return title, description, tags, category, error_message, token_input, token_output, token_total
     except Exception as e:
         print(f"[Gemini ERROR] {e}")
