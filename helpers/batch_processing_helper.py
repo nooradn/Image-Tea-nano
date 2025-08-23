@@ -99,10 +99,17 @@ def batch_generate_metadata(window):
     if getattr(window, 'is_generating', False):
         return
 
+    # Always fetch API key, model, and service from api_key_section if available
     api_key = None
     model = None
     service = None
-    if hasattr(window, "api_key_combo") and hasattr(window, "api_key_map"):
+    if hasattr(window, "api_key_section"):
+        api_key = window.api_key_section.get_current_api_key()
+        service = window.api_key_section.get_current_service()
+        model = window.api_key_section.get_current_model()
+        if service:
+            service = service.lower()
+    elif hasattr(window, "api_key_combo") and hasattr(window, "api_key_map"):
         idx = window.api_key_combo.currentIndex()
         api_key = window.api_key_combo.currentData() if idx >= 0 else None
         if api_key and api_key in window.api_key_map:
