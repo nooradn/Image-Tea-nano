@@ -1,5 +1,5 @@
 from PySide6.QtCore import QThread, Signal, Qt, QPoint
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QMenu
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QApplication
 from PySide6.QtGui import QColor, QBrush, QAction
 from database.db_operation import ImageTeaDB
 import datetime
@@ -100,8 +100,15 @@ class AddApiKeyDialog(QDialog):
         self.key_edit.setPlaceholderText("Enter API Key")
         self.key_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.key_edit.setToolTip("Enter your API key here")
+        self.paste_btn = QPushButton()
+        self.paste_btn.setIcon(qta.icon('fa5s.paste'))
+        self.paste_btn.setFixedWidth(32)
+        self.paste_btn.setToolTip("Paste from clipboard")
+        self.paste_btn.setFocusPolicy(Qt.NoFocus)
+        self.paste_btn.clicked.connect(self._on_paste_clicked)
         key_layout.addWidget(self.key_label)
         key_layout.addWidget(self.key_edit)
+        key_layout.addWidget(self.paste_btn)
         layout.addLayout(key_layout)
         note_layout = QHBoxLayout()
         note_label = QLabel("Note:")
@@ -157,6 +164,11 @@ class AddApiKeyDialog(QDialog):
         self._detected_service = None
         self._api_key_valid = False
         self._testing = False
+
+    def _on_paste_clicked(self):
+        clipboard = QApplication.clipboard()
+        text = clipboard.text()
+        self.key_edit.setText(text)
 
     def _refresh_model_combo(self):
         service = self.service_combo.currentText().lower()
