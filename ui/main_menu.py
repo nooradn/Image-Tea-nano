@@ -146,9 +146,8 @@ def setup_main_menu(window):
         updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
         try:
             if sys.platform == "win32":
-                # Jalankan dengan elevation jika di Windows
                 subprocess.Popen(
-                    f'powershell Start-Process -Verb runAs "{updater_path}"',
+                    f'powershell Start-Process -Verb runAs -FilePath "{updater_path}"',
                     shell=True
                 )
             else:
@@ -202,4 +201,5 @@ def setup_main_menu(window):
     menubar.addMenu(prompt_menu)
     menubar.addMenu(api_menu)
     menubar.addMenu(help_menu)
+    window.setMenuBar(menubar)
     window.setMenuBar(menubar)

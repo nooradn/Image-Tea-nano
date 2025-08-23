@@ -113,7 +113,7 @@ def setup_main_toolbar(window: QWidget):
         try:
             if sys.platform == "win32":
                 subprocess.Popen(
-                    f'powershell Start-Process -Verb runAs "{updater_path}"',
+                    f'powershell Start-Process -Verb runAs -FilePath "{updater_path}"',
                     shell=True
                 )
             else:
