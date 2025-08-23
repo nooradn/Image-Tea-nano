@@ -147,7 +147,7 @@ def setup_main_menu(window):
         try:
             if sys.platform == "win32":
                 subprocess.Popen(
-                    f'powershell Start-Process -Verb runAs -FilePath "{updater_path}"',
+                    f'powershell -Command "Start-Process -Verb runAs -FilePath \\"{updater_path}\\""',
                     shell=True
                 )
             else:
