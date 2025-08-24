@@ -19,6 +19,14 @@ from dialogs.about_dialog import AboutDialog
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from config import BASE_PATH
 
+def get_app_links():
+    import json
+    import os
+    config_path = os.path.join(BASE_PATH, "configs", "app_config.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    return config["links"]
+
 def clear_existing_metadata(window):
     msg = (
         "Are you sure you want to clear all metadata (title, description, tags, status and categories)?\n\n"
@@ -43,6 +51,7 @@ def run_updater(window):
         print(f"Failed to run updater: {e}")
 
 def setup_main_menu(window):
+    links = get_app_links()
     menubar = QMenuBar(window)
     file_menu = QMenu("File", menubar)
 
@@ -168,25 +177,25 @@ def setup_main_menu(window):
 
     wa_action = QAction(qta.icon('fa5b.whatsapp'), "WhatsApp Group", window)
     def open_wa():
-        webbrowser.open("https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3")
+        webbrowser.open(links["whatsapp"])
     wa_action.triggered.connect(open_wa)
     help_menu.addAction(wa_action)
 
     repo_action = QAction(qta.icon('fa5b.github'), "Repository", window)
     def open_repo():
-        webbrowser.open("https://github.com/mudrikam/Image-Tea-nano")
+        webbrowser.open(links["repo"])
     repo_action.triggered.connect(open_repo)
     help_menu.addAction(repo_action)
 
     website_action = QAction(qta.icon('fa5s.globe'), "Website", window)
     def open_website():
-        webbrowser.open("https://www.image-tea.cloud/")
+        webbrowser.open(links["website"])
     website_action.triggered.connect(open_website)
     help_menu.addAction(website_action)
 
     readme_action = QAction(qta.icon('fa5s.book'), "Open README.md (GitHub)", window)
     def open_readme():
-        webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md")
+        webbrowser.open(links["readme"])
     readme_action.triggered.connect(open_readme)
     help_menu.addAction(readme_action)
 
