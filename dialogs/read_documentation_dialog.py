@@ -22,7 +22,7 @@ class ReadDocumentationDialog(QDialog):
         self.search_entry = QLineEdit()
         self.search_entry.setPlaceholderText("Search documentation...")
         self.search_icon = QLabel()
-        self.search_icon.setPixmap(qta.icon('fa5s.search').pixmap(18, 18))
+        self.search_icon.setPixmap(qta.icon('fa6s.magnifying-glass').pixmap(18, 18))
         self.search_icon.setFixedWidth(22)
         self.search_entry.textChanged.connect(self.on_search)
 
@@ -63,7 +63,7 @@ class ReadDocumentationDialog(QDialog):
         splitter.setStretchFactor(1, 3)
 
         self.close_button = QPushButton("Close")
-        self.close_button.setIcon(qta.icon('fa5s.times'))
+        self.close_button.setIcon(qta.icon('fa6s.xmark'))
         self.close_button.setFixedWidth(100)
         self.close_button.clicked.connect(self.close)
 
@@ -81,8 +81,8 @@ class ReadDocumentationDialog(QDialog):
         self.doc_root_id = os.path.join(BASE_PATH, "documentation", "lang_ID")
         self.doc_root_en = os.path.join(BASE_PATH, "documentation", "lang_EN")
         self.res_images_path = os.path.join(BASE_PATH, "res", "images")
-        self.file_icon = qta.icon('fa5s.file-alt', color='#2196F3')
-        self.folder_icon = qta.icon('fa5s.folder', color='#FFA500')
+        self.file_icon = qta.icon('fa6s.file', color='#2196F3')
+        self.folder_icon = qta.icon('fa6s.folder', color='#FFA500')
 
         self.current_lang = "id"
         self.all_md_files = []
