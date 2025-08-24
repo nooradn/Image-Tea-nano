@@ -19,6 +19,16 @@ from dialogs.about_dialog import AboutDialog
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from config import BASE_PATH
 
+def clear_existing_metadata(window):
+    msg = (
+        "Are you sure you want to clear all metadata (title, description, tags, status and categories)?\n\n"
+        "This will NOT remove metadata embedded in the image files, only metadata stored in the database."
+    )
+    reply = QMessageBox.question(window, "Clear Metadata", msg, QMessageBox.Yes | QMessageBox.No)
+    if reply == QMessageBox.Yes:
+        window.db.clear_all_metadata()
+        window.table.refresh_table()
+
 def setup_main_menu(window):
     menubar = QMenuBar(window)
     file_menu = QMenu("File", menubar)
@@ -56,16 +66,7 @@ def setup_main_menu(window):
     edit_menu.addAction(clear_action)
 
     clear_metadata_action = QAction(qta.icon('fa5s.eraser'), "Clear Existing Metadata", window)
-    def clear_existing_metadata():
-        msg = (
-            "Are you sure you want to clear all metadata (title, description, tags, status and categories)?\n\n"
-            "This will NOT remove metadata embedded in the image files, only metadata stored in the database."
-        )
-        reply = QMessageBox.question(window, "Clear Metadata", msg, QMessageBox.Yes | QMessageBox.No)
-        if reply == QMessageBox.Yes:
-            window.db.clear_all_metadata()
-            window.table.refresh_table()
-    clear_metadata_action.triggered.connect(clear_existing_metadata)
+    clear_metadata_action.triggered.connect(lambda: clear_existing_metadata(window))
     edit_menu.addAction(clear_metadata_action)
 
     batch_rename_action = QAction(qta.icon('fa5s.i-cursor'), "Batch Rename", window)

@@ -1,5 +1,6 @@
-from PySide6.QtWidgets import QToolBar, QStyle, QWidget, QFrame, QWidgetAction, QHBoxLayout
+from PySide6.QtWidgets import QToolBar, QStyle, QWidget, QFrame, QWidgetAction, QHBoxLayout, QVBoxLayout, QLabel, QToolButton
 from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt, QObject, QEvent
 import qtawesome as qta
 import webbrowser
 import os
@@ -13,10 +14,27 @@ from dialogs.batch_rename_dialog import BatchRenameDialog
 from dialogs.read_documentation_dialog import ReadDocumentationDialog
 from dialogs.donation_dialog import DonateDialog
 from dialogs.add_api_key_dialog import AddApiKeyDialog
-from dialogs.about_dialog import AboutDialog
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images, write_metadata_to_videos
+from ui.main_menu import clear_existing_metadata
+
+class HoverIconEventFilter(QObject):
+    def __init__(self, button, icon_normal, icon_hover, icon_size):
+        super().__init__(button)
+        self.button = button
+        self.icon_normal = icon_normal
+        self.icon_hover = icon_hover
+        self.icon_size = icon_size
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Enter:
+            self.button.setIcon(self.icon_hover)
+            self.button.setIconSize(self.icon_size)
+        elif event.type() == QEvent.Leave:
+            self.button.setIcon(self.icon_normal)
+            self.button.setIconSize(self.icon_size)
+        return False
 
 def add_vertical_separator(toolbar):
     wrapper = QWidget()
@@ -30,6 +48,27 @@ def add_vertical_separator(toolbar):
     sep_action = QWidgetAction(toolbar)
     sep_action.setDefaultWidget(wrapper)
     toolbar.addAction(sep_action)
+
+def create_toolbar_button_with_label(icon_normal, icon_hover, text, tooltip, triggered_func, window, icon_size):
+    btn_widget = QWidget()
+    v_layout = QVBoxLayout(btn_widget)
+    v_layout.setContentsMargins(2, 2, 2, 2)
+    v_layout.setSpacing(0)
+    btn = QToolButton()
+    btn.setIcon(icon_normal)
+    btn.setIconSize(icon_size)
+    btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+    btn.setToolTip(tooltip)
+    btn.clicked.connect(triggered_func)
+    btn.installEventFilter(HoverIconEventFilter(btn, icon_normal, icon_hover, icon_size))
+    label = QLabel(text)
+    label.setStyleSheet("font-family: 'Segoe UI'; font-size: 9px; color: #666;")
+    label.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+    v_layout.addWidget(btn, alignment=Qt.AlignHCenter)
+    v_layout.addWidget(label, alignment=Qt.AlignHCenter)
+    action = QWidgetAction(window)
+    action.setDefaultWidget(btn_widget)
+    return action
 
 def setup_main_toolbar(window: QWidget):
     toolbar = QToolBar("Main Toolbar", window)
@@ -45,68 +84,130 @@ def setup_main_toolbar(window: QWidget):
         QToolButton:hover {
             background-color: rgba(174, 174, 174, 0.4);
         }
-        QToolButton:hover .qicon {
-            color: #fff;
-        }
     """)
 
     icon_color = "#888"
     icon_color_hover = "#4e9e20"
+    icon_size = toolbar.iconSize()
 
-    def make_action(icon_name, text, triggered_func):
-        icon = qta.icon(icon_name, color=icon_color, color_active=icon_color_hover)
-        action = QAction(icon, text, window)
-        action.triggered.connect(triggered_func)
-        return action
+    def make_icon(icon_name, color):
+        return qta.icon(icon_name, color=color)
 
-    import_action = make_action('fa5s.folder-open', "Import Files", lambda: (
-        import_files(window, window.db) and window.table.refresh_table()
-    ))
+    import_action = create_toolbar_button_with_label(
+        make_icon('fa5s.folder-open', icon_color),
+        make_icon('fa5s.folder-open', icon_color_hover),
+        "Import",
+        "Import files into the project",
+        lambda: (import_files(window, window.db) and window.table.refresh_table()),
+        window, icon_size)
     toolbar.addAction(import_action)
 
-    clear_all_action = make_action('fa5s.broom', "Clear All", lambda: window.table.clear_all())
+    clear_all_action = create_toolbar_button_with_label(
+        make_icon('fa5s.broom', icon_color),
+        make_icon('fa5s.broom', icon_color_hover),
+        "Clear",
+        "Clear all files from the table",
+        lambda: window.table.clear_all(),
+        window, icon_size)
     toolbar.addAction(clear_all_action)
 
-    delete_selected_action = make_action('fa5s.trash', "Delete Selected", lambda: window.table.delete_selected())
+    delete_selected_action = create_toolbar_button_with_label(
+        make_icon('fa5s.trash', icon_color),
+        make_icon('fa5s.trash', icon_color_hover),
+        "Delete",
+        "Delete selected files from the table",
+        lambda: window.table.delete_selected(),
+        window, icon_size)
     toolbar.addAction(delete_selected_action)
 
     add_vertical_separator(toolbar)
 
-    clear_metadata_action = make_action('fa5s.eraser', "Clear Existing Metadata", lambda: clear_existing_metadata(window))
+    clear_metadata_action = create_toolbar_button_with_label(
+        make_icon('fa5s.eraser', icon_color),
+        make_icon('fa5s.eraser', icon_color_hover),
+        "Clear",
+        "Clear all metadata from database (not from files)",
+        lambda: clear_existing_metadata(window),
+        window, icon_size)
     toolbar.addAction(clear_metadata_action)
 
-    batch_rename_action = make_action('fa5s.i-cursor', "Batch Rename", lambda: BatchRenameDialog(window, table_widget=window.table, db=window.db).exec())
+    batch_rename_action = create_toolbar_button_with_label(
+        make_icon('fa5s.i-cursor', icon_color),
+        make_icon('fa5s.i-cursor', icon_color_hover),
+        "Rename",
+        "Batch rename selected files",
+        lambda: BatchRenameDialog(window, table_widget=window.table, db=window.db).exec(),
+        window, icon_size)
     toolbar.addAction(batch_rename_action)
 
-    edit_metadata_action = make_action('fa5s.edit', "Edit Metadata", lambda: open_edit_metadata(window))
+    edit_metadata_action = create_toolbar_button_with_label(
+        make_icon('fa5s.edit', icon_color),
+        make_icon('fa5s.edit', icon_color_hover),
+        "Edit",
+        "Edit metadata for selected file",
+        lambda: open_edit_metadata(window),
+        window, icon_size)
     toolbar.addAction(edit_metadata_action)
 
     add_vertical_separator(toolbar)
 
-    write_metadata_images_action = make_action('fa5s.image', "Write Metadata to Images", lambda: write_metadata_to_images(window.db, window))
+    write_metadata_images_action = create_toolbar_button_with_label(
+        make_icon('fa5s.image', icon_color),
+        make_icon('fa5s.image', icon_color_hover),
+        "Write",
+        "Write metadata to image files",
+        lambda: write_metadata_to_images(window.db, window),
+        window, icon_size)
     toolbar.addAction(write_metadata_images_action)
 
-    write_metadata_videos_action = make_action('fa5s.film', "Write Metadata to Videos", lambda: write_metadata_to_videos(window.db, window))
+    write_metadata_videos_action = create_toolbar_button_with_label(
+        make_icon('fa5s.film', icon_color),
+        make_icon('fa5s.film', icon_color_hover),
+        "Write",
+        "Write metadata to video files",
+        lambda: write_metadata_to_videos(window.db, window),
+        window, icon_size)
     toolbar.addAction(write_metadata_videos_action)
 
-    export_metadata_action = make_action('fa5s.file-csv', "Export Metadata to CSV", lambda: CSVExporterDialog(window).exec())
+    export_metadata_action = create_toolbar_button_with_label(
+        make_icon('fa5s.file-csv', icon_color),
+        make_icon('fa5s.file-csv', icon_color_hover),
+        "Export",
+        "Export metadata to CSV file",
+        lambda: CSVExporterDialog(window).exec(),
+        window, icon_size)
     toolbar.addAction(export_metadata_action)
 
     add_vertical_separator(toolbar)
 
-    edit_prompt_action = make_action('fa5s.edit', "Edit Prompt", lambda: EditPromptDialog(window).exec())
+    edit_prompt_action = create_toolbar_button_with_label(
+        make_icon('fa5s.edit', icon_color),
+        make_icon('fa5s.edit', icon_color_hover),
+        "Prompt",
+        "Edit the prompt for AI metadata generation",
+        lambda: EditPromptDialog(window).exec(),
+        window, icon_size)
     toolbar.addAction(edit_prompt_action)
 
-    custom_prompt_action = make_action('fa5s.comment-alt', "Custom Prompt", lambda: CustomPromptDialog(window).exec())
+    custom_prompt_action = create_toolbar_button_with_label(
+        make_icon('fa5s.comment-alt', icon_color),
+        make_icon('fa5s.comment-alt', icon_color_hover),
+        "Custom",
+        "Open custom prompt dialog",
+        lambda: CustomPromptDialog(window).exec(),
+        window, icon_size)
     toolbar.addAction(custom_prompt_action)
 
-    add_api_action = make_action('fa5s.key', "Add API Key", lambda: AddApiKeyDialog(window).exec())
+    add_api_action = create_toolbar_button_with_label(
+        make_icon('fa5s.key', icon_color),
+        make_icon('fa5s.key', icon_color_hover),
+        "API Key",
+        "Add or edit your API key",
+        lambda: AddApiKeyDialog(window).exec(),
+        window, icon_size)
     toolbar.addAction(add_api_action)
 
     add_vertical_separator(toolbar)
-
-    about_action = make_action('fa5s.info-circle', "About", lambda: AboutDialog(window).exec())
-    toolbar.addAction(about_action)
 
     def run_updater():
         updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
@@ -120,39 +221,70 @@ def setup_main_toolbar(window: QWidget):
                 subprocess.Popen([updater_path])
         except Exception as e:
             print(f"Failed to run updater: {e}")
-    update_now_action = make_action('fa5s.download', "Update Now", run_updater)
+    update_now_action = create_toolbar_button_with_label(
+        make_icon('fa5s.download', icon_color),
+        make_icon('fa5s.download', icon_color_hover),
+        "Update",
+        "Check for updates and run updater",
+        run_updater,
+        window, icon_size)
     toolbar.addAction(update_now_action)
 
-    donate_action = make_action('fa5s.donate', "Donate", lambda: DonateDialog(window).exec())
+    donate_action = create_toolbar_button_with_label(
+        make_icon('fa5s.donate', icon_color),
+        make_icon('fa5s.donate', icon_color_hover),
+        "Donate",
+        "Support development with a donation",
+        lambda: DonateDialog(window).exec(),
+        window, icon_size)
     toolbar.addAction(donate_action)
 
-    wa_action = make_action('fa5b.whatsapp', "WhatsApp Group", lambda: webbrowser.open("https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3"))
+    wa_action = create_toolbar_button_with_label(
+        make_icon('fa5b.whatsapp', icon_color),
+        make_icon('fa5b.whatsapp', icon_color_hover),
+        "WhatsApp",
+        "Join the WhatsApp support group",
+        lambda: webbrowser.open("https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3"),
+        window, icon_size)
     toolbar.addAction(wa_action)
 
-    repo_action = make_action('fa5b.github', "Repository", lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano"))
+    repo_action = create_toolbar_button_with_label(
+        make_icon('fa5b.github', icon_color),
+        make_icon('fa5b.github', icon_color_hover),
+        "Repo",
+        "Open the GitHub repository",
+        lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano"),
+        window, icon_size)
     toolbar.addAction(repo_action)
 
-    website_action = make_action('fa5s.globe', "Website", lambda: webbrowser.open("https://www.image-tea.cloud/"))
+    website_action = create_toolbar_button_with_label(
+        make_icon('fa5s.globe', icon_color),
+        make_icon('fa5s.globe', icon_color_hover),
+        "Website",
+        "Visit the Image Tea website",
+        lambda: webbrowser.open("https://www.image-tea.cloud/"),
+        window, icon_size)
     toolbar.addAction(website_action)
 
-    readme_action = make_action('fa5s.book', "Open README.md (GitHub)", lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md"))
+    readme_action = create_toolbar_button_with_label(
+        make_icon('fa5s.book', icon_color),
+        make_icon('fa5s.book', icon_color_hover),
+        "README",
+        "Open the README.md on GitHub",
+        lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md"),
+        window, icon_size)
     toolbar.addAction(readme_action)
 
-    documentation_action = make_action('fa5s.book-open', "Help", lambda: ReadDocumentationDialog(window).exec())
+    documentation_action = create_toolbar_button_with_label(
+        make_icon('fa5s.book-open', icon_color),
+        make_icon('fa5s.book-open', icon_color_hover),
+        "Help",
+        "Open the documentation/help dialog",
+        lambda: ReadDocumentationDialog(window).exec(),
+        window, icon_size)
     toolbar.addAction(documentation_action)
 
     window.addToolBar(toolbar)
-
-def clear_existing_metadata(window):
-    from PySide6.QtWidgets import QMessageBox
-    msg = (
-        "Are you sure you want to clear all metadata (title, description, tags, status and categories)?\n\n"
-        "This will NOT remove metadata embedded in the image files, only metadata stored in the database."
-    )
-    reply = QMessageBox.question(window, "Clear Metadata", msg, QMessageBox.Yes | QMessageBox.No)
-    if reply == QMessageBox.Yes:
-        window.db.clear_all_metadata()
-        window.table.refresh_table()
 
 def open_edit_metadata(window):
     selected = window.table.table.selectionModel().selectedRows()
