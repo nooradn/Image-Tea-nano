@@ -19,6 +19,14 @@ from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images, write_metadata_to_videos
 from ui.main_menu import clear_existing_metadata, run_updater
 
+def get_app_links():
+    import json
+    import os
+    config_path = os.path.join(BASE_PATH, "configs", "app_config.json")
+    with open(config_path, "r", encoding="utf-8") as f:
+        config = json.load(f)
+    return config["links"]
+
 class HoverIconEventFilter(QObject):
     def __init__(self, button, icon_normal, icon_hover, icon_size):
         super().__init__(button)
@@ -92,6 +100,8 @@ def setup_main_toolbar(window: QWidget):
 
     def make_icon(icon_name, color):
         return qta.icon(icon_name, color=color)
+
+    links = get_app_links()
 
     import_action = create_toolbar_button_with_label(
         make_icon('fa5s.folder-open', icon_color),
@@ -232,7 +242,7 @@ def setup_main_toolbar(window: QWidget):
         make_icon('fa5b.whatsapp', icon_color_hover),
         "WhatsApp",
         "Join the WhatsApp support group",
-        lambda: webbrowser.open("https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3"),
+        lambda: webbrowser.open(links["whatsapp"]),
         window, icon_size)
     toolbar.addAction(wa_action)
 
@@ -241,7 +251,7 @@ def setup_main_toolbar(window: QWidget):
         make_icon('fa5b.github', icon_color_hover),
         "Repo",
         "Open the GitHub repository",
-        lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano"),
+        lambda: webbrowser.open(links["repo"]),
         window, icon_size)
     toolbar.addAction(repo_action)
 
@@ -250,7 +260,7 @@ def setup_main_toolbar(window: QWidget):
         make_icon('fa5s.globe', icon_color_hover),
         "Website",
         "Visit the Image Tea website",
-        lambda: webbrowser.open("https://www.image-tea.cloud/"),
+        lambda: webbrowser.open(links["website"]),
         window, icon_size)
     toolbar.addAction(website_action)
 
@@ -259,7 +269,7 @@ def setup_main_toolbar(window: QWidget):
         make_icon('fa5s.book', icon_color_hover),
         "README",
         "Open the README.md on GitHub",
-        lambda: webbrowser.open("https://github.com/mudrikam/Image-Tea-nano/blob/main/README.md"),
+        lambda: webbrowser.open(links["readme"]),
         window, icon_size)
     toolbar.addAction(readme_action)
 
