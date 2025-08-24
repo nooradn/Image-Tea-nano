@@ -29,6 +29,19 @@ def clear_existing_metadata(window):
         window.db.clear_all_metadata()
         window.table.refresh_table()
 
+def run_updater(window):
+    updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
+    try:
+        if sys.platform == "win32":
+            subprocess.Popen(
+                f'powershell -Command "Start-Process -Verb runAs -FilePath \\"{updater_path}\\""',
+                shell=True
+            )
+        else:
+            subprocess.Popen([updater_path])
+    except Exception as e:
+        print(f"Failed to run updater: {e}")
+
 def setup_main_menu(window):
     menubar = QMenuBar(window)
     file_menu = QMenu("File", menubar)
@@ -143,19 +156,7 @@ def setup_main_menu(window):
     help_menu.addAction(about_action)
 
     update_now_action = QAction(qta.icon('fa5s.download'), "Update Now", window)
-    def run_updater():
-        updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
-        try:
-            if sys.platform == "win32":
-                subprocess.Popen(
-                    f'powershell -Command "Start-Process -Verb runAs -FilePath \\"{updater_path}\\""',
-                    shell=True
-                )
-            else:
-                subprocess.Popen([updater_path])
-        except Exception as e:
-            print(f"Failed to run updater: {e}")
-    update_now_action.triggered.connect(run_updater)
+    update_now_action.triggered.connect(lambda: run_updater(window))
     help_menu.addAction(update_now_action)
 
     donate_action = QAction(qta.icon('fa5s.donate'), "Donate", window)

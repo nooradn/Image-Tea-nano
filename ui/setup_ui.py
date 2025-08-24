@@ -12,6 +12,7 @@ from helpers.batch_processing_helper import batch_generate_metadata
 from dialogs.api_call_warning_dialog import ApiCallWarningDialog
 from ui.properties_widget import PropertiesWidget
 from ui.api_key_section import ApiKeySectionWidget
+from ui.main_statusbar import MainStatusBar
 
 def setup_ui(self):
     setup_main_menu(self)
@@ -120,5 +121,8 @@ def setup_ui(self):
     layout.addLayout(btn_row_layout)
     central.setLayout(layout)
     self.setCentralWidget(central)
+
+    self.statusbar = MainStatusBar(self)
+    self.setStatusBar(self.statusbar)
 
     on_table_selection_changed()

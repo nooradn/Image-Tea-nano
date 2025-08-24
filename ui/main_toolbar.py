@@ -17,7 +17,7 @@ from dialogs.add_api_key_dialog import AddApiKeyDialog
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from helpers.file_importer import import_files
 from helpers.metadata_helper.metadata_operation import write_metadata_to_images, write_metadata_to_videos
-from ui.main_menu import clear_existing_metadata
+from ui.main_menu import clear_existing_metadata, run_updater
 
 class HoverIconEventFilter(QObject):
     def __init__(self, button, icon_normal, icon_hover, icon_size):
@@ -209,24 +209,12 @@ def setup_main_toolbar(window: QWidget):
 
     add_vertical_separator(toolbar)
 
-    def run_updater():
-        updater_path = os.path.join(BASE_PATH, "Image Tea Updater.exe")
-        try:
-            if sys.platform == "win32":
-                subprocess.Popen(
-                    f'powershell -Command "Start-Process -Verb runAs -FilePath \\"{updater_path}\\""',
-                    shell=True
-                )
-            else:
-                subprocess.Popen([updater_path])
-        except Exception as e:
-            print(f"Failed to run updater: {e}")
     update_now_action = create_toolbar_button_with_label(
         make_icon('fa5s.download', icon_color),
         make_icon('fa5s.download', icon_color_hover),
         "Update",
         "Check for updates and run updater",
-        run_updater,
+        lambda: run_updater(window),
         window, icon_size)
     toolbar.addAction(update_now_action)
 
