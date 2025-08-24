@@ -102,23 +102,22 @@ def update_update_config(remote_tag, remote_hash, local_tag, local_hash):
     save_update_config(update_config)
 
 def check_for_update():
-    dev_mode = os.path.exists(os.path.join(BASE_PATH, "configs", "dev_github_token.json"))
-    if dev_mode:
-        print("Mode: DEV (using dev_github_token.json)")
-    else:
-        print("Mode: USER (no dev_github_token.json)")
     remote_tag, remote_hash = fetch_latest_tag_and_commit()
     local_tag, local_hash = get_local_tag_and_commit()
-    print(f"Remote tag: {remote_tag}")
-    print(f"Remote commit hash: {remote_hash}")
-    print(f"Local tag: {local_tag}")
-    print(f"Local commit hash: {local_hash}")
+    update_update_config(remote_tag, remote_hash, local_tag, local_hash)
+    if remote_tag and local_tag:
+        if remote_tag != local_tag or remote_hash != local_hash:
+            print("Update available.")
+    elif not remote_tag:
+        print("Failed to fetch remote tag.")
+    elif not local_tag:
+        print("Local tag not found.")
     update_update_config(remote_tag, remote_hash, local_tag, local_hash)
     if remote_tag and local_tag:
         if remote_tag != local_tag:
             print("Update available.")
         else:
-            print("Kamu sudah menggunakan versi terbaru.")
+            print("You are already using the latest version.")
     elif not remote_tag:
         print("Failed to fetch remote tag.")
     elif not local_tag:

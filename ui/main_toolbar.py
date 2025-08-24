@@ -90,12 +90,12 @@ def setup_main_toolbar(window: QWidget):
             border-radius: 6px;
         }
         QToolButton:hover {
-            background-color: rgba(174, 174, 174, 0.4);
+            background-color: #4e9e20;
         }
     """)
 
-    icon_color = "#888"
-    icon_color_hover = "#4e9e20"
+    icon_color = "#4e9e20"
+    icon_color_hover = "#FFFFFF"
     icon_size = toolbar.iconSize()
 
     def make_icon(icon_name, color):

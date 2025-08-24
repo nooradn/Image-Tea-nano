@@ -22,7 +22,6 @@ class MainStatusBar(QStatusBar):
             "QPushButton:hover { background-color: #4a8c07; }"
         )
         self.update_btn.setIcon(download_icon)
-        self.update_btn.setText("Update Now")
         self.update_btn.clicked.connect(self._on_update_now_clicked)
 
         self.version_commit_widget = QWidget()
@@ -48,6 +47,7 @@ class MainStatusBar(QStatusBar):
             with open(update_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 tag_local = data.get("tag_local", "")
+                tag_remote = data.get("tag_remote", "")
                 commit_hash = ""
                 commit_data = data.get("commit_hash", {})
                 if isinstance(commit_data, dict):
@@ -58,11 +58,22 @@ class MainStatusBar(QStatusBar):
                 self.version_text_label.setText(f"Version: {tag_local}" if tag_local else "")
                 self.commit_icon_label.setPixmap(commit_icon.pixmap(16, 16))
                 self.commit_text_label.setText(f"Commit: {commit_hash}" if commit_hash else "")
+                if tag_remote and tag_local and tag_remote != tag_local:
+                    self.update_btn.setText(f"Update to {tag_remote} Now")
+                    self.update_btn.setEnabled(True)
+                    self.update_btn.show()
+                else:
+                    self.update_btn.setText("")
+                    self.update_btn.setEnabled(False)
+                    self.update_btn.hide()
         else:
             self.version_icon_label.clear()
             self.version_text_label.setText("")
             self.commit_icon_label.clear()
             self.commit_text_label.setText("")
+            self.update_btn.setText("")
+            self.update_btn.setEnabled(False)
+            self.update_btn.hide()
 
     def _on_update_now_clicked(self):
         try:
