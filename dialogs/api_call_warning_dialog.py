@@ -12,7 +12,7 @@ class ApiCallWarningDialog(QDialog):
         layout.setContentsMargins(24, 24, 24, 24)
 
         icon_label = QLabel()
-        warn_icon = qta.icon('fa5s.exclamation-triangle', color='#e67e22')
+        warn_icon = qta.icon('fa6s.triangle-exclamation', color='#e67e22')
         icon_pixmap = warn_icon.pixmap(48, 48)
         icon_label.setPixmap(icon_pixmap)
         icon_label.setAlignment(Qt.AlignCenter)
@@ -53,8 +53,8 @@ class ApiCallWarningDialog(QDialog):
 
         button_layout = QHBoxLayout()
         button_layout.addStretch(1)
-        self.continue_btn = QPushButton(qta.icon('fa5s.check'), "Continue")
-        self.cancel_btn = QPushButton(qta.icon('fa5s.times'), "Cancel")
+        self.continue_btn = QPushButton(qta.icon('fa6s.check'), "Continue")
+        self.cancel_btn = QPushButton(qta.icon('fa6s.xmark'), "Cancel")
         button_layout.addWidget(self.continue_btn)
         button_layout.addWidget(self.cancel_btn)
         layout.addLayout(button_layout)

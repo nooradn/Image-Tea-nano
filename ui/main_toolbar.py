@@ -90,12 +90,12 @@ def setup_main_toolbar(window: QWidget):
             border-radius: 6px;
         }
         QToolButton:hover {
-            background-color: rgba(174, 174, 174, 0.4);
+            background-color: #4e9e20;
         }
     """)
 
-    icon_color = "#888"
-    icon_color_hover = "#4e9e20"
+    icon_color = "#4e9e20"
+    icon_color_hover = "#FFFFFF"
     icon_size = toolbar.iconSize()
 
     def make_icon(icon_name, color):
@@ -104,8 +104,8 @@ def setup_main_toolbar(window: QWidget):
     links = get_app_links()
 
     import_action = create_toolbar_button_with_label(
-        make_icon('fa5s.folder-open', icon_color),
-        make_icon('fa5s.folder-open', icon_color_hover),
+        make_icon('fa6s.folder-open', icon_color),
+        make_icon('fa6s.folder-open', icon_color_hover),
         "Import",
         "Import files into the project",
         lambda: (import_files(window, window.db) and window.table.refresh_table()),
@@ -113,8 +113,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(import_action)
 
     clear_all_action = create_toolbar_button_with_label(
-        make_icon('fa5s.broom', icon_color),
-        make_icon('fa5s.broom', icon_color_hover),
+        make_icon('fa6s.broom', icon_color),
+        make_icon('fa6s.broom', icon_color_hover),
         "Clear",
         "Clear all files from the table",
         lambda: window.table.clear_all(),
@@ -122,8 +122,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(clear_all_action)
 
     delete_selected_action = create_toolbar_button_with_label(
-        make_icon('fa5s.trash', icon_color),
-        make_icon('fa5s.trash', icon_color_hover),
+        make_icon('fa6s.trash', icon_color),
+        make_icon('fa6s.trash', icon_color_hover),
         "Delete",
         "Delete selected files from the table",
         lambda: window.table.delete_selected(),
@@ -133,8 +133,8 @@ def setup_main_toolbar(window: QWidget):
     add_vertical_separator(toolbar)
 
     clear_metadata_action = create_toolbar_button_with_label(
-        make_icon('fa5s.eraser', icon_color),
-        make_icon('fa5s.eraser', icon_color_hover),
+        make_icon('fa6s.eraser', icon_color),
+        make_icon('fa6s.eraser', icon_color_hover),
         "Clear",
         "Clear all metadata from database (not from files)",
         lambda: clear_existing_metadata(window),
@@ -142,8 +142,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(clear_metadata_action)
 
     batch_rename_action = create_toolbar_button_with_label(
-        make_icon('fa5s.i-cursor', icon_color),
-        make_icon('fa5s.i-cursor', icon_color_hover),
+        make_icon('fa6s.i-cursor', icon_color),
+        make_icon('fa6s.i-cursor', icon_color_hover),
         "Rename",
         "Batch rename selected files",
         lambda: BatchRenameDialog(window, table_widget=window.table, db=window.db).exec(),
@@ -151,8 +151,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(batch_rename_action)
 
     edit_metadata_action = create_toolbar_button_with_label(
-        make_icon('fa5s.edit', icon_color),
-        make_icon('fa5s.edit', icon_color_hover),
+        make_icon('fa6s.pen-to-square', icon_color),
+        make_icon('fa6s.pen-to-square', icon_color_hover),
         "Edit",
         "Edit metadata for selected file",
         lambda: open_edit_metadata(window),
@@ -162,8 +162,8 @@ def setup_main_toolbar(window: QWidget):
     add_vertical_separator(toolbar)
 
     write_metadata_images_action = create_toolbar_button_with_label(
-        make_icon('fa5s.image', icon_color),
-        make_icon('fa5s.image', icon_color_hover),
+        make_icon('fa6s.image', icon_color),
+        make_icon('fa6s.image', icon_color_hover),
         "Write",
         "Write metadata to image files",
         lambda: write_metadata_to_images(window.db, window),
@@ -171,8 +171,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(write_metadata_images_action)
 
     write_metadata_videos_action = create_toolbar_button_with_label(
-        make_icon('fa5s.film', icon_color),
-        make_icon('fa5s.film', icon_color_hover),
+        make_icon('fa6s.film', icon_color),
+        make_icon('fa6s.film', icon_color_hover),
         "Write",
         "Write metadata to video files",
         lambda: write_metadata_to_videos(window.db, window),
@@ -180,8 +180,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(write_metadata_videos_action)
 
     export_metadata_action = create_toolbar_button_with_label(
-        make_icon('fa5s.file-csv', icon_color),
-        make_icon('fa5s.file-csv', icon_color_hover),
+        make_icon('fa6s.file-csv', icon_color),
+        make_icon('fa6s.file-csv', icon_color_hover),
         "Export",
         "Export metadata to CSV file",
         lambda: CSVExporterDialog(window).exec(),
@@ -191,8 +191,8 @@ def setup_main_toolbar(window: QWidget):
     add_vertical_separator(toolbar)
 
     edit_prompt_action = create_toolbar_button_with_label(
-        make_icon('fa5s.edit', icon_color),
-        make_icon('fa5s.edit', icon_color_hover),
+        make_icon('fa6s.pen-to-square', icon_color),
+        make_icon('fa6s.pen-to-square', icon_color_hover),
         "Prompt",
         "Edit the prompt for AI metadata generation",
         lambda: EditPromptDialog(window).exec(),
@@ -200,8 +200,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(edit_prompt_action)
 
     custom_prompt_action = create_toolbar_button_with_label(
-        make_icon('fa5s.comment-alt', icon_color),
-        make_icon('fa5s.comment-alt', icon_color_hover),
+        make_icon('fa6s.comment', icon_color),
+        make_icon('fa6s.comment', icon_color_hover),
         "Custom",
         "Open custom prompt dialog",
         lambda: CustomPromptDialog(window).exec(),
@@ -209,8 +209,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(custom_prompt_action)
 
     add_api_action = create_toolbar_button_with_label(
-        make_icon('fa5s.key', icon_color),
-        make_icon('fa5s.key', icon_color_hover),
+        make_icon('fa6s.key', icon_color),
+        make_icon('fa6s.key', icon_color_hover),
         "API Key",
         "Add or edit your API key",
         lambda: AddApiKeyDialog(window).exec(),
@@ -220,8 +220,8 @@ def setup_main_toolbar(window: QWidget):
     add_vertical_separator(toolbar)
 
     update_now_action = create_toolbar_button_with_label(
-        make_icon('fa5s.download', icon_color),
-        make_icon('fa5s.download', icon_color_hover),
+        make_icon('fa6s.download', icon_color),
+        make_icon('fa6s.download', icon_color_hover),
         "Update",
         "Check for updates and run updater",
         lambda: run_updater(window),
@@ -229,8 +229,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(update_now_action)
 
     donate_action = create_toolbar_button_with_label(
-        make_icon('fa5s.donate', icon_color),
-        make_icon('fa5s.donate', icon_color_hover),
+        make_icon('fa6s.circle-dollar-to-slot', icon_color),
+        make_icon('fa6s.circle-dollar-to-slot', icon_color_hover),
         "Donate",
         "Support development with a donation",
         lambda: DonateDialog(window).exec(),
@@ -256,8 +256,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(repo_action)
 
     website_action = create_toolbar_button_with_label(
-        make_icon('fa5s.globe', icon_color),
-        make_icon('fa5s.globe', icon_color_hover),
+        make_icon('fa6s.globe', icon_color),
+        make_icon('fa6s.globe', icon_color_hover),
         "Website",
         "Visit the Image Tea website",
         lambda: webbrowser.open(links["website"]),
@@ -265,8 +265,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(website_action)
 
     readme_action = create_toolbar_button_with_label(
-        make_icon('fa5s.book', icon_color),
-        make_icon('fa5s.book', icon_color_hover),
+        make_icon('fa6s.book', icon_color),
+        make_icon('fa6s.book', icon_color_hover),
         "README",
         "Open the README.md on GitHub",
         lambda: webbrowser.open(links["readme"]),
@@ -274,8 +274,8 @@ def setup_main_toolbar(window: QWidget):
     toolbar.addAction(readme_action)
 
     documentation_action = create_toolbar_button_with_label(
-        make_icon('fa5s.book-open', icon_color),
-        make_icon('fa5s.book-open', icon_color_hover),
+        make_icon('fa6s.book-open', icon_color),
+        make_icon('fa6s.book-open', icon_color_hover),
         "Help",
         "Open the documentation/help dialog",
         lambda: ReadDocumentationDialog(window).exec(),

@@ -55,14 +55,14 @@ def setup_main_menu(window):
     menubar = QMenuBar(window)
     file_menu = QMenu("File", menubar)
 
-    import_action = QAction(qta.icon('fa5s.folder-open'), "Import Files", window)
+    import_action = QAction(qta.icon('fa6s.folder-open'), "Import Files", window)
     def do_import():
         if import_files(window, window.db):
             window.table.refresh_table()
     import_action.triggered.connect(do_import)
     file_menu.addAction(import_action)
 
-    relaunch_action = QAction(qta.icon('fa5s.redo'), "Relaunch", window)
+    relaunch_action = QAction(qta.icon('fa6s.rotate-right'), "Relaunch", window)
     def relaunch_app():
         python_exe = sys.executable
         args = [python_exe] + sys.argv
@@ -74,31 +74,31 @@ def setup_main_menu(window):
     relaunch_action.triggered.connect(relaunch_app)
     file_menu.addAction(relaunch_action)
 
-    exit_action = QAction(qta.icon('fa5s.sign-out-alt'), "Exit", window)
+    exit_action = QAction(qta.icon('fa6s.right-from-bracket'), "Exit", window)
     exit_action.triggered.connect(window.close)
     file_menu.addAction(exit_action)
 
     edit_menu = QMenu("Edit", menubar)
-    delete_action = QAction(qta.icon('fa5s.trash'), "Delete Selected", window)
+    delete_action = QAction(qta.icon('fa6s.trash'), "Delete Selected", window)
     delete_action.triggered.connect(lambda: window.table.delete_selected())
     edit_menu.addAction(delete_action)
 
-    clear_action = QAction(qta.icon('fa5s.broom'), "Clear All", window)
+    clear_action = QAction(qta.icon('fa6s.broom'), "Clear All", window)
     clear_action.triggered.connect(lambda: window.table.clear_all())
     edit_menu.addAction(clear_action)
 
-    clear_metadata_action = QAction(qta.icon('fa5s.eraser'), "Clear Existing Metadata", window)
+    clear_metadata_action = QAction(qta.icon('fa6s.eraser'), "Clear Existing Metadata", window)
     clear_metadata_action.triggered.connect(lambda: clear_existing_metadata(window))
     edit_menu.addAction(clear_metadata_action)
 
-    batch_rename_action = QAction(qta.icon('fa5s.i-cursor'), "Batch Rename", window)
+    batch_rename_action = QAction(qta.icon('fa6s.i-cursor'), "Batch Rename", window)
     def open_batch_rename():
         dialog = BatchRenameDialog(window, table_widget=window.table, db=window.db)
         dialog.exec()
     batch_rename_action.triggered.connect(open_batch_rename)
     edit_menu.addAction(batch_rename_action)
 
-    edit_metadata_action = QAction(qta.icon('fa5s.edit'), "Edit Metadata", window)
+    edit_metadata_action = QAction(qta.icon('fa6s.pen-to-square'), "Edit Metadata", window)
     def open_edit_metadata():
         selected = window.table.table.selectionModel().selectedRows()
         if selected:
@@ -114,19 +114,19 @@ def setup_main_menu(window):
     edit_menu.addAction(edit_metadata_action)
 
     metadata_menu = QMenu("Metadata", menubar)
-    write_metadata_images_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Images", window)
+    write_metadata_images_action = QAction(qta.icon('fa6s.floppy-disk'), "Write Metadata to Images", window)
     def do_write_metadata_images():
         write_metadata_to_images(window.db, window)
     write_metadata_images_action.triggered.connect(do_write_metadata_images)
     metadata_menu.addAction(write_metadata_images_action)
 
-    write_metadata_videos_action = QAction(qta.icon('fa5s.save'), "Write Metadata to Videos", window)
+    write_metadata_videos_action = QAction(qta.icon('fa6s.floppy-disk'), "Write Metadata to Videos", window)
     def do_write_metadata_videos():
         write_metadata_to_videos(window.db, window)
     write_metadata_videos_action.triggered.connect(do_write_metadata_videos)
     metadata_menu.addAction(write_metadata_videos_action)
 
-    export_metadata_action = QAction(qta.icon('fa5s.file-csv'), "Export Metadata to CSV", window)
+    export_metadata_action = QAction(qta.icon('fa6s.file-csv'), "Export Metadata to CSV", window)
     def show_export_dialog():
         dialog = CSVExporterDialog(window)
         dialog.exec()
@@ -134,14 +134,14 @@ def setup_main_menu(window):
     metadata_menu.addAction(export_metadata_action)
 
     prompt_menu = QMenu("Prompt", menubar)
-    edit_prompt_action = QAction(qta.icon('fa5s.edit'), "Edit Prompt", window)
+    edit_prompt_action = QAction(qta.icon('fa6s.pen-to-square'), "Edit Prompt", window)
     def open_edit_prompt():
         dialog = EditPromptDialog(window)
         dialog.exec()
     edit_prompt_action.triggered.connect(open_edit_prompt)
     prompt_menu.addAction(edit_prompt_action)
 
-    custom_prompt_action = QAction(qta.icon('fa5s.comment-alt'), "Custom Prompt", window)
+    custom_prompt_action = QAction(qta.icon('fa6s.comment'), "Custom Prompt", window)
     def open_custom_prompt():
         dialog = CustomPromptDialog(window)
         dialog.exec()
@@ -149,7 +149,7 @@ def setup_main_menu(window):
     prompt_menu.addAction(custom_prompt_action)
 
     api_menu = QMenu("API", menubar)
-    add_api_action = QAction(qta.icon('fa5s.key'), "Add API Key", window)
+    add_api_action = QAction(qta.icon('fa6s.key'), "Add API Key", window)
     def show_api_dialog():
         dlg = AddApiKeyDialog(window)
         dlg.exec()
@@ -157,18 +157,18 @@ def setup_main_menu(window):
     api_menu.addAction(add_api_action)
 
     help_menu = QMenu("Help", menubar)
-    about_action = QAction(qta.icon('fa5s.info-circle'), "About", window)
+    about_action = QAction(qta.icon('fa6s.circle-info'), "About", window)
     def show_about():
         dialog = AboutDialog(window)
         dialog.exec()
     about_action.triggered.connect(show_about)
     help_menu.addAction(about_action)
 
-    update_now_action = QAction(qta.icon('fa5s.download'), "Update Now", window)
+    update_now_action = QAction(qta.icon('fa6s.download'), "Update Now", window)
     update_now_action.triggered.connect(lambda: run_updater(window))
     help_menu.addAction(update_now_action)
 
-    donate_action = QAction(qta.icon('fa5s.donate'), "Donate", window)
+    donate_action = QAction(qta.icon('fa6s.circle-dollar-to-slot'), "Donate", window)
     def show_donate():
         dialog = DonateDialog(window)
         dialog.exec()
@@ -187,19 +187,19 @@ def setup_main_menu(window):
     repo_action.triggered.connect(open_repo)
     help_menu.addAction(repo_action)
 
-    website_action = QAction(qta.icon('fa5s.globe'), "Website", window)
+    website_action = QAction(qta.icon('fa6s.globe'), "Website", window)
     def open_website():
         webbrowser.open(links["website"])
     website_action.triggered.connect(open_website)
     help_menu.addAction(website_action)
 
-    readme_action = QAction(qta.icon('fa5s.book'), "Open README.md (GitHub)", window)
+    readme_action = QAction(qta.icon('fa6s.book'), "Open README.md (GitHub)", window)
     def open_readme():
         webbrowser.open(links["readme"])
     readme_action.triggered.connect(open_readme)
     help_menu.addAction(readme_action)
 
-    documentation_action = QAction(qta.icon('fa5s.book-open'), "Help", window)
+    documentation_action = QAction(qta.icon('fa6s.book-open'), "Help", window)
     def open_documentation():
         dialog = ReadDocumentationDialog(window)
         dialog.exec()

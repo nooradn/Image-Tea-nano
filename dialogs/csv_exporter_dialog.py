@@ -55,14 +55,14 @@ class CSVExporterDialog(QDialog):
         output_layout.addWidget(self.output_lineedit)
 
         # Paste button
-        self.paste_output_btn = QPushButton(qta.icon('fa5s.paste'), "")
+        self.paste_output_btn = QPushButton(qta.icon('fa6s.paste'), "")
         self.paste_output_btn.setToolTip("Paste path from clipboard")
         self.paste_output_btn.setFixedWidth(32)
         self.paste_output_btn.clicked.connect(self.paste_output_path)
         output_layout.addWidget(self.paste_output_btn)
 
         # Select output button
-        self.select_output_btn = QPushButton(qta.icon('fa5s.folder-open'), "Select Output")
+        self.select_output_btn = QPushButton(qta.icon('fa6s.folder-open'), "Select Output")
         self.select_output_btn.setToolTip("Select output folder")
         self.select_output_btn.clicked.connect(self.select_output_path)
         output_layout.addWidget(self.select_output_btn)
@@ -70,7 +70,7 @@ class CSVExporterDialog(QDialog):
         main_layout.addLayout(output_layout)
 
         btn_layout = QHBoxLayout()
-        self.ok_btn = QPushButton(qta.icon('fa5s.file-csv'), "Export")
+        self.ok_btn = QPushButton(qta.icon('fa6s.file-csv'), "Export")
         self.ok_btn.setToolTip("Export metadata to CSV")
         self.ok_btn.clicked.connect(self.export_csv)
         btn_layout.addStretch()

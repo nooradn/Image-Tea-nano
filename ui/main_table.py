@@ -27,14 +27,14 @@ class ImageTableWidget(QWidget):
         self.search_edit.textChanged.connect(self._on_search_text_changed)
 
         search_icon_btn = QPushButton(self)
-        search_icon_btn.setIcon(qta.icon("fa5s.search"))
+        search_icon_btn.setIcon(qta.icon("fa6s.magnifying-glass"))
         search_icon_btn.setFlat(True)
         search_icon_btn.setFocusPolicy(Qt.NoFocus)
         search_icon_btn.setEnabled(False)
         search_icon_btn.setFixedWidth(28)
 
         paste_btn = QPushButton(self)
-        paste_btn.setIcon(qta.icon("fa5s.clipboard"))
+        paste_btn.setIcon(qta.icon("fa6s.clipboard"))
         paste_btn.setFlat(True)
         paste_btn.setFocusPolicy(Qt.NoFocus)
         paste_btn.setFixedWidth(28)
@@ -42,7 +42,7 @@ class ImageTableWidget(QWidget):
         paste_btn.clicked.connect(self._on_paste_clicked)
 
         clear_btn = QPushButton(self)
-        clear_btn.setIcon(qta.icon("fa5s.times"))
+        clear_btn.setIcon(qta.icon("fa6s.xmark"))
         clear_btn.setFlat(True)
         clear_btn.setFocusPolicy(Qt.NoFocus)
         clear_btn.setFixedWidth(28)
@@ -179,7 +179,7 @@ class ImageTableWidget(QWidget):
         if not index.isValid():
             return
         menu = QMenu(self)
-        edit_icon = qta.icon("fa5s.edit")
+        edit_icon = qta.icon("fa6s.pen-to-square")
         edit_action = QAction(edit_icon, "Edit metadata", self)
         edit_action.triggered.connect(lambda: self._open_metadata_dialog(index.row()))
         menu.addAction(edit_action)
@@ -190,19 +190,19 @@ class ImageTableWidget(QWidget):
         desc_item = self.table.item(row_idx, 4)
         tags_item = self.table.item(row_idx, 5)
 
-        copy_filename_action = QAction(qta.icon("fa5s.copy"), "Copy Filename", self)
+        copy_filename_action = QAction(qta.icon("fa6s.copy"), "Copy Filename", self)
         copy_filename_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(filename_item.text() if filename_item else "", "Filename", pos))
         menu.addAction(copy_filename_action)
 
-        copy_title_action = QAction(qta.icon("fa5s.copy"), "Copy Title", self)
+        copy_title_action = QAction(qta.icon("fa6s.copy"), "Copy Title", self)
         copy_title_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(title_item.text() if title_item else "", "Title", pos))
         menu.addAction(copy_title_action)
 
-        copy_desc_action = QAction(qta.icon("fa5s.copy"), "Copy Description", self)
+        copy_desc_action = QAction(qta.icon("fa6s.copy"), "Copy Description", self)
         copy_desc_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(desc_item.text() if desc_item else "", "Description", pos))
         menu.addAction(copy_desc_action)
 
-        copy_tags_action = QAction(qta.icon("fa5s.copy"), "Copy Keyword", self)
+        copy_tags_action = QAction(qta.icon("fa6s.copy"), "Copy Keyword", self)
         copy_tags_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(tags_item.text() if tags_item else "", "Keyword", pos))
         menu.addAction(copy_tags_action)
 

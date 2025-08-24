@@ -339,17 +339,17 @@ def _set_gen_btn_stop_state(window, is_stop, is_stopping=False):
     btn = window.gen_btn
     if is_stopping:
         btn.setText("Stopping Workers")
-        btn.setIcon(qta.icon('fa5s.stop'))
+        btn.setIcon(qta.icon('fa6s.stop'))
         _set_gen_btn_blinking(window, True, "rgba(255, 220, 28, 0.3)", "Stopping Workers")
     elif is_stop:
         btn.setText("Stop Processes")
-        btn.setIcon(qta.icon('fa5s.stop'))
+        btn.setIcon(qta.icon('fa6s.stop'))
         _set_gen_btn_blinking(window, False)
         btn.setStyleSheet("background-color: rgba(204, 0, 0, 0.3);")
         window._gen_btn_last_bg = "background-color: rgba(204, 0, 0, 0.3);"
     else:
         btn.setText("Generate Metadata")
-        btn.setIcon(qta.icon('fa5s.magic'))
+        btn.setIcon(qta.icon('fa6s.magic'))
         _set_gen_btn_blinking(window, False)
         btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
         window._gen_btn_last_bg = "background-color: rgba(132, 225, 7, 0.3);"

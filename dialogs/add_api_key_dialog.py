@@ -101,7 +101,7 @@ class AddApiKeyDialog(QDialog):
         self.key_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.key_edit.setToolTip("Enter your API key here")
         self.paste_btn = QPushButton()
-        self.paste_btn.setIcon(qta.icon('fa5s.paste'))
+        self.paste_btn.setIcon(qta.icon('fa6s.paste'))
         self.paste_btn.setFixedWidth(32)
         self.paste_btn.setToolTip("Paste from clipboard")
         self.paste_btn.setFocusPolicy(Qt.NoFocus)
@@ -146,12 +146,12 @@ class AddApiKeyDialog(QDialog):
         btn_layout = QHBoxLayout()
         self.test_and_save_btn = QPushButton()
         self.test_and_save_btn.setText("Test and Save")
-        self.test_and_save_btn.setIcon(qta.icon('fa5s.play'))
+        self.test_and_save_btn.setIcon(qta.icon('fa6s.play'))
         self.test_and_save_btn.setIconSize(self.test_and_save_btn.iconSize())
         self.test_and_save_btn.setToolTip("Test the API key and save it if valid")
         self.close_btn = QPushButton()
         self.close_btn.setText("Close")
-        self.close_btn.setIcon(qta.icon('fa5s.times'))
+        self.close_btn.setIcon(qta.icon('fa6s.xmark'))
         self.close_btn.setIconSize(self.close_btn.iconSize())
         self.close_btn.setToolTip("Close this dialog")
         self.close_btn.clicked.connect(self.close)
@@ -220,13 +220,13 @@ class AddApiKeyDialog(QDialog):
             action_layout = QHBoxLayout(action_widget)
             action_layout.setContentsMargins(0, 0, 0, 0)
             test_btn = QPushButton()
-            test_btn.setIcon(qta.icon('fa5s.play'))
+            test_btn.setIcon(qta.icon('fa6s.play'))
             test_btn.setToolTip("Test this API Key")
             test_btn.setFixedWidth(28)
             test_btn.setProperty("row", row_idx)
             test_btn.clicked.connect(lambda _, r=row_idx: self._test_api_key_row(r))
             delete_btn = QPushButton()
-            delete_btn.setIcon(qta.icon('fa5s.trash'))
+            delete_btn.setIcon(qta.icon('fa6s.trash'))
             delete_btn.setToolTip("Delete this API Key")
             delete_btn.setFixedWidth(28)
             delete_btn.setProperty("row", row_idx)
@@ -269,7 +269,7 @@ class AddApiKeyDialog(QDialog):
             pass
         test_btn = self._get_action_btn(row, 0)
         if test_btn:
-            test_btn.setIcon(qta.icon('fa5s.stop'))
+            test_btn.setIcon(qta.icon('fa6s.stop'))
             test_btn.setToolTip("Stop testing")
         self._row_testing = row
         self._blink_state = False
@@ -311,7 +311,7 @@ class AddApiKeyDialog(QDialog):
         if self._row_testing is not None:
             test_btn = self._get_action_btn(self._row_testing, 0)
             if test_btn:
-                test_btn.setIcon(qta.icon('fa5s.play'))
+                test_btn.setIcon(qta.icon('fa6s.play'))
                 test_btn.setToolTip("Test this API Key")
         self._blink_timer.stop()
         if self._row_testing is not None:
@@ -519,7 +519,7 @@ class AddApiKeyDialog(QDialog):
         else:
             self._detected_service = None
         menu = QMenu(self)
-        action_test = QAction(qta.icon('fa5s.play'), "Test and Save", self)
+        action_test = QAction(qta.icon('fa6s.play'), "Test and Save", self)
         action_test.triggered.connect(self.test_and_save_api_key)
         menu.addAction(action_test)
         menu.exec(self.api_table.viewport().mapToGlobal(pos))

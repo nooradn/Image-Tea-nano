@@ -224,3 +224,4 @@ update.bat
 update_worker.bat
 .github/
 dev_github_token.json
+update_config.json

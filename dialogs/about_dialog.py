@@ -101,7 +101,7 @@ class AboutDialog(QDialog):
 
         btn_layout = QHBoxLayout()
         btn_layout.addStretch(1)
-        close_btn = QPushButton(qta.icon('fa5s.times'), "Close")
+        close_btn = QPushButton(qta.icon('fa6s.xmark'), "Close")
         close_btn.clicked.connect(self.close)
         btn_layout.addWidget(close_btn)
         main_layout.addLayout(btn_layout)
