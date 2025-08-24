@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QStatusBar, QLabel, QWidget, QHBoxLayout
+from PySide6.QtWidgets import QStatusBar, QLabel, QWidget, QHBoxLayout, QPushButton
+from PySide6.QtCore import Qt
 import os
 import json
 from config import BASE_PATH
@@ -12,6 +13,18 @@ class MainStatusBar(QStatusBar):
         self.version_text_label = QLabel("")
         self.commit_icon_label = QLabel()
         self.commit_text_label = QLabel("")
+        self.update_btn = QPushButton()
+        self.update_btn.setCursor(Qt.PointingHandCursor)
+        self.update_btn.setFlat(True)
+        download_icon = qta.icon("fa6s.download", color="white")
+        self.update_btn.setStyleSheet(
+            "QPushButton { color: white; background-color: #5db307; font-weight: bold; }"
+            "QPushButton:hover { background-color: #4a8c07; }"
+        )
+        self.update_btn.setIcon(download_icon)
+        self.update_btn.setText("Update Now")
+        self.update_btn.clicked.connect(self._on_update_now_clicked)
+
         self.version_commit_widget = QWidget()
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -20,6 +33,7 @@ class MainStatusBar(QStatusBar):
         layout.addWidget(self.version_text_label)
         layout.addWidget(self.commit_icon_label)
         layout.addWidget(self.commit_text_label)
+        layout.addWidget(self.update_btn)
         self.version_commit_widget.setLayout(layout)
         self.addWidget(self.status_label)
         self.addPermanentWidget(self.version_commit_widget)
@@ -49,3 +63,10 @@ class MainStatusBar(QStatusBar):
             self.version_text_label.setText("")
             self.commit_icon_label.clear()
             self.commit_text_label.setText("")
+
+    def _on_update_now_clicked(self):
+        try:
+            from ui.main_menu import run_updater
+            run_updater(self.parent())
+        except Exception as e:
+            print(f"Failed to run updater from statusbar: {e}")
