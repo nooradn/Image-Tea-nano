@@ -19,6 +19,7 @@ from helpers.batch_processing_helper import (
 from tools.tools_checker import check_folders
 from dialogs.disclaimer_dialog import DisclaimerDialog
 import json
+from helpers.check_for_update_helper import check_for_update
 
 check_folders()
 
@@ -63,6 +64,7 @@ class ImageTeaMainWindow(QMainWindow):
             batch_generate_metadata(self)
 
 if __name__ == '__main__':
+    check_for_update()
     if sys.platform == "win32":
         import ctypes
         app_id = u"image-tea.nano"
