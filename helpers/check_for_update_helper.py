@@ -44,17 +44,25 @@ def fetch_latest_tag_and_commit():
         owner = parts[-2]
         repo = parts[-1]
         api_url = f"https://api.github.com/repos/{owner}/{repo}/tags?per_page=1"
-        headers = {}
         dev_token = get_dev_github_token()
-        if dev_token:
-            headers["Authorization"] = f"token {dev_token}"
+        github_token = os.environ.get("GITHUB_TOKEN")
+        token = dev_token or github_token
+        if token:
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "image-tea-updater"
+            }
         else:
-            github_token = os.environ.get("GITHUB_TOKEN")
-            if github_token:
-                headers["Authorization"] = f"token {github_token}"
+            headers = {
+                "Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "image-tea-updater"
+            }
         response = requests.get(api_url, headers=headers, timeout=10)
         remain = response.headers.get("X-RateLimit-Remaining")
-        token_type = "dev_github_token" if dev_token else ("GITHUB_TOKEN" if "Authorization" in headers else "no token")
+        token_type = "dev_github_token" if dev_token else ("GITHUB_TOKEN" if github_token else "user token")
         print(f"GitHub API token type: {token_type}, Remaining tokens: {remain}")
         if response.status_code == 403:
             reset = response.headers.get("X-RateLimit-Reset")
