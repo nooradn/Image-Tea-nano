@@ -66,9 +66,9 @@ def fetch_latest_tag_and_commit():
         if not data:
             print("No tags found in the repository.")
             return None, None
-        latest_tag = data[0]["name"]
-        latest_commit_sha = data[0]["commit"]["sha"][:7]
-        return latest_tag, latest_commit_sha
+        tag = data[0]["name"]
+        sha = data[0]["commit"]["sha"][:7]
+        return tag, sha
     except Exception as e:
         print(f"Error fetching latest tag and commit: {e}")
         return None, None
@@ -88,9 +88,16 @@ def get_local_tag_and_commit():
                 ["git", "-C", BASE_PATH, "rev-list", "-n", "1", tag],
                 capture_output=True, text=True, check=True
             )
-            commit_hash = result.stdout.strip()[:7] if result.stdout else None
+            if result.returncode == 0 and result.stdout:
+                commit_hash = result.stdout.strip()[:7]
+            else:
+                print(f"Tag {tag} not found in local repository.")
+        except subprocess.CalledProcessError:
+            print(f"Tag {tag} not found in local repository.")
         except Exception as e:
             print(f"Error getting local commit hash for tag {tag}: {e}")
+    else:
+        print("No .git directory found in BASE_PATH.")
     return tag, commit_hash
 
 def update_update_config(remote_tag, remote_hash, local_tag, local_hash):
