@@ -43,7 +43,7 @@ def fetch_latest_tag_and_commit():
         parts = repo_url.rstrip("/").split("/")
         owner = parts[-2]
         repo = parts[-1]
-        api_url = f"https://api.github.com/repos/{owner}/{repo}/tags"
+        api_url = f"https://api.github.com/repos/{owner}/{repo}/tags?per_page=1"
         headers = {}
         dev_token = get_dev_github_token()
         if dev_token:
@@ -53,6 +53,14 @@ def fetch_latest_tag_and_commit():
             if github_token:
                 headers["Authorization"] = f"token {github_token}"
         response = requests.get(api_url, headers=headers, timeout=10)
+        remain = response.headers.get("X-RateLimit-Remaining")
+        token_type = "dev_github_token" if dev_token else ("GITHUB_TOKEN" if "Authorization" in headers else "no token")
+        print(f"GitHub API token type: {token_type}, Remaining tokens: {remain}")
+        if response.status_code == 403:
+            reset = response.headers.get("X-RateLimit-Reset")
+            msg = response.json().get("message", "")
+            print(f"GitHub API 403: {msg}. Remaining={remain}, Reset={reset}")
+            return None, None
         response.raise_for_status()
         data = response.json()
         if not data:
@@ -105,20 +113,13 @@ def check_for_update():
     remote_tag, remote_hash = fetch_latest_tag_and_commit()
     local_tag, local_hash = get_local_tag_and_commit()
     update_update_config(remote_tag, remote_hash, local_tag, local_hash)
-    if remote_tag and local_tag:
-        if remote_tag != local_tag or remote_hash != local_hash:
-            print("Update available.")
-    elif not remote_tag:
+    if not remote_tag:
         print("Failed to fetch remote tag.")
-    elif not local_tag:
+        return
+    if not local_tag:
         print("Local tag not found.")
-    update_update_config(remote_tag, remote_hash, local_tag, local_hash)
-    if remote_tag and local_tag:
-        if remote_tag != local_tag:
-            print("Update available.")
-        else:
-            print("You are already using the latest version.")
-    elif not remote_tag:
-        print("Failed to fetch remote tag.")
-    elif not local_tag:
-        print("Local tag not found.")
+        return
+    if (remote_tag != local_tag) or (remote_hash and local_hash and remote_hash != local_hash):
+        print("Update available.")
+    else:
+        print("You are already using the latest version.")

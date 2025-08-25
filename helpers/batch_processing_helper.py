@@ -349,7 +349,7 @@ def _set_gen_btn_stop_state(window, is_stop, is_stopping=False):
         window._gen_btn_last_bg = "background-color: rgba(204, 0, 0, 0.3);"
     else:
         btn.setText("Generate Metadata")
-        btn.setIcon(qta.icon('fa6s.magic'))
+        btn.setIcon(qta.icon('fa6s.wand-magic-sparkles'))
         _set_gen_btn_blinking(window, False)
         btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
         window._gen_btn_last_bg = "background-color: rgba(132, 225, 7, 0.3);"
