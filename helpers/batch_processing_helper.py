@@ -344,10 +344,10 @@ def _set_gen_btn_stop_state(window, is_stop, is_stopping=False):
         window._gen_btn_last_bg = "background-color: rgba(204, 0, 0, 0.3);"
     else:
         btn.setText("Generate Metadata")
-        btn.setIcon(qta.icon('fa6s.wand-magic-sparkles'))
+        btn.setIcon(qta.icon('fa6s.wand-magic-sparkles', color='white'))
         _set_gen_btn_blinking(window, False)
-        btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
-        window._gen_btn_last_bg = "background-color: rgba(132, 225, 7, 0.3);"
+        btn.setStyleSheet("background-color: #4e9e20; color: white;")
+        window._gen_btn_last_bg = "background-color: #4e9e20; color: white;"
 
 def _run_next_batch(window):
     state = window._batch_processing_state

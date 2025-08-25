@@ -18,8 +18,8 @@ class MainStatusBar(QStatusBar):
         self.update_btn.setFlat(True)
         download_icon = qta.icon("fa6s.download", color="white")
         self.update_btn.setStyleSheet(
-            "QPushButton { color: white; background-color: #5db307; font-weight: bold; }"
-            "QPushButton:hover { background-color: #4a8c07; }"
+            "QPushButton { color: white; background-color: #4e9e20; font-weight: bold; }"
+            "QPushButton:hover { background-color: #3d7307; }"
         )
         self.update_btn.setIcon(download_icon)
         self.update_btn.clicked.connect(self._on_update_now_clicked)

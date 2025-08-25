@@ -1,5 +1,6 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QComboBox, QDialog, QSpacerItem, QSizePolicy
 import datetime
+from PySide6.QtCore import Qt
 from dialogs.add_api_key_dialog import AddApiKeyDialog
 from ui.file_dnd_widget import DragDropWidget
 import qtawesome as qta
@@ -78,8 +79,17 @@ def setup_ui(self):
     self.gen_mode_combo.setToolTip("Choose which files to generate metadata for")
     gen_group_layout.addWidget(self.gen_mode_combo)
 
-    self.gen_btn = QPushButton(qta.icon('fa6s.wand-magic-sparkles'), "Generate Metadata")
-    self.gen_btn.setStyleSheet("background-color: rgba(132, 225, 7, 0.3);")
+    self.gen_btn = QPushButton(qta.icon('fa6s.wand-magic-sparkles', color='white'), "Generate Metadata")
+    self.gen_btn.setStyleSheet("""
+        QPushButton {
+            background-color: #4e9e20; 
+            color: white;
+        }
+        QPushButton:hover {
+            background-color: #3d7307;
+        }
+    """)
+    self.gen_btn.setCursor(Qt.PointingHandCursor)
 
     def update_gen_btn_tooltip(idx):
         mode = self.gen_mode_combo.currentText()

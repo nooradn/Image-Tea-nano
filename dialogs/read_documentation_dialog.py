@@ -81,8 +81,8 @@ class ReadDocumentationDialog(QDialog):
         self.doc_root_id = os.path.join(BASE_PATH, "documentation", "lang_ID")
         self.doc_root_en = os.path.join(BASE_PATH, "documentation", "lang_EN")
         self.res_images_path = os.path.join(BASE_PATH, "res", "images")
-        self.file_icon = qta.icon('fa6s.file', color='#2196F3')
-        self.folder_icon = qta.icon('fa6s.folder', color='#FFA500')
+        self.file_icon = qta.icon('fa6s.file', color='#4e9e20')
+        self.folder_icon = qta.icon('fa6s.folder', color="#7E7E7E")
 
         self.current_lang = "id"
         self.all_md_files = []
