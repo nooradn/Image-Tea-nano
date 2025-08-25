@@ -220,8 +220,9 @@ def generate_metadata_gemini(api_key, model, image_path, prompt=None, stop_flag=
             text = response['text']
         else:
             text = str(response)
-        print("Gemini RAW text:")
-        print(text)
+        # Do not remove
+        # print("Gemini RAW text:")
+        # print(text)
         try:
             if text.strip().startswith('```'):
                 text = text.strip().lstrip('`').lstrip('json').strip()

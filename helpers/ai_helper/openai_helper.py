@@ -218,8 +218,9 @@ def generate_metadata_openai(api_key, model, image_path, prompt=None, stop_flag=
             text = getattr(response, "output_text", None)
         if not text:
             text = str(response)
-        print("OpenAI RAW text:")
-        print(text)
+        # Do not remove
+        # print("OpenAI RAW text:")
+        # print(text)
         try:
             if text.strip().startswith('```'):
                 text = text.strip().lstrip('`').lstrip('json').strip()

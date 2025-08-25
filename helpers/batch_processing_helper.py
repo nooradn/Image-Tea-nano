@@ -56,11 +56,6 @@ class BatchWorker(QThread):
                 image_path = row[1]
                 prompt = None
                 result = self.metadata_func(self.api_key, self.model, image_path, prompt, stop_flag)
-                if isinstance(result, dict) and "category" in result:
-                    print(f"[BATCH] Category for {image_path}: {result['category']}")
-                elif isinstance(result, tuple) and len(result) > 3:
-                    category = result[3]
-                    print(f"[BATCH] Category for {image_path}: {category}")
                 with self._lock:
                     if not self._should_stop and not (stop_flag and stop_flag.get('stop')):
                         results[idx] = (idx, result)
@@ -427,8 +422,6 @@ def _run_next_batch(window):
             token_total = result.get("token_total")
             category = result.get("category")
             if category is not None:
-                print(f"[BATCH] Category for {image_path}: {category}")
-                # Cari file_id dari batch row
                 file_id = None
                 for row in batch:
                     if row[1] == image_path:
@@ -524,8 +517,6 @@ def _on_generation_finished(window, errors, stopped=False):
         print("[Batch Errors]")
         for err in errors:
             print(err)
-    else:
-        print("[Batch] Metadata generated for all files.")
 
 def update_token_stats_ui(window):
     if hasattr(window, "stats_section") and hasattr(window.stats_section, "update_token_stats"):
