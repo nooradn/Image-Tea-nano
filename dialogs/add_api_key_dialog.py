@@ -1,11 +1,12 @@
 from PySide6.QtCore import QThread, Signal, Qt, QPoint, QTimer
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QApplication, QWidget
+from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QProgressBar, QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QHeaderView, QMenu, QApplication, QWidget, QFileDialog
 from PySide6.QtGui import QColor, QBrush, QAction
 from database.db_operation import ImageTeaDB
 import datetime
 import qtawesome as qta
 import json
 import os
+import csv
 
 class ApiKeyTestThread(QThread):
     result = Signal(str, str, object)  # (status, service, text/error)
@@ -121,6 +122,30 @@ class AddApiKeyDialog(QDialog):
         note_layout.addWidget(note_label)
         note_layout.addWidget(self.note_edit)
         layout.addLayout(note_layout)
+
+        # Tombol Export/Import CSV di atas tabel
+        csv_btn_layout = QHBoxLayout()
+        self.test_all_btn = QPushButton()
+        self.test_all_btn.setText("Test All")
+        self.test_all_btn.setIcon(qta.icon('fa6s.list-check'))
+        self.test_all_btn.setIconSize(self.test_all_btn.iconSize())
+        self.test_all_btn.setToolTip("Test all API keys sequentially")
+        self.export_csv_btn = QPushButton()
+        self.export_csv_btn.setText("Export CSV")
+        self.export_csv_btn.setIcon(qta.icon('fa6s.file-csv'))
+        self.export_csv_btn.setIconSize(self.export_csv_btn.iconSize())
+        self.export_csv_btn.setToolTip("Export API key list to CSV")
+        self.import_csv_btn = QPushButton()
+        self.import_csv_btn.setText("Import CSV")
+        self.import_csv_btn.setIcon(qta.icon('fa6s.file-import'))
+        self.import_csv_btn.setIconSize(self.import_csv_btn.iconSize())
+        self.import_csv_btn.setToolTip("Import API key list from CSV")
+        csv_btn_layout.addWidget(self.test_all_btn)
+        csv_btn_layout.addWidget(self.export_csv_btn)
+        csv_btn_layout.addWidget(self.import_csv_btn)
+        csv_btn_layout.addStretch()
+        layout.addLayout(csv_btn_layout)
+
         self.api_table = QTableWidget()
         self.api_table.setColumnCount(5)
         self.api_table.setHorizontalHeaderLabels(["Service", "API", "Last Tested", "Note", ""])
@@ -160,6 +185,9 @@ class AddApiKeyDialog(QDialog):
         layout.addLayout(btn_layout)
         self.setLayout(layout)
         self.test_and_save_btn.clicked.connect(self.test_and_save_api_key)
+        self.export_csv_btn.clicked.connect(self.export_api_keys_csv)
+        self.import_csv_btn.clicked.connect(self.import_api_keys_csv)
+        self.test_all_btn.clicked.connect(self.test_all_api_keys)
         self.key_edit.textChanged.connect(self._on_key_edit_changed)
         self.service_combo.currentIndexChanged.connect(self._on_service_combo_changed)
         self.api_table.cellClicked.connect(self._on_api_table_row_clicked)
@@ -169,6 +197,9 @@ class AddApiKeyDialog(QDialog):
         self._detected_service = None
         self._api_key_valid = False
         self._testing = False
+        self._test_all_running = False
+        self._test_all_results = []
+        self._test_all_row_blinking = False
 
     def _on_paste_clicked(self):
         clipboard = QApplication.clipboard()
@@ -212,6 +243,8 @@ class AddApiKeyDialog(QDialog):
                     service, api, note, last_tested = row
                     status = ""
                     model = ""
+            if isinstance(last_tested, (tuple, list)):
+                last_tested = " ".join(str(x) for x in last_tested)
             self.api_table.setItem(row_idx, 0, QTableWidgetItem(str(service.capitalize() if str(service).lower() in ("openai", "gemini") else str(service))))
             self.api_table.setItem(row_idx, 1, QTableWidgetItem(str(api)))
             self.api_table.setItem(row_idx, 2, QTableWidgetItem(str(last_tested)))
@@ -523,3 +556,214 @@ class AddApiKeyDialog(QDialog):
         action_test.triggered.connect(self.test_and_save_api_key)
         menu.addAction(action_test)
         menu.exec(self.api_table.viewport().mapToGlobal(pos))
+
+    def export_api_keys_csv(self):
+        try:
+            rows = self.db.get_all_api_keys()
+        except Exception as e:
+            print(f"Error fetching API keys for export: {e}")
+            QMessageBox.critical(self, "Export CSV", "Failed to fetch API Key data.")
+            return
+        now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        home_dir = os.path.expanduser("~")
+        default_filename = f"Image_Tea_API_Keys_Backup_{now}.csv"
+        default_path = os.path.join(home_dir, default_filename)
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export API Keys to CSV",
+            default_path,
+            "CSV Files (*.csv);;All Files (*)"
+        )
+        if not file_path:
+            return
+        headers = ["Service", "API", "Last Tested", "Note", "Status", "Model"]
+        try:
+            with open(file_path, "w", newline="", encoding="utf-8") as csvfile:
+                writer = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
+                writer.writerow(headers)
+                for row in rows:
+                    if isinstance(row, dict):
+                        service = row.get("service")
+                        api = row.get("api")
+                        last_tested = row.get("last_tested")
+                        note = row.get("note")
+                        status = row.get("status")
+                        model = row.get("model")
+                    else:
+                        if len(row) == 6:
+                            service, api, note, last_tested, status, model = row
+                        elif len(row) == 5:
+                            service, api, note, last_tested, status = row
+                            model = ""
+                        else:
+                            service, api, note, last_tested = row
+                            status = ""
+                            model = ""
+                    if isinstance(last_tested, (tuple, list)):
+                        last_tested = " ".join(str(x) for x in last_tested)
+                    writer.writerow([service, api, last_tested, note, status, model])
+            QMessageBox.information(self, "Export CSV", f"API Keys exported successfully to:\n{file_path}")
+        except Exception as e:
+            print(f"Error exporting API keys to CSV: {e}")
+            QMessageBox.critical(self, "Export CSV", "Failed to write CSV file.")
+
+    def import_api_keys_csv(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import API Keys from CSV",
+            os.path.expanduser("~"),
+            "CSV Files (*.csv);;All Files (*)"
+        )
+        if not file_path:
+            return
+        imported = 0
+        skipped = 0
+        try:
+            with open(file_path, "r", encoding="utf-8") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    service = row.get("Service")
+                    api = row.get("API")
+                    last_tested = row.get("Last Tested")
+                    note = row.get("Note")
+                    status = row.get("Status")
+                    model = row.get("Model")
+                    if not service or not api:
+                        continue
+                    # Cek apakah sudah ada di DB
+                    exists = False
+                    try:
+                        db_rows = self.db.get_all_api_keys()
+                        for db_row in db_rows:
+                            if isinstance(db_row, dict):
+                                if db_row.get("service") == service and db_row.get("api") == api:
+                                    exists = True
+                                    break
+                            else:
+                                if len(db_row) >= 2 and db_row[0] == service and db_row[1] == api:
+                                    exists = True
+                                    break
+                    except Exception as e:
+                        print(f"Error checking existing API key: {e}")
+                    if exists:
+                        skipped += 1
+                        continue
+                    # Simpan ke DB
+                    try:
+                        self.db.set_api_key(service, api, note, last_tested, status, model)
+                        imported += 1
+                    except Exception as e:
+                        print(f"Error saving API key: {e}")
+            self._refresh_api_table()
+            QMessageBox.information(self, "Import CSV", f"Import finished.\nImported: {imported}\nSkipped (already exists): {skipped}")
+        except Exception as e:
+            print(f"Error importing API keys from CSV: {e}")
+            QMessageBox.critical(self, "Import CSV", "Failed to import API keys from CSV.")
+
+    def test_all_api_keys(self):
+        if self._test_all_running:
+            return
+        self._test_all_running = True
+        self._test_all_results = []
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setMaximum(0)
+        self.progress_bar.setMinimum(0)
+        self.test_all_btn.setEnabled(False)
+        self._test_all_index = 0
+        try:
+            self._test_all_rows = self.db.get_all_api_keys()
+        except Exception as e:
+            print(f"Error fetching API keys for test all: {e}")
+            self._test_all_rows = []
+        self._test_all_next()
+
+    def _test_all_next(self):
+        if self._test_all_index >= len(self._test_all_rows):
+            self._stop_blinking()
+            self.progress_bar.setVisible(False)
+            self.test_all_btn.setEnabled(True)
+            self._test_all_running = False
+            self._refresh_api_table()
+            total = len(self._test_all_rows)
+            ok = sum(1 for r in self._test_all_results if r[1] == "success")
+            fail = total - ok
+            QMessageBox.information(self, "Test All API Keys", f"Tested {total} API keys.\nSuccess: {ok}\nFailed: {fail}")
+            return
+        row = self._test_all_rows[self._test_all_index]
+        if isinstance(row, dict):
+            service = row["service"]
+            api = row["api"]
+            note = row.get("note")
+            model = row.get("model")
+        else:
+            if len(row) == 6:
+                service, api, note, last_tested, status, model = row
+            elif len(row) == 5:
+                service, api, note, last_tested, status = row
+                model = ""
+            else:
+                service, api, note, last_tested = row
+                status = ""
+                model = ""
+        if not model:
+            now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            self.db.set_api_key(service, api, note, now, "invalid", model)
+            self._test_all_results.append((api, "fail"))
+            self._set_row_status_color(self._test_all_index, "invalid")
+            self._test_all_index += 1
+            self._test_all_next()
+            return
+        self._row_testing = self._test_all_index
+        self._blink_state = False
+        self._blink_timer.start(300)
+        self._test_all_thread = ApiKeyTestThread(api, service, model)
+        self._test_all_thread.result.connect(lambda status, svc, text, idx=self._test_all_index: self._on_test_all_result(idx, status, svc, text))
+        self._test_all_thread.finished.connect(self._test_all_blink_stop_and_next)
+        self._test_all_thread.start()
+
+    def _test_all_blink_stop_and_next(self):
+        self._stop_blinking()
+        # Set warna baris sesuai hasil tes terakhir
+        if self._test_all_index < len(self._test_all_results):
+            status = self._test_all_results[self._test_all_index][1]
+            self._set_row_status_color(self._test_all_index, status)
+        self._test_all_index += 1
+        self._test_all_next()
+
+    def _set_row_status_color(self, row_idx, status):
+        if status == "success":
+            brush = QBrush(QColor(91, 184, 16, int(0.4 * 255)))
+        elif status == "invalid" or status == "fail":
+            brush = QBrush(QColor(255, 41, 41, int(0.4 * 255)))
+        else:
+            brush = None
+        if brush:
+            for col in range(4):
+                item = self.api_table.item(row_idx, col)
+                if item:
+                    item.setBackground(brush)
+        else:
+            for col in range(4):
+                item = self.api_table.item(row_idx, col)
+                if item:
+                    item.setBackground(QBrush())
+
+    def _on_test_all_result(self, idx, status, service, text):
+        now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        row = self._test_all_rows[idx]
+        if isinstance(row, dict):
+            api = row["api"]
+            note = row.get("note")
+            model = row.get("model")
+        else:
+            if len(row) == 6:
+                service, api, note, last_tested, st, model = row
+            elif len(row) == 5:
+                service, api, note, last_tested, st = row
+                model = ""
+            else:
+                service, api, note, last_tested = row
+                st = ""
+                model = ""
+        self.db.set_api_key(service, api, note, now, "active" if status == "success" else "invalid", model)
+        self._test_all_results.append((api, status))
