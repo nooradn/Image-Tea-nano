@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
 from PySide6.QtGui import QFont
 from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
 import qtawesome as qta
@@ -77,6 +77,13 @@ class StatsSectionWidget(QWidget):
         token_stats_layout.addWidget(token_output_widget)
         token_stats_layout.addWidget(token_total_widget)
 
+        self.reset_token_btn = QPushButton()
+        self.reset_token_btn.setIcon(qta.icon("fa6s.rotate-right", color="#888"))
+        self.reset_token_btn.setFixedSize(24, 24)
+        self.reset_token_btn.setToolTip("Reset token stats")
+        self.reset_token_btn.setCursor(Qt.PointingHandCursor)
+        token_stats_layout.addWidget(self.reset_token_btn)
+
         hbox.addLayout(file_stats_layout)
         hbox.addSpacing(8)
         hbox.addLayout(time_stats_layout)
@@ -86,7 +93,6 @@ class StatsSectionWidget(QWidget):
 
         main_vbox.addLayout(hbox)
 
-        # Cache for timing stats
         self._last_gen_time = 0
         self._avg_time = 0
         self._longest_time = 0
@@ -94,6 +100,8 @@ class StatsSectionWidget(QWidget):
         self._total_time = 0
 
         self._donation_dialog_shown_token = False
+
+        self.reset_token_btn.clicked.connect(self._reset_token_stats)
 
     def update_stats(self, total, selected, failed, success=0, draft=0):
         self.label_total.setText(f"Total Images: {total}")
@@ -153,3 +161,10 @@ class StatsSectionWidget(QWidget):
             "last_time": self._last_time,
             "total_time": self._total_time
         }
+
+    def _reset_token_stats(self):
+        self.db.delete_all_api_tokens()
+        self.label_token_input.setText("Token Input: 0")
+        self.label_token_output.setText("Token Output: 0")
+        self.label_token_total.setText("Token Total: 0")
+        self._donation_dialog_shown_token = False

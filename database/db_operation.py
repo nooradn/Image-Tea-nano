@@ -313,3 +313,9 @@ class ImageTeaDB:
                     'category_name': row[3]
                 })
             return mapping
+
+    def delete_all_api_tokens(self):
+        with sqlite3.connect(self.db_path) as conn:
+            c = conn.cursor()
+            c.execute('DELETE FROM api_tokens')
+            conn.commit()

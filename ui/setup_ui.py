@@ -14,11 +14,11 @@ from dialogs.api_call_warning_dialog import ApiCallWarningDialog
 from ui.properties_widget import PropertiesWidget
 from ui.api_key_section import ApiKeySectionWidget
 from ui.main_statusbar import MainStatusBar
+from database.db_operation import ImageTeaDB
 
 def setup_ui(self):
     setup_main_menu(self)
     setup_main_toolbar(self)
-    from database.db_operation import ImageTeaDB
     self.db = getattr(self, 'db', None) or ImageTeaDB()
     central = QWidget()
     layout = QVBoxLayout()
@@ -67,6 +67,7 @@ def setup_ui(self):
 
     btn_row_layout = QHBoxLayout()
     self.stats_section = StatsSectionWidget(self)
+    self.stats_section.db = self.db
     btn_row_layout.addWidget(self.stats_section)
 
     self.table.stats_changed.connect(self.stats_section.update_stats)
