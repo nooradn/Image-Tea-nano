@@ -4,73 +4,26 @@
 ![WhatsApp Group](https://img.shields.io/badge/Join%20WhatsApp-Group-25D366?logo=whatsapp&style=for-the-badge&link=https://chat.whatsapp.com/CMQvDxpCfP647kBBA6dRn3)
 [![Web](https://img.shields.io/badge/Web-image--tea.cloud-blue?style=for-the-badge&logo=google-chrome&logoColor=white&link=https://www.image-tea.cloud/)](https://www.image-tea.cloud/)
 
-**Image-Tea-nano** adalah generator metadata ringan, simpel, dan mudah digunakan.
+**Image-Tea-nano** is an honest, simple, and user-controlled alternative metadata generator. Everything is easy, straightforward, and you have full control over your data.
 
 ---
 
-## Install & Clone
+**This application is an internal tool of Desainia Studio.** You are free to use it under the MIT license. We do not spend time teaching each individual how to download or install it. If you want to use it, please figure it out yourself. If not, that's perfectly fine.
 
-### Cara 1: Download ZIP dari GitHub (tanpa Git)
+The Desainia Studio team is focused on our work and may not always have time to respond to user questions or requests.
 
-1. Buka halaman repo ini di GitHub.
-2. Klik tombol hijau besar bertuliskan **Code** di kanan atas.
-3. Pilih **Download ZIP**.
-4. Ekstrak file ZIP ke folder yang kamu inginkan.
-
-### Cara 2: Clone dengan Git
-
-1. **Install Git**: Unduh di [git-scm.com](https://git-scm.com/download/win).
-2. **Buka CMD/PowerShell**.
-3. **Pilih folder project**:
-
-   ```bash
-   cd /d D:\Project
-   ```
-
-   atau ke Desktop:
-
-   ```bash
-   cd %USERPROFILE%\Desktop
-   ```
-4. **Clone repo**:
-
-   ```bash
-   git clone https://github.com/mudrikam/Image-Tea-nano.git
-   ```
-5. **Masuk folder**:
-
-   ```bash
-   cd Image-Tea-nano
-   ```
+This application is free. If you find it useful, feel free to share it with anyone who needs it and teach them how to use it. From the beginning, this app has been shared as an act of charity.
 
 ---
 
-## Jalankan Aplikasi
+## API Key Requirement
 
-1. Jalankan:
+This application requires a Gemini or OpenAI API key to enable full features. You must provide your own API key.
 
-   ```bash
-   Image Tea.exe
-   ```
-2. Pada saat pertama kali dijalankan, aplikasi akan otomatis mengunduh dan menginstal semua dependencies yang diperlukan (Python embedded, pip, dan library Python) ke folder lokal.  
-3. Proses ini membutuhkan koneksi internet yang stabil.
+How to get an API key:
 
----
+- You can ask directly in the WhatsApp group (link above).
+- You can search for instructions online.
+- Or you can ask an AI (such as ChatGPT, Gemini, Copilot, etc).
 
-## Update Aplikasi
-
-1. Pastikan berada di folder `Image-Tea-nano`.
-2. Jalankan:
-
-   ```bash
-   Image Tea Updater.exe
-   ```
-3. Jika aplikasi tidak berjalan karena struktur database berubah, silakan hapus file database (`database\database.db`) secara manual.
-4. Setelah selesai, jalankan `Image Tea.exe`.
-
----
-
-## Catatan Penting
-
-* Backup API key & data sebelum update.
-* Hapus database lama jika struktur berubah (data lama hilang).
+API keys are not provided by the application developer. Each user is responsible for obtaining and managing their own API key.
