@@ -72,6 +72,9 @@ class PropertiesWidget(QWidget):
 
         self.setLayout(outer_layout)
 
+        self._preview_cache = {}
+        self._last_preview_filepath = None
+
     def _add_separator(self):
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
@@ -174,7 +177,18 @@ class PropertiesWidget(QWidget):
             value_label.setText(val)
 
         filepath = values[0]
+        if filepath == self._last_preview_filepath and filepath in self._preview_cache:
+            pixmap = self._preview_cache[filepath]
+            self.preview_label.clear()
+            if pixmap:
+                self.preview_label.setPixmap(pixmap)
+            else:
+                self.preview_label.setText("Cannot preview image")
+            return
+
         self.preview_label.clear()
+        self._last_preview_filepath = filepath
+
         if filepath and os.path.exists(filepath):
             ext = os.path.splitext(filepath)[1].lower()
             video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
@@ -192,11 +206,14 @@ class PropertiesWidget(QWidget):
                         pixmap = QPixmap.fromImage(qimg)
                         preview_width = self.preview_label.width() if self.preview_label.width() > 0 else 220
                         pixmap = pixmap.scaled(preview_width, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        self._preview_cache[filepath] = pixmap
                         self.preview_label.setPixmap(pixmap)
                     else:
+                        self._preview_cache[filepath] = None
                         self.preview_label.setText("Cannot preview video")
                 except Exception as e:
                     print(f"Video preview error: {e}")
+                    self._preview_cache[filepath] = None
                     self.preview_label.setText("Cannot preview video")
             elif ext in {'.svg', '.eps', '.pdf'}:
                 try:
@@ -218,19 +235,24 @@ class PropertiesWidget(QWidget):
                         if not pixmap.isNull():
                             preview_width = self.preview_label.width() if self.preview_label.width() > 0 else 220
                             pixmap = pixmap.scaled(preview_width, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                            self._preview_cache[filepath] = pixmap
                             self.preview_label.setPixmap(pixmap)
                         else:
+                            self._preview_cache[filepath] = None
                             self.preview_label.setText("Cannot preview image")
                     else:
+                        self._preview_cache[filepath] = None
                         self.preview_label.setText("Cannot preview image")
                 except Exception as e:
                     print(f"Vector preview error: {e}")
+                    self._preview_cache[filepath] = None
                     self.preview_label.setText("Cannot preview image")
             elif ext in PILLOW_FORMATS:
                 pixmap = QPixmap(filepath)
                 if not pixmap.isNull():
                     preview_width = self.preview_label.width() if self.preview_label.width() > 0 else 220
                     pixmap = pixmap.scaled(preview_width, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    self._preview_cache[filepath] = pixmap
                     self.preview_label.setPixmap(pixmap)
                 else:
                     try:
@@ -241,11 +263,15 @@ class PropertiesWidget(QWidget):
                             pixmap = QPixmap.fromImage(qimg)
                             preview_width = self.preview_label.width() if self.preview_label.width() > 0 else 220
                             pixmap = pixmap.scaled(preview_width, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                            self._preview_cache[filepath] = pixmap
                             self.preview_label.setPixmap(pixmap)
                     except Exception as e:
                         print(f"Pillow preview error: {e}")
+                        self._preview_cache[filepath] = None
                         self.preview_label.setText("Cannot preview image")
             else:
+                self._preview_cache[filepath] = None
                 self.preview_label.setText("Cannot preview image")
         else:
+            self._preview_cache[filepath] = None
             self.preview_label.setText("No preview")

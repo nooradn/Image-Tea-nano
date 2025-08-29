@@ -1,38 +1,274 @@
-from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView, QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel, QHBoxLayout, QLineEdit, QPushButton, QToolTip
-from PySide6.QtCore import Qt, Signal, QPoint, QTimer
-from PySide6.QtGui import QColor, QBrush, QAction, QGuiApplication
+from PySide6.QtWidgets import (
+    QTableWidget, QTableWidgetItem, QMessageBox, QAbstractItemView, QHeaderView,
+    QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel, QHBoxLayout, QLineEdit,
+    QPushButton, QToolTip, QTabWidget, QScrollArea, QFrame, QLayout
+)
+from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect, QSize
+from PySide6.QtGui import QColor, QBrush, QAction, QGuiApplication, QPixmap
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
 import qtawesome as qta
 import os
 
+class FlowLayout(QLayout):
+    def __init__(self, parent=None, margin=0, spacing=-1):
+        super().__init__(parent)
+        self._itemList = []
+        self.setContentsMargins(margin, margin, margin, margin)
+        self.setSpacing(spacing if spacing >= 0 else 0)
+
+    def __del__(self):
+        item = self.takeAt(0)
+        while item:
+            item = self.takeAt(0)
+
+    def addItem(self, item):
+        self._itemList.append(item)
+
+    def count(self):
+        return len(self._itemList)
+
+    def itemAt(self, index):
+        if 0 <= index < len(self._itemList):
+            return self._itemList[index]
+        return None
+
+    def takeAt(self, index):
+        if 0 <= index < len(self._itemList):
+            return self._itemList.pop(index)
+        return None
+
+    def expandingDirections(self):
+        return Qt.Orientation(0)
+
+    def hasHeightForWidth(self):
+        return True
+
+    def heightForWidth(self, width):
+        return self.doLayout(QRect(0, 0, width, 0), True)
+
+    def setGeometry(self, rect):
+        super().setGeometry(rect)
+        self.doLayout(rect, False)
+
+    def sizeHint(self):
+        return self.minimumSize()
+
+    def minimumSize(self):
+        size = QSize()
+        for item in self._itemList:
+            size = size.expandedTo(item.minimumSize())
+        margin = self.contentsMargins()
+        size += QSize(margin.left() + margin.right(), margin.top() + margin.bottom())
+        return size
+
+    def doLayout(self, rect, testOnly):
+        x = rect.x()
+        y = rect.y()
+        lineHeight = 0
+        right = rect.right()
+        for item in self._itemList:
+            widget = item.widget()
+            if widget and not widget.isVisible():
+                continue
+            spaceX = self.spacing()
+            spaceY = self.spacing()
+            itemSize = item.sizeHint()
+            nextX = x + itemSize.width() + spaceX
+            if nextX - spaceX > right and lineHeight > 0:
+                x = rect.x()
+                y = y + lineHeight + spaceY
+                nextX = x + itemSize.width() + spaceX
+                lineHeight = 0
+            if not testOnly:
+                item.setGeometry(QRect(QPoint(x, y), itemSize))
+            x = nextX
+            lineHeight = max(lineHeight, itemSize.height())
+        return y + lineHeight - rect.y()
+
+class GridManager:
+    def __init__(self):
+        self.image_items = []
+        self.image_size = 150
+        self.grid_spacing = 10
+        self.active_image = None
+        self._widget_cache = {}  # key: filepath, value: widget
+        self._pixmap_cache = {}  # key: filepath, value: QPixmap
+
+    def _clear_grid(self, grid_widget):
+        for item in self.image_items:
+            if item:
+                try:
+                    item.deleteLater()
+                except Exception as e:
+                    print(f"Error deleting widget: {e}")
+        self.image_items.clear()
+
+    def _create_image_widget(self, file_info):
+        filepath = file_info['filepath']
+        filename = file_info['filename']
+        extension = file_info['extension']
+        cache_key = filepath
+
+        if cache_key in self._widget_cache:
+            widget = self._widget_cache[cache_key]
+            return widget
+
+        container = QWidget()
+        item_width = self.image_size + 10
+        container.setFixedWidth(item_width)
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(2, 2, 2, 2)
+        layout.setSpacing(2)
+        image_label = QLabel()
+        image_label.setAlignment(Qt.AlignCenter)
+        image_label.setFixedSize(self.image_size, self.image_size)
+        image_label.setStyleSheet("""
+            QLabel {
+                border: 2px solid rgba(0, 0, 0, 0.1);
+                border-radius: 4px;
+                padding: 2px;
+            }
+            QLabel:hover {
+                border: 2px solid rgba(88, 165, 0, 0.3);
+                background-color: rgba(88, 165, 0, 0.05);
+            }
+        """)
+        image_label.setAttribute(Qt.WA_Hover, True)
+        image_label.setCursor(Qt.PointingHandCursor)
+        self._set_image(image_label, filepath)
+        MAX_NAME_LENGTH = 18
+        if len(filename) > MAX_NAME_LENGTH:
+            display_name = f"{filename[:MAX_NAME_LENGTH-3]}...{extension}"
+        else:
+            display_name = f"{filename}{extension}"
+        text_label = QLabel(display_name)
+        text_label.setAlignment(Qt.AlignCenter)
+        text_label.setWordWrap(False)
+        text_label.setFixedWidth(self.image_size)
+        text_label.setStyleSheet("font-size: 9pt;")
+        text_label.setToolTip(f"{filename}{extension}")
+        layout.addWidget(image_label)
+        layout.addWidget(text_label)
+        container.setProperty("file_info", file_info)
+        container.mousePressEvent = lambda event: self._handle_image_click(container, event)
+        image_label.mousePressEvent = lambda event: self._handle_image_click(container, event)
+        self._widget_cache[cache_key] = container
+        return container
+
+    def _set_image(self, label, image_path):
+        if image_path in self._pixmap_cache:
+            pixmap = self._pixmap_cache[image_path]
+            if pixmap:
+                label.setPixmap(pixmap)
+            else:
+                label.setText("Cannot load\nimage")
+            return
+        try:
+            pixmap = QPixmap(image_path)
+            if not pixmap.isNull():
+                pixmap = pixmap.scaled(
+                    self.image_size, self.image_size,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
+                self._pixmap_cache[image_path] = pixmap
+                label.setPixmap(pixmap)
+            else:
+                self._pixmap_cache[image_path] = None
+                label.setText("Cannot load\nimage")
+                print(f"Failed to load image: {image_path}")
+        except Exception as e:
+            self._pixmap_cache[image_path] = None
+            label.setText("Error")
+            print(f"Error loading image: {image_path} - {e}")
+
+    def _update_active_image(self, new_active_widget):
+        try:
+            if self.active_image:
+                for child in self.active_image.children():
+                    if isinstance(child, QLabel) and child.objectName() != "filename_label":
+                        child.setStyleSheet("""
+                            QLabel {
+                                border: 2px solid rgba(0, 0, 0, 0.1);
+                                border-radius: 4px;
+                                padding: 2px;
+                            }
+                            QLabel:hover {
+                                border: 2px solid rgba(88, 165, 0, 0.3);
+                                background-color: rgba(88, 165, 0, 0.05);
+                            }
+                        """)
+                        break
+            self.active_image = new_active_widget
+            if self.active_image:
+                for child in self.active_image.children():
+                    if isinstance(child, QLabel) and child.objectName() != "filename_label":
+                        child.setStyleSheet("""
+                            QLabel {
+                                border: 2px solid rgba(88, 165, 0, 0.3);
+                                border-radius: 4px;
+                                padding: 2px;
+                                background-color: rgba(88, 165, 0, 0.20);
+                            }
+                            QLabel:hover {
+                                border: 2px solid rgba(88, 165, 0, 0.5);
+                                background-color: rgba(88, 165, 0, 0.25);
+                            }
+                        """)
+                        break
+        except Exception as e:
+            print(f"Error updating active image styling: {e}")
+
+    def _handle_image_click(self, widget, event):
+        try:
+            file_info = widget.property("file_info")
+            if not file_info:
+                return
+            self._update_active_image(widget)
+            parent_widget = widget.parent()
+            while parent_widget and not hasattr(parent_widget, '_callback_function'):
+                parent_widget = parent_widget.parent()
+            if parent_widget and hasattr(parent_widget, '_callback_function'):
+                callback_function = parent_widget._callback_function
+                if callback_function:
+                    callback_function(0, 0, file_info)
+        except Exception as e:
+            print(f"Error handling grid image click: {e}")
+
+    def setup_grid_click_handler(self, grid_widget, callback_function):
+        if not grid_widget:
+            print("Grid widget not provided, can't set up click handler")
+            return
+        grid_widget._callback_function = callback_function
+
 class ImageTableWidget(QWidget):
-    stats_changed = Signal(int, int, int, int, int)  # total, selected, failed, success, draft
+    stats_changed = Signal(int, int, int, int, int)
     data_refreshed = Signal()
 
     def __init__(self, parent=None, db=None):
         super().__init__(parent)
         self.db = db
         self._properties_widget = getattr(parent, "properties_widget", None)
-        self._main_window = parent  # Simpan parent utama (MainWindow)
-
+        self._main_window = parent
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-
-        # Search bar layout
+        self.tab_widget = QTabWidget(self)
+        self.layout.addWidget(self.tab_widget)
+        self.table_tab = QWidget()
+        self.table_tab_layout = QVBoxLayout(self.table_tab)
+        self.table_tab_layout.setContentsMargins(0, 0, 0, 0)
         search_layout = QHBoxLayout()
         self.search_edit = QLineEdit(self)
         self.search_edit.setPlaceholderText("Search...")
         self.search_edit.setClearButtonEnabled(False)
         self.search_edit.textChanged.connect(self._on_search_text_changed)
-
         search_icon_btn = QPushButton(self)
         search_icon_btn.setIcon(qta.icon("fa6s.magnifying-glass"))
         search_icon_btn.setFlat(True)
         search_icon_btn.setFocusPolicy(Qt.NoFocus)
         search_icon_btn.setEnabled(False)
         search_icon_btn.setFixedWidth(28)
-
         paste_btn = QPushButton(self)
         paste_btn.setIcon(qta.icon("fa6s.clipboard"))
         paste_btn.setFlat(True)
@@ -40,7 +276,6 @@ class ImageTableWidget(QWidget):
         paste_btn.setFixedWidth(28)
         paste_btn.setToolTip("Paste text from clipboard to search field")
         paste_btn.clicked.connect(self._on_paste_clicked)
-
         clear_btn = QPushButton(self)
         clear_btn.setIcon(qta.icon("fa6s.xmark"))
         clear_btn.setFlat(True)
@@ -48,13 +283,11 @@ class ImageTableWidget(QWidget):
         clear_btn.setFixedWidth(28)
         clear_btn.setToolTip("Clear the search field")
         clear_btn.clicked.connect(self._on_clear_search)
-
         search_layout.addWidget(search_icon_btn)
         search_layout.addWidget(self.search_edit)
         search_layout.addWidget(paste_btn)
         search_layout.addWidget(clear_btn)
-        self.layout.addLayout(search_layout)
-
+        self.table_tab_layout.addLayout(search_layout)
         self.table = QTableWidget(0, 9, self)
         self.table.setHorizontalHeaderLabels([
             "", "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count", "Status"
@@ -64,8 +297,7 @@ class ImageTableWidget(QWidget):
         for col in range(0, 9):
             self.table.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeToContents)
         self.table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.layout.addWidget(self.table)
-
+        self.table_tab_layout.addWidget(self.table)
         self.progress_bar = QProgressBar(self)
         self.progress_bar.setMinimum(0)
         self.progress_bar.setMaximum(100)
@@ -74,22 +306,38 @@ class ImageTableWidget(QWidget):
         self.progress_bar.setFormat('')
         self.progress_bar.setVisible(True)
         self.progress_bar.setToolTip("Shows progress for batch operations")
-        self.layout.addWidget(self.progress_bar)
-
+        self.table_tab_layout.addWidget(self.progress_bar)
+        self.tab_widget.addTab(self.table_tab, "Table")
+        self.thumbnail_tab = QWidget()
+        self.thumbnail_tab_layout = QVBoxLayout(self.thumbnail_tab)
+        self.thumbnail_tab_layout.setContentsMargins(0, 0, 0, 0)
+        self.thumbnail_scroll = QScrollArea(self.thumbnail_tab)
+        self.thumbnail_scroll.setWidgetResizable(True)
+        self.thumbnail_scroll.setFrameShape(QFrame.NoFrame)
+        self.thumbnail_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.thumbnail_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.thumbnail_tab_layout.addWidget(self.thumbnail_scroll)
+        self.thumbnail_content = QWidget()
+        self.thumbnail_scroll.setWidget(self.thumbnail_content)
+        self.thumbnail_flow = FlowLayout(margin=10, spacing=10)
+        self.thumbnail_content.setLayout(self.thumbnail_flow)
+        self.tab_widget.addTab(self.thumbnail_tab, "Thumbnail")
         self._donation_dialog_shown = False
-
-        # Connect selection change to stats update
         self.table.selectionModel().selectionChanged.connect(self._emit_stats)
         self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
         self.table.itemChanged.connect(self._on_item_changed)
-
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
-
         self._all_rows_cache = []
-
+        self.grid_manager = GridManager()
+        self.grid_manager.setup_grid_click_handler(self.thumbnail_content, self._on_thumbnail_clicked)
+        self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self.refresh_table()
+
+    def _on_tab_changed(self, idx):
+        if self.tab_widget.tabText(idx) == "Thumbnail":
+            self.refresh_thumbnail_grid()
 
     def _on_paste_clicked(self):
         clipboard = QGuiApplication.clipboard()
@@ -101,6 +349,8 @@ class ImageTableWidget(QWidget):
 
     def _on_search_text_changed(self, text):
         self._filter_table(text)
+        if self.tab_widget.currentIndex() == 1:
+            self.refresh_thumbnail_grid()
 
     def _filter_table(self, text):
         text = text.strip().lower()
@@ -234,7 +484,6 @@ class ImageTableWidget(QWidget):
         filepath = filepath_item.data(Qt.UserRole)
         if not filepath:
             filepath = filepath_item.text()
-        # Gunakan parent utama (MainWindow) sebagai parent dialog
         parent_for_dialog = self._main_window if self._main_window is not None else self
         dialog = FileMetadataDialog(filepath, parent=parent_for_dialog)
         dialog.exec()
@@ -308,6 +557,44 @@ class ImageTableWidget(QWidget):
         else:
             self._donation_dialog_shown = False
         self.data_refreshed.emit()
+        if self.tab_widget.currentIndex() == 1:
+            self.refresh_thumbnail_grid()
+
+    def refresh_thumbnail_grid(self):
+        files = []
+        text = self.search_edit.text().strip().lower()
+        if not text:
+            files = list(self.db.get_all_files())
+        else:
+            files = [row for row in self._all_rows_cache if self._row_matches_search(row, text)]
+        files_data = []
+        for row in files:
+            file_info = {
+                'filepath': row[1],
+                'filename': row[2],
+                'extension': os.path.splitext(row[2])[1]
+            }
+            files_data.append(file_info)
+        # Only clear widgets that are not in the new files_data
+        current_keys = set(self.grid_manager._widget_cache.keys())
+        new_keys = set(f['filepath'] for f in files_data)
+        for key in current_keys - new_keys:
+            widget = self.grid_manager._widget_cache.pop(key, None)
+            if widget:
+                widget.deleteLater()
+        while self.thumbnail_flow.count():
+            item = self.thumbnail_flow.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
+        if files_data:
+            for file_info in files_data:
+                widget = self.grid_manager._create_image_widget(file_info)
+                self.thumbnail_flow.addWidget(widget)
+        else:
+            no_data_label = QLabel("No images found")
+            no_data_label.setAlignment(Qt.AlignCenter)
+            self.thumbnail_flow.addWidget(no_data_label)
 
     def get_selected_row_data(self):
         selected = self.table.selectedItems()
@@ -364,6 +651,27 @@ class ImageTableWidget(QWidget):
                 self._properties_widget.set_properties(None)
         else:
             self._properties_widget.set_properties(None)
+
+    def _on_thumbnail_clicked(self, row, col, file_info):
+        # Sinkronkan seleksi di tabel dan update properties_widget
+        filepath = file_info.get('filepath', '')
+        if not filepath:
+            return
+        for row_idx in range(self.table.rowCount()):
+            item = self.table.item(row_idx, 1)
+            if item and (item.data(Qt.UserRole) == filepath or item.text() == filepath):
+                self.table.selectRow(row_idx)
+                break
+        if self._properties_widget:
+            for row in self._all_rows_cache:
+                if row[1] == filepath:
+                    title = row[3] if len(row) > 3 and row[3] is not None else ""
+                    tags = row[5] if len(row) > 5 and row[5] is not None else ""
+                    title_length = len(title)
+                    tag_count = len([t for t in tags.split(",") if t.strip()]) if tags else 0
+                    row_data = [row[0]] + list(row[1:7]) + [row[7] if len(row) > 7 else ""] + [str(title_length), str(tag_count)]
+                    self._properties_widget.set_properties(row_data)
+                    break
 
     def delete_selected(self):
         selected = self.table.selectionModel().selectedRows()
