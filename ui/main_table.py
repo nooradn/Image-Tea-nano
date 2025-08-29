@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget, QProgressBar, QMenu, QLabel, QHBoxLayout, QLineEdit,
     QPushButton, QToolTip, QTabWidget, QScrollArea, QFrame, QLayout
 )
-from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect, QSize
+from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect, QSize, QPoint as QtQPoint, QEvent
 from PySide6.QtGui import QColor, QBrush, QAction, QGuiApplication, QPixmap
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
@@ -66,7 +66,7 @@ class FlowLayout(QLayout):
         x = rect.x()
         y = rect.y()
         lineHeight = 0
-        right = rect.right()
+        right = rect.x() + rect.width()
         for item in self._itemList:
             widget = item.widget()
             if widget and not widget.isVisible():
@@ -75,13 +75,13 @@ class FlowLayout(QLayout):
             spaceY = self.spacing()
             itemSize = item.sizeHint()
             nextX = x + itemSize.width() + spaceX
-            if nextX - spaceX > right and lineHeight > 0:
+            if nextX - spaceX > right and x > rect.x():
                 x = rect.x()
                 y = y + lineHeight + spaceY
                 nextX = x + itemSize.width() + spaceX
                 lineHeight = 0
             if not testOnly:
-                item.setGeometry(QRect(QPoint(x, y), itemSize))
+                item.setGeometry(QRect(QtQPoint(x, y), itemSize))
             x = nextX
             lineHeight = max(lineHeight, itemSize.height())
         return y + lineHeight - rect.y()
@@ -92,8 +92,8 @@ class GridManager:
         self.image_size = 150
         self.grid_spacing = 10
         self.active_image = None
-        self._widget_cache = {}  # key: filepath, value: widget
-        self._pixmap_cache = {}  # key: filepath, value: QPixmap
+        self._widget_cache = {}
+        self._pixmap_cache = {}
 
     def _clear_grid(self, grid_widget):
         for item in self.image_items:
@@ -151,8 +151,13 @@ class GridManager:
         layout.addWidget(image_label)
         layout.addWidget(text_label)
         container.setProperty("file_info", file_info)
+        container.setContextMenuPolicy(Qt.CustomContextMenu)
         container.mousePressEvent = lambda event: self._handle_image_click(container, event)
         image_label.mousePressEvent = lambda event: self._handle_image_click(container, event)
+        container.mouseDoubleClickEvent = lambda event: self._handle_image_double_click(container)
+        image_label.mouseDoubleClickEvent = lambda event: self._handle_image_double_click(container)
+        container.customContextMenuEvent = lambda event: self._show_context_menu(container, event)
+        image_label.customContextMenuEvent = lambda event: self._show_context_menu(container, event)
         self._widget_cache[cache_key] = container
         return container
 
@@ -222,6 +227,12 @@ class GridManager:
 
     def _handle_image_click(self, widget, event):
         try:
+            if event.button() == Qt.RightButton:
+                self._show_context_menu(widget, event)
+                return
+            if event.type() == QEvent.MouseButtonDblClick:
+                self._handle_image_double_click(widget)
+                return
             file_info = widget.property("file_info")
             if not file_info:
                 return
@@ -235,6 +246,89 @@ class GridManager:
                     callback_function(0, 0, file_info)
         except Exception as e:
             print(f"Error handling grid image click: {e}")
+
+    def _handle_image_double_click(self, widget):
+        try:
+            file_info = widget.property("file_info")
+            if not file_info:
+                return
+            parent_widget = widget.parent()
+            while parent_widget and not hasattr(parent_widget, '_open_metadata_dialog'):
+                parent_widget = parent_widget.parent()
+            if parent_widget and hasattr(parent_widget, '_open_metadata_dialog'):
+                parent_widget._open_metadata_dialog_by_filepath(file_info['filepath'])
+        except Exception as e:
+            print(f"Error handling grid image double click: {e}")
+
+    def _show_context_menu(self, widget, event):
+        try:
+            file_info = widget.property("file_info")
+            if not file_info:
+                return
+            backend_row = None
+            parent_widget = widget.parent()
+            while parent_widget and not hasattr(parent_widget, '_all_rows_cache'):
+                parent_widget = parent_widget.parent()
+            if parent_widget and hasattr(parent_widget, '_all_rows_cache'):
+                for row in parent_widget._all_rows_cache:
+                    if row[1] == file_info['filepath']:
+                        backend_row = row
+                        break
+            if backend_row is None:
+                print(f"Error: backend_row not found for filepath {file_info['filepath']}")
+                return
+            menu = QMenu(widget)
+            edit_icon = qta.icon("fa6s.pen-to-square")
+            edit_action = QAction(edit_icon, "Edit metadata", widget)
+            edit_action.triggered.connect(lambda: self._open_metadata_dialog_from_grid(widget))
+            menu.addAction(edit_action)
+            filename = backend_row[2]
+            title = backend_row[3]
+            description = backend_row[4]
+            tags = backend_row[5]
+            copy_filename_action = QAction(qta.icon("fa6s.copy"), "Copy Filename", widget)
+            copy_filename_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(filename, "Filename", event))
+            menu.addAction(copy_filename_action)
+            copy_title_action = QAction(qta.icon("fa6s.copy"), "Copy Title", widget)
+            copy_title_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(title, "Title", event))
+            menu.addAction(copy_title_action)
+            copy_desc_action = QAction(qta.icon("fa6s.copy"), "Copy Description", widget)
+            copy_desc_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(description, "Description", event))
+            menu.addAction(copy_desc_action)
+            copy_tags_action = QAction(qta.icon("fa6s.copy"), "Copy Keyword", widget)
+            copy_tags_action.triggered.connect(lambda: self._copy_to_clipboard_with_tooltip(tags, "Keyword", event))
+            menu.addAction(copy_tags_action)
+            menu.exec(event.globalPos() if hasattr(event, "globalPos") else widget.mapToGlobal(event.pos()))
+        except Exception as e:
+            print(f"Error showing context menu in grid: {e}")
+
+    def _copy_to_clipboard_with_tooltip(self, text, label, event):
+        QGuiApplication.clipboard().setText("" if text is None else text)
+        def shorten(val, maxlen=60):
+            if val is None:
+                return ""
+            val = val.strip()
+            if len(val) > maxlen:
+                return val[:maxlen-3] + "..."
+            return val
+        value = shorten(text)
+        tooltip = f"Copied {label}: {value}" if value else f"Copied {label}: (empty)"
+        global_pos = event.globalPos() if hasattr(event, "globalPos") else None
+        QToolTip.showText(global_pos, tooltip)
+        QTimer.singleShot(1200, QToolTip.hideText)
+
+    def _open_metadata_dialog_from_grid(self, widget):
+        try:
+            file_info = widget.property("file_info")
+            if not file_info:
+                return
+            parent_widget = widget.parent()
+            while parent_widget and not hasattr(parent_widget, '_open_metadata_dialog'):
+                parent_widget = parent_widget.parent()
+            if parent_widget and hasattr(parent_widget, '_open_metadata_dialog'):
+                parent_widget._open_metadata_dialog_by_filepath(file_info['filepath'])
+        except Exception as e:
+            print(f"Error opening metadata dialog from grid: {e}")
 
     def setup_grid_click_handler(self, grid_widget, callback_function):
         if not grid_widget:
@@ -253,11 +347,6 @@ class ImageTableWidget(QWidget):
         self._main_window = parent
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.tab_widget = QTabWidget(self)
-        self.layout.addWidget(self.tab_widget)
-        self.table_tab = QWidget()
-        self.table_tab_layout = QVBoxLayout(self.table_tab)
-        self.table_tab_layout.setContentsMargins(0, 0, 0, 0)
         search_layout = QHBoxLayout()
         self.search_edit = QLineEdit(self)
         self.search_edit.setPlaceholderText("Search...")
@@ -283,11 +372,24 @@ class ImageTableWidget(QWidget):
         clear_btn.setFixedWidth(28)
         clear_btn.setToolTip("Clear the search field")
         clear_btn.clicked.connect(self._on_clear_search)
+        reload_btn = QPushButton(self)
+        reload_btn.setIcon(qta.icon("fa6s.rotate-right"))
+        reload_btn.setFlat(True)
+        reload_btn.setFocusPolicy(Qt.NoFocus)
+        reload_btn.setFixedWidth(28)
+        reload_btn.setToolTip("Reload/refresh data from database")
+        reload_btn.clicked.connect(self._on_reload_clicked)
         search_layout.addWidget(search_icon_btn)
         search_layout.addWidget(self.search_edit)
         search_layout.addWidget(paste_btn)
         search_layout.addWidget(clear_btn)
-        self.table_tab_layout.addLayout(search_layout)
+        search_layout.addWidget(reload_btn)
+        self.layout.addLayout(search_layout)
+        self.tab_widget = QTabWidget(self)
+        self.layout.addWidget(self.tab_widget)
+        self.table_tab = QWidget()
+        self.table_tab_layout = QVBoxLayout(self.table_tab)
+        self.table_tab_layout.setContentsMargins(0, 0, 0, 0)
         self.table = QTableWidget(0, 9, self)
         self.table.setHorizontalHeaderLabels([
             "", "Filepath", "Filename", "Title", "Description", "Tags", "Title Length", "Tag Count", "Status"
@@ -333,11 +435,27 @@ class ImageTableWidget(QWidget):
         self.grid_manager = GridManager()
         self.grid_manager.setup_grid_click_handler(self.thumbnail_content, self._on_thumbnail_clicked)
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
+        self._inject_open_metadata_dialog_for_grid()
+        self.refresh_table()
+
+    def _inject_open_metadata_dialog_for_grid(self):
+        def _open_metadata_dialog_by_filepath(filepath):
+            if not filepath:
+                return
+            for row in range(self.table.rowCount()):
+                item = self.table.item(row, 1)
+                if item and (item.data(Qt.UserRole) == filepath or item.text() == filepath):
+                    self._open_metadata_dialog(row)
+                    break
+        self._open_metadata_dialog_by_filepath = _open_metadata_dialog_by_filepath
+
+    def _on_reload_clicked(self):
         self.refresh_table()
 
     def _on_tab_changed(self, idx):
         if self.tab_widget.tabText(idx) == "Thumbnail":
             self.refresh_thumbnail_grid()
+            self._sync_thumbnail_selection_with_table()
 
     def _on_paste_clicked(self):
         clipboard = QGuiApplication.clipboard()
@@ -351,10 +469,10 @@ class ImageTableWidget(QWidget):
         self._filter_table(text)
         if self.tab_widget.currentIndex() == 1:
             self.refresh_thumbnail_grid()
+            self._sync_thumbnail_selection_with_table()
 
     def _filter_table(self, text):
         text = text.strip().lower()
-        # Always refresh cache if search is empty, so cache is always up-to-date
         if not text:
             self._all_rows_cache = list(self.db.get_all_files())
         if not self._all_rows_cache:
@@ -467,7 +585,7 @@ class ImageTableWidget(QWidget):
             return val
         value = shorten(text)
         tooltip = f"Copied {label}: {value}" if value else f"Copied {label}: (empty)"
-        global_pos = self.table.viewport().mapToGlobal(pos)
+        global_pos = pos.globalPos() if hasattr(pos, "globalPos") else self.table.viewport().mapToGlobal(pos)
         QToolTip.showText(global_pos, tooltip, self.table.viewport())
         QTimer.singleShot(1200, QToolTip.hideText)
 
@@ -538,7 +656,6 @@ class ImageTableWidget(QWidget):
     def refresh_table(self):
         self._all_rows_cache = list(self.db.get_all_files())
         self._filter_table(self.search_edit.text())
-
         total_files = self.table.rowCount()
         if total_files >= 100:
             if not self._donation_dialog_shown and not is_donation_optout_today():
@@ -559,6 +676,7 @@ class ImageTableWidget(QWidget):
         self.data_refreshed.emit()
         if self.tab_widget.currentIndex() == 1:
             self.refresh_thumbnail_grid()
+            self._sync_thumbnail_selection_with_table()
 
     def refresh_thumbnail_grid(self):
         files = []
@@ -575,7 +693,6 @@ class ImageTableWidget(QWidget):
                 'extension': os.path.splitext(row[2])[1]
             }
             files_data.append(file_info)
-        # Only clear widgets that are not in the new files_data
         current_keys = set(self.grid_manager._widget_cache.keys())
         new_keys = set(f['filepath'] for f in files_data)
         for key in current_keys - new_keys:
@@ -595,6 +712,30 @@ class ImageTableWidget(QWidget):
             no_data_label = QLabel("No images found")
             no_data_label.setAlignment(Qt.AlignCenter)
             self.thumbnail_flow.addWidget(no_data_label)
+
+    def _sync_thumbnail_selection_with_table(self):
+        selected_rows = self.table.selectionModel().selectedRows()
+        if not selected_rows:
+            self.grid_manager._update_active_image(None)
+            return
+        idx = selected_rows[0].row()
+        filepath = None
+        item = self.table.item(idx, 1)
+        if item:
+            filepath = item.data(Qt.UserRole)
+            if not filepath:
+                filepath = item.text()
+        if not filepath:
+            self.grid_manager._update_active_image(None)
+            return
+        for i in range(self.thumbnail_flow.count()):
+            widget = self.thumbnail_flow.itemAt(i).widget()
+            if widget and widget.property("file_info"):
+                file_info = widget.property("file_info")
+                if file_info.get("filepath") == filepath:
+                    self.grid_manager._update_active_image(widget)
+                    return
+        self.grid_manager._update_active_image(None)
 
     def get_selected_row_data(self):
         selected = self.table.selectedItems()
@@ -637,20 +778,34 @@ class ImageTableWidget(QWidget):
         selected_rows = self.table.selectionModel().selectedRows()
         if selected_rows:
             idx = selected_rows[0].row()
-            # Ambil data asli dari cache, bukan dari tabel (agar mapping sinkron)
             if 0 <= idx < len(self._all_rows_cache):
                 row = self._all_rows_cache[idx]
                 title = row[3] if len(row) > 3 and row[3] is not None else ""
                 tags = row[5] if len(row) > 5 and row[5] is not None else ""
                 title_length = len(title)
                 tag_count = len([t for t in tags.split(",") if t.strip()]) if tags else 0
-                # Sertakan file_id di row_data[0]
                 row_data = [row[0]] + list(row[1:7]) + [row[7] if len(row) > 7 else ""] + [str(title_length), str(tag_count)]
                 self._properties_widget.set_properties(row_data)
             else:
                 self._properties_widget.set_properties(None)
         else:
             self._properties_widget.set_properties(None)
+        if self.tab_widget.currentIndex() == 1:
+            self._sync_thumbnail_selection_with_table()
+        # Highlight selected row with green background
+        self._highlight_selected_row()
+
+    def _highlight_selected_row(self):
+        selected_rows = self.table.selectionModel().selectedRows()
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item:
+                    if selected_rows and row == selected_rows[0].row():
+                        item.setBackground(QBrush(QColor(88, 165, 0, int(0.20 * 255))))
+                    else:
+                        status_val = self.table.item(row, 8).text() if self.table.item(row, 8) else ""
+                        item.setBackground(QBrush(self._status_color(status_val)))
 
     def _on_thumbnail_clicked(self, row, col, file_info):
         # Sinkronkan seleksi di tabel dan update properties_widget
