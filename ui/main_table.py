@@ -495,6 +495,20 @@ class ImageTableWidget(QWidget):
         self.thumbnail_flow = FlowLayout(margin=10, spacing=10)
         self.thumbnail_content.setLayout(self.thumbnail_flow)
         self.tab_widget.addTab(self.thumbnail_tab, "Thumbnail")
+        self.details_tab = QWidget()
+        self.details_tab_layout = QVBoxLayout(self.details_tab)
+        self.details_tab_layout.setContentsMargins(0, 0, 0, 0)
+        self.details_scroll = QScrollArea(self.details_tab)
+        self.details_scroll.setWidgetResizable(True)
+        self.details_scroll.setFrameShape(QFrame.NoFrame)
+        self.details_tab_layout.addWidget(self.details_scroll)
+        self.details_content = QWidget()
+        self.details_scroll.setWidget(self.details_content)
+        self.details_vbox = QVBoxLayout(self.details_content)
+        self.details_vbox.setContentsMargins(10, 10, 10, 10)
+        self.details_vbox.setSpacing(10)
+        self.tab_widget.addTab(self.details_tab, "Details")
+        self.details_card_cache = {}  # cache for details cards
         self._donation_dialog_shown = False
         self.table.selectionModel().selectionChanged.connect(self._emit_stats)
         self.table.selectionModel().selectionChanged.connect(self._on_selection_changed)
@@ -528,6 +542,8 @@ class ImageTableWidget(QWidget):
         if self.tab_widget.tabText(idx) == "Thumbnail":
             self.refresh_thumbnail_grid()
             self._sync_thumbnail_selection_with_table()
+        elif self.tab_widget.tabText(idx) == "Details":
+            self._refresh_details_cards()
 
     def _on_paste_clicked(self):
         clipboard = QGuiApplication.clipboard()
@@ -542,6 +558,8 @@ class ImageTableWidget(QWidget):
         if self.tab_widget.currentIndex() == 1:
             self.refresh_thumbnail_grid()
             self._sync_thumbnail_selection_with_table()
+        if self.tab_widget.currentIndex() == 2:
+            self._refresh_details_cards()
 
     def _filter_table(self, text):
         text = text.strip().lower()
@@ -767,6 +785,8 @@ class ImageTableWidget(QWidget):
         if self.tab_widget.currentIndex() == 1:
             self.refresh_thumbnail_grid()
             self._sync_thumbnail_selection_with_table()
+        if self.tab_widget.currentIndex() == 2:
+            self._refresh_details_cards()
 
     def refresh_thumbnail_grid(self):
         files = []
@@ -863,6 +883,8 @@ class ImageTableWidget(QWidget):
         if item.column() == 0:
             self._emit_stats()
             self._update_thumbnail_checklist_style()
+        if self.tab_widget.currentIndex() == 2:
+            self._refresh_details_cards()
 
     def _on_selection_changed(self, selected, deselected):
         if self._properties_widget is None:
@@ -886,6 +908,8 @@ class ImageTableWidget(QWidget):
             self._properties_widget.set_properties(None)
         if self.tab_widget.currentIndex() == 1:
             self._sync_thumbnail_selection_with_table()
+        if self.tab_widget.currentIndex() == 2:
+            self._refresh_details_cards()
         # Highlight selected row with green background
         self._highlight_selected_row()
 
@@ -926,6 +950,8 @@ class ImageTableWidget(QWidget):
                     row_data = [row[0]] + list(row[1:7]) + [row[7] if len(row) > 7 else ""] + [str(title_length), str(tag_count)]
                     self._properties_widget.set_properties(row_data)
                     break
+        if self.tab_widget.currentIndex() == 2:
+            self._refresh_details_cards()
 
     def _update_thumbnail_checklist_style(self):
         checked_filepaths = []
@@ -955,3 +981,128 @@ class ImageTableWidget(QWidget):
         if QMessageBox.question(self, "Clear All", "Are you sure you want to clear all files?", QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
             self.db.clear_files()
             self.refresh_table()
+
+    def _refresh_details_cards(self):
+        # Remove all widgets from layout, but keep cache
+        for i in reversed(range(self.details_vbox.count())):
+            item = self.details_vbox.itemAt(i)
+            widget = item.widget()
+            if widget:
+                widget.setParent(None)
+        rows = []
+        text = self.search_edit.text().strip().lower()
+        if not text:
+            rows = list(self.db.get_all_files())
+        else:
+            rows = [row for row in self._all_rows_cache if self._row_matches_search(row, text)]
+        # Remove cache for files not in rows
+        current_filepaths = set(row[1] for row in rows)
+        for filepath in list(self.details_card_cache.keys()):
+            if filepath not in current_filepaths:
+                widget = self.details_card_cache.pop(filepath)
+                if widget:
+                    widget.setParent(None)
+                # Hapus juga pixmap cache jika ingin sinkron
+                if filepath in self.grid_manager._pixmap_cache:
+                    del self.grid_manager._pixmap_cache[filepath]
+        if not rows:
+            label = QLabel("No data found")
+            label.setAlignment(Qt.AlignCenter)
+            self.details_vbox.addWidget(label)
+            return
+        for row in rows:
+            filepath = row[1]
+            if filepath in self.details_card_cache:
+                card = self.details_card_cache[filepath]
+                self._update_details_card(card, row, self.grid_manager)
+            else:
+                card = self._create_details_card(row, self.grid_manager)
+                self.details_card_cache[filepath] = card
+            self.details_vbox.addWidget(card)
+
+    def _create_details_card(self, row, grid_manager):
+        frame = QFrame()
+        frame.setFrameShape(QFrame.StyledPanel)
+        frame.setFrameShadow(QFrame.Raised)
+        card_hbox = QHBoxLayout(frame)
+        card_hbox.setContentsMargins(8, 8, 8, 8)
+        card_hbox.setSpacing(12)
+        thumb = QLabel()
+        thumb.setFixedSize(150, 150)
+        thumb.setAlignment(Qt.AlignCenter)
+        filepath = row[1]
+        pixmap = None
+        if filepath in grid_manager._pixmap_cache:
+            pixmap = grid_manager._pixmap_cache[filepath]
+        else:
+            pixmap_raw = QPixmap(filepath)
+            if not pixmap_raw.isNull():
+                pixmap = pixmap_raw.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                grid_manager._pixmap_cache[filepath] = pixmap
+        if pixmap and not pixmap.isNull():
+            thumb.setPixmap(pixmap)
+        else:
+            thumb.setText("No\nImage")
+        card_hbox.addWidget(thumb)
+        vbox = QVBoxLayout()
+        vbox.setSpacing(2)
+        filename = row[2]
+        title = row[3] if len(row) > 3 and row[3] is not None else ""
+        desc = row[4] if len(row) > 4 and row[4] is not None else ""
+        tags = row[5] if len(row) > 5 and row[5] is not None else ""
+        status = row[6] if len(row) > 6 and row[6] is not None else ""
+        label_filename = QLabel(f"Filename: {filename}")
+        label_title = QLabel(f"Title: {title}")
+        label_desc = QLabel(f"Description: {desc}")
+        label_tags = QLabel(f"Tags: {tags}")
+        label_status = QLabel(f"Status: {status}")
+        vbox.addWidget(label_filename)
+        vbox.addWidget(label_title)
+        vbox.addWidget(label_desc)
+        vbox.addWidget(label_tags)
+        vbox.addWidget(label_status)
+        card_hbox.addLayout(vbox)
+        frame._details_thumb = thumb
+        frame._details_label_filename = label_filename
+        frame._details_label_title = label_title
+        frame._details_label_desc = label_desc
+        frame._details_label_tags = label_tags
+        frame._details_label_status = label_status
+        frame._details_filepath = filepath
+        return frame
+
+    def _update_details_card(self, card, row, grid_manager):
+        filepath = row[1]
+        pixmap = None
+        if filepath in grid_manager._pixmap_cache:
+            pixmap = grid_manager._pixmap_cache[filepath]
+        else:
+            pixmap_raw = QPixmap(filepath)
+            if not pixmap_raw.isNull():
+                pixmap = pixmap_raw.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                grid_manager._pixmap_cache[filepath] = pixmap
+        if pixmap and not pixmap.isNull():
+            card._details_thumb.setPixmap(pixmap)
+            card._details_thumb.setText("")
+        else:
+            card._details_thumb.setPixmap(QPixmap())
+            card._details_thumb.setText("No\nImage")
+        filename = row[2]
+        title = row[3] if len(row) > 3 and row[3] is not None else ""
+        desc = row[4] if len(row) > 4 and row[4] is not None else ""
+        tags = row[5] if len(row) > 5 and row[5] is not None else ""
+        status = row[6] if len(row) > 6 and row[6] is not None else ""
+        card._details_label_filename.setText(f"Filename: {filename}")
+        card._details_label_title.setText(f"Title: {title}")
+        card._details_label_desc.setText(f"Description: {desc}")
+        card._details_label_tags.setText(f"Tags: {tags}")
+        card._details_label_status.setText(f"Status: {status}")
+        title = row[3] if len(row) > 3 and row[3] is not None else ""
+        desc = row[4] if len(row) > 4 and row[4] is not None else ""
+        tags = row[5] if len(row) > 5 and row[5] is not None else ""
+        status = row[6] if len(row) > 6 and row[6] is not None else ""
+        card._details_label_filename.setText(f"Filename: {filename}")
+        card._details_label_title.setText(f"Title: {title}")
+        card._details_label_desc.setText(f"Description: {desc}")
+        card._details_label_tags.setText(f"Tags: {tags}")
+        card._details_label_status.setText(f"Status: {status}")
