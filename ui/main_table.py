@@ -24,6 +24,7 @@ class FlowLayout(QLayout):
 
     def addItem(self, item):
         self._itemList.append(item)
+        self.updateGeometry()
 
     def count(self):
         return len(self._itemList)
@@ -85,6 +86,15 @@ class FlowLayout(QLayout):
             x = nextX
             lineHeight = max(lineHeight, itemSize.height())
         return y + lineHeight - rect.y()
+
+    def invalidate(self):
+        super().invalidate()
+        self.updateGeometry()
+
+    def updateGeometry(self):
+        parent = self.parentWidget()
+        if parent is not None:
+            parent.updateGeometry()
 
 class GridManager:
     def __init__(self):
@@ -815,15 +825,16 @@ class ImageTableWidget(QWidget):
             widget = item.widget()
             if widget:
                 widget.setParent(None)
+        # Add widgets in the same order as files_data to ensure left-to-right, top-to-bottom
         if files_data:
             for file_info in files_data:
                 widget = self.grid_manager._create_image_widget(file_info)
                 self.thumbnail_flow.addWidget(widget)
+            self.thumbnail_flow.invalidate()
         else:
             no_data_label = QLabel("No images found")
             no_data_label.setAlignment(Qt.AlignCenter)
             self.thumbnail_flow.addWidget(no_data_label)
-        # Setelah thumbnail grid di-refresh, update checklist style
         self._update_thumbnail_checklist_style()
 
     def _sync_thumbnail_selection_with_table(self):
