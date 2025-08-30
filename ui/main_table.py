@@ -94,6 +94,10 @@ class GridManager:
         self.active_image = None
         self._widget_cache = {}
         self._pixmap_cache = {}
+        self._status_color_func = None
+
+    def set_status_color_func(self, func):
+        self._status_color_func = func
 
     def _clear_grid(self, grid_widget):
         for item in self.image_items:
@@ -108,10 +112,14 @@ class GridManager:
         filepath = file_info['filepath']
         filename = file_info['filename']
         extension = file_info['extension']
+        status = file_info.get('status', '')
         cache_key = filepath
 
         if cache_key in self._widget_cache:
             widget = self._widget_cache[cache_key]
+            # Update border color if status changed
+            self._set_image(widget.findChild(QLabel), filepath, status)
+            widget.setProperty("file_info", file_info)
             return widget
 
         container = QWidget()
@@ -123,20 +131,9 @@ class GridManager:
         image_label = QLabel()
         image_label.setAlignment(Qt.AlignCenter)
         image_label.setFixedSize(self.image_size, self.image_size)
-        image_label.setStyleSheet("""
-            QLabel {
-                border: 2px solid rgba(0, 0, 0, 0.1);
-                border-radius: 4px;
-                padding: 2px;
-            }
-            QLabel:hover {
-                border: 2px solid rgba(88, 165, 0, 0.3);
-                background-color: rgba(88, 165, 0, 0.05);
-            }
-        """)
         image_label.setAttribute(Qt.WA_Hover, True)
         image_label.setCursor(Qt.PointingHandCursor)
-        self._set_image(image_label, filepath)
+        self._set_image(image_label, filepath, status)
         MAX_NAME_LENGTH = 18
         if len(filename) > MAX_NAME_LENGTH:
             display_name = f"{filename[:MAX_NAME_LENGTH-3]}...{extension}"
@@ -161,48 +158,91 @@ class GridManager:
         self._widget_cache[cache_key] = container
         return container
 
-    def _set_image(self, label, image_path):
+    def _set_image(self, label, image_path, status=''):
         if image_path in self._pixmap_cache:
             pixmap = self._pixmap_cache[image_path]
             if pixmap:
                 label.setPixmap(pixmap)
             else:
                 label.setText("Cannot load\nimage")
-            return
-        try:
-            pixmap = QPixmap(image_path)
-            if not pixmap.isNull():
-                pixmap = pixmap.scaled(
-                    self.image_size, self.image_size,
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation
-                )
-                self._pixmap_cache[image_path] = pixmap
-                label.setPixmap(pixmap)
-            else:
+        else:
+            try:
+                pixmap = QPixmap(image_path)
+                if not pixmap.isNull():
+                    pixmap = pixmap.scaled(
+                        self.image_size, self.image_size,
+                        Qt.KeepAspectRatio,
+                        Qt.SmoothTransformation
+                    )
+                    self._pixmap_cache[image_path] = pixmap
+                    label.setPixmap(pixmap)
+                else:
+                    self._pixmap_cache[image_path] = None
+                    label.setText("Cannot load\nimage")
+                    print(f"Failed to load image: {image_path}")
+            except Exception as e:
                 self._pixmap_cache[image_path] = None
-                label.setText("Cannot load\nimage")
-                print(f"Failed to load image: {image_path}")
-        except Exception as e:
-            self._pixmap_cache[image_path] = None
-            label.setText("Error")
-            print(f"Error loading image: {image_path} - {e}")
+                label.setText("Error")
+                print(f"Error loading image: {image_path} - {e}")
+        # Set border color according to status
+        color = None
+        if self._status_color_func:
+            color = self._status_color_func(status)
+        if color is None:
+            color = QColor(0, 0, 0, int(0.1 * 255))
+        border_rgba = f"rgba({color.red()}, {color.green()}, {color.blue()}, {color.alpha()/255:.2f})"
+        label.setStyleSheet(f"""
+            QLabel {{
+                border: 2px solid {border_rgba};
+                border-radius: 4px;
+                padding: 2px;
+                background-color: transparent;
+            }}
+            QLabel:hover {{
+                border: 2.5px solid rgba(88, 165, 0, 0.7);
+                background-color: rgba(88, 165, 0, 0.05);
+            }}
+        """)
+
+    def update_thumbnail_status(self, filepath, status):
+        widget = self._widget_cache.get(filepath)
+        if widget:
+            file_info = widget.property("file_info")
+            if file_info is not None:
+                file_info['status'] = status
+                widget.setProperty("file_info", file_info)
+            label = None
+            for child in widget.children():
+                if isinstance(child, QLabel):
+                    label = child
+                    break
+            if label:
+                self._set_image(label, filepath, status)
 
     def _update_active_image(self, new_active_widget):
         try:
             if self.active_image:
                 for child in self.active_image.children():
                     if isinstance(child, QLabel) and child.objectName() != "filename_label":
-                        child.setStyleSheet("""
-                            QLabel {
-                                border: 2px solid rgba(0, 0, 0, 0.1);
+                        file_info = self.active_image.property("file_info")
+                        status = file_info.get('status', '') if file_info else ''
+                        color = None
+                        if self._status_color_func:
+                            color = self._status_color_func(status)
+                        if color is None:
+                            color = QColor(0, 0, 0, int(0.1 * 255))
+                        border_rgba = f"rgba({color.red()}, {color.green()}, {color.blue()}, {color.alpha()/255:.2f})"
+                        child.setStyleSheet(f"""
+                            QLabel {{
+                                border: 2px solid {border_rgba};
                                 border-radius: 4px;
                                 padding: 2px;
-                            }
-                            QLabel:hover {
-                                border: 2px solid rgba(88, 165, 0, 0.3);
+                                background-color: transparent;
+                            }}
+                            QLabel:hover {{
+                                border: 2.5px solid rgba(88, 165, 0, 0.7);
                                 background-color: rgba(88, 165, 0, 0.05);
-                            }
+                            }}
                         """)
                         break
             self.active_image = new_active_widget
@@ -211,13 +251,13 @@ class GridManager:
                     if isinstance(child, QLabel) and child.objectName() != "filename_label":
                         child.setStyleSheet("""
                             QLabel {
-                                border: 2px solid rgba(88, 165, 0, 0.3);
+                                border: 2px solid rgba(88, 165, 0, 0.7);
                                 border-radius: 4px;
                                 padding: 2px;
                                 background-color: rgba(88, 165, 0, 0.20);
                             }
                             QLabel:hover {
-                                border: 2px solid rgba(88, 165, 0, 0.5);
+                                border: 2.5px solid rgba(88, 165, 0, 1.0);
                                 background-color: rgba(88, 165, 0, 0.25);
                             }
                         """)
@@ -433,6 +473,7 @@ class ImageTableWidget(QWidget):
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         self._all_rows_cache = []
         self.grid_manager = GridManager()
+        self.grid_manager.set_status_color_func(self._status_color)
         self.grid_manager.setup_grid_click_handler(self.thumbnail_content, self._on_thumbnail_clicked)
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
         self._inject_open_metadata_dialog_for_grid()
@@ -606,6 +647,33 @@ class ImageTableWidget(QWidget):
         dialog = FileMetadataDialog(filepath, parent=parent_for_dialog)
         dialog.exec()
 
+    def set_row_status_color(self, row_idx, status):
+        color = self._status_color(status)
+        for col in range(self.table.columnCount()):
+            item = self.table.item(row_idx, col)
+            if item:
+                item.setBackground(QBrush(color))
+        status_col = 8
+        status_item = self.table.item(row_idx, status_col)
+        if status_item:
+            status_item.setText(status.capitalize())
+        filepath = None
+        item = self.table.item(row_idx, 1)
+        if item:
+            filepath = item.data(Qt.UserRole)
+            if not filepath:
+                filepath = item.text()
+        if filepath:
+            self.grid_manager.update_thumbnail_status(filepath, status)
+            # Update status in _all_rows_cache for realtime sync (convert tuple to list, update, then back to tuple)
+            for i, row in enumerate(self._all_rows_cache):
+                if row[1] == filepath:
+                    row_list = list(row)
+                    if len(row_list) > 6:
+                        row_list[6] = status
+                        self._all_rows_cache[i] = tuple(row_list)
+                    break
+
     def _status_color(self, status):
         if status == "processing":
             return QColor(243, 200, 24, int(0.3 * 255))
@@ -617,18 +685,9 @@ class ImageTableWidget(QWidget):
             return QColor(255, 140, 0, int(0.18 * 255))
         elif status == "stopped":
             return QColor(200, 40, 40, int(0.18 * 255))
-        return QColor(255, 255, 255, 0)
-
-    def set_row_status_color(self, row_idx, status):
-        color = self._status_color(status)
-        for col in range(self.table.columnCount()):
-            item = self.table.item(row_idx, col)
-            if item:
-                item.setBackground(QBrush(color))
-        status_col = 8
-        status_item = self.table.item(row_idx, status_col)
-        if status_item:
-            status_item.setText(status.capitalize())
+        elif status == "draft":
+            return QColor(120, 120, 120, int(0.18 * 255))
+        return QColor(0, 0, 0, int(0.1 * 255))
 
     def update_row_data(self, row_idx, row_data):
         display_values = list(row_data[1:7])
@@ -690,7 +749,8 @@ class ImageTableWidget(QWidget):
             file_info = {
                 'filepath': row[1],
                 'filename': row[2],
-                'extension': os.path.splitext(row[2])[1]
+                'extension': os.path.splitext(row[2])[1],
+                'status': row[6] if len(row) > 6 else ""
             }
             files_data.append(file_info)
         current_keys = set(self.grid_manager._widget_cache.keys())
