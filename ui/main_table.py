@@ -1090,6 +1090,9 @@ class ImageTableWidget(QWidget):
         label_tags.setWordWrap(True)
         label_status = QLabel(f"Status: {status}")
         label_status.setWordWrap(True)
+        # Set status color
+        color = self._status_color(status)
+        label_status.setStyleSheet(f"color: rgb({color.red()}, {color.green()}, {color.blue()});")
         label_cat_primary = QLabel(f"Shutterstock Primary: {primary_val}")
         label_cat_primary.setWordWrap(True)
         label_cat_secondary = QLabel(f"Shutterstock Secondary: {secondary_val}")
@@ -1161,6 +1164,9 @@ class ImageTableWidget(QWidget):
         card._details_label_tags.setWordWrap(True)
         card._details_label_status.setText(f"Status: {status}")
         card._details_label_status.setWordWrap(True)
+        # Set status color
+        color = self._status_color(status)
+        card._details_label_status.setStyleSheet(f"color: rgb({color.red()}, {color.green()}, {color.blue()});")
         card._details_label_cat_primary.setText(f"Shutterstock Primary: {primary_val}")
         card._details_label_cat_primary.setWordWrap(True)
         card._details_label_cat_secondary.setText(f"Shutterstock Secondary: {secondary_val}")
