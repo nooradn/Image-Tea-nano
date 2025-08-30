@@ -1051,16 +1051,50 @@ class ImageTableWidget(QWidget):
         desc = row[4] if len(row) > 4 and row[4] is not None else ""
         tags = row[5] if len(row) > 5 and row[5] is not None else ""
         status = row[6] if len(row) > 6 and row[6] is not None else ""
+        db = self.db
+        shutterstock_map = {}
+        adobe_map = {}
+        primary_val = "-"
+        secondary_val = "-"
+        adobe_val = "-"
+        if db:
+            shutterstock_map, adobe_map = db.get_category_maps()
+            file_id = row[0]
+            if file_id is not None:
+                mapping = db.get_category_mapping_for_file(file_id)
+                for m in mapping:
+                    if m["platform"] == "shutterstock":
+                        cat_name = str(m["category_name"])
+                        if cat_name.lower().endswith("(primary)"):
+                            primary_val = shutterstock_map.get(str(m["category_id"]), "-")
+                        elif cat_name.lower().endswith("(secondary)"):
+                            secondary_val = shutterstock_map.get(str(m["category_id"]), "-")
+                    elif m["platform"] == "adobe_stock":
+                        adobe_val = adobe_map.get(str(m["category_id"]), "-")
         label_filename = QLabel(f"Filename: {filename}")
+        label_filename.setWordWrap(True)
         label_title = QLabel(f"Title: {title}")
+        label_title.setWordWrap(True)
         label_desc = QLabel(f"Description: {desc}")
+        label_desc.setWordWrap(True)
         label_tags = QLabel(f"Tags: {tags}")
+        label_tags.setWordWrap(True)
         label_status = QLabel(f"Status: {status}")
+        label_status.setWordWrap(True)
+        label_cat_primary = QLabel(f"Shutterstock Primary: {primary_val}")
+        label_cat_primary.setWordWrap(True)
+        label_cat_secondary = QLabel(f"Shutterstock Secondary: {secondary_val}")
+        label_cat_secondary.setWordWrap(True)
+        label_cat_adobe = QLabel(f"Adobe Stock Category: {adobe_val}")
+        label_cat_adobe.setWordWrap(True)
         vbox.addWidget(label_filename)
         vbox.addWidget(label_title)
         vbox.addWidget(label_desc)
         vbox.addWidget(label_tags)
         vbox.addWidget(label_status)
+        vbox.addWidget(label_cat_primary)
+        vbox.addWidget(label_cat_secondary)
+        vbox.addWidget(label_cat_adobe)
         card_hbox.addLayout(vbox)
         frame._details_thumb = thumb
         frame._details_label_filename = label_filename
@@ -1068,6 +1102,9 @@ class ImageTableWidget(QWidget):
         frame._details_label_desc = label_desc
         frame._details_label_tags = label_tags
         frame._details_label_status = label_status
+        frame._details_label_cat_primary = label_cat_primary
+        frame._details_label_cat_secondary = label_cat_secondary
+        frame._details_label_cat_adobe = label_cat_adobe
         frame._details_filepath = filepath
         return frame
 
@@ -1092,17 +1129,39 @@ class ImageTableWidget(QWidget):
         desc = row[4] if len(row) > 4 and row[4] is not None else ""
         tags = row[5] if len(row) > 5 and row[5] is not None else ""
         status = row[6] if len(row) > 6 and row[6] is not None else ""
+        db = self.db
+        shutterstock_map = {}
+        adobe_map = {}
+        primary_val = "-"
+        secondary_val = "-"
+        adobe_val = "-"
+        if db:
+            shutterstock_map, adobe_map = db.get_category_maps()
+            file_id = row[0]
+            if file_id is not None:
+                mapping = db.get_category_mapping_for_file(file_id)
+                for m in mapping:
+                    if m["platform"] == "shutterstock":
+                        cat_name = str(m["category_name"])
+                        if cat_name.lower().endswith("(primary)"):
+                            primary_val = shutterstock_map.get(str(m["category_id"]), "-")
+                        elif cat_name.lower().endswith("(secondary)"):
+                            secondary_val = shutterstock_map.get(str(m["category_id"]), "-")
+                    elif m["platform"] == "adobe_stock":
+                        adobe_val = adobe_map.get(str(m["category_id"]), "-")
         card._details_label_filename.setText(f"Filename: {filename}")
+        card._details_label_filename.setWordWrap(True)
         card._details_label_title.setText(f"Title: {title}")
+        card._details_label_title.setWordWrap(True)
         card._details_label_desc.setText(f"Description: {desc}")
+        card._details_label_desc.setWordWrap(True)
         card._details_label_tags.setText(f"Tags: {tags}")
+        card._details_label_tags.setWordWrap(True)
         card._details_label_status.setText(f"Status: {status}")
-        title = row[3] if len(row) > 3 and row[3] is not None else ""
-        desc = row[4] if len(row) > 4 and row[4] is not None else ""
-        tags = row[5] if len(row) > 5 and row[5] is not None else ""
-        status = row[6] if len(row) > 6 and row[6] is not None else ""
-        card._details_label_filename.setText(f"Filename: {filename}")
-        card._details_label_title.setText(f"Title: {title}")
-        card._details_label_desc.setText(f"Description: {desc}")
-        card._details_label_tags.setText(f"Tags: {tags}")
-        card._details_label_status.setText(f"Status: {status}")
+        card._details_label_status.setWordWrap(True)
+        card._details_label_cat_primary.setText(f"Shutterstock Primary: {primary_val}")
+        card._details_label_cat_primary.setWordWrap(True)
+        card._details_label_cat_secondary.setText(f"Shutterstock Secondary: {secondary_val}")
+        card._details_label_cat_secondary.setWordWrap(True)
+        card._details_label_cat_adobe.setText(f"Adobe Stock Category: {adobe_val}")
+        card._details_label_cat_adobe.setWordWrap(True)
