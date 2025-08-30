@@ -95,9 +95,40 @@ class GridManager:
         self._widget_cache = {}
         self._pixmap_cache = {}
         self._status_color_func = None
+        self._checked_filepaths = set()
 
     def set_status_color_func(self, func):
         self._status_color_func = func
+
+    def set_checked_filepaths(self, checked_filepaths):
+        self._checked_filepaths = set(checked_filepaths)
+        self._update_checked_thumbnail_styles()
+
+    def _update_checked_thumbnail_styles(self):
+        for filepath, widget in self._widget_cache.items():
+            file_info = widget.property("file_info")
+            status = file_info.get('status', '') if file_info else ''
+            label = None
+            for child in widget.children():
+                if isinstance(child, QLabel):
+                    label = child
+                    break
+            if label:
+                if filepath in self._checked_filepaths:
+                    label.setStyleSheet(
+                        "QLabel {"
+                        "border: 2.5px solid rgba(0, 120, 255, 0.85);"
+                        "border-radius: 4px;"
+                        "padding: 2px;"
+                        "background-color: rgba(0, 120, 255, 0.10);"
+                        "}"
+                        "QLabel:hover {"
+                        "border: 2.5px solid rgba(0, 120, 255, 1.0);"
+                        "background-color: rgba(0, 120, 255, 0.18);"
+                        "}"
+                    )
+                else:
+                    self._set_image(label, filepath, status)
 
     def _clear_grid(self, grid_widget):
         for item in self.image_items:
@@ -772,6 +803,8 @@ class ImageTableWidget(QWidget):
             no_data_label = QLabel("No images found")
             no_data_label.setAlignment(Qt.AlignCenter)
             self.thumbnail_flow.addWidget(no_data_label)
+        # Setelah thumbnail grid di-refresh, update checklist style
+        self._update_thumbnail_checklist_style()
 
     def _sync_thumbnail_selection_with_table(self):
         selected_rows = self.table.selectionModel().selectedRows()
@@ -829,6 +862,7 @@ class ImageTableWidget(QWidget):
     def _on_item_changed(self, item):
         if item.column() == 0:
             self._emit_stats()
+            self._update_thumbnail_checklist_style()
 
     def _on_selection_changed(self, selected, deselected):
         if self._properties_widget is None:
@@ -857,18 +891,23 @@ class ImageTableWidget(QWidget):
 
     def _highlight_selected_row(self):
         selected_rows = self.table.selectionModel().selectedRows()
+        if selected_rows:
+            self.table.setStyleSheet(
+                "QTableWidget::item:selected {"
+                "background-color: rgba(88, 165, 0, 51);"
+                "}"
+            )
+        else:
+            self.table.setStyleSheet("")
         for row in range(self.table.rowCount()):
-            for col in range(self.table.columnCount()):
-                item = self.table.item(row, col)
-                if item:
-                    if selected_rows and row == selected_rows[0].row():
-                        item.setBackground(QBrush(QColor(88, 165, 0, int(0.20 * 255))))
-                    else:
+            if not (selected_rows and row == selected_rows[0].row()):
+                for col in range(self.table.columnCount()):
+                    item = self.table.item(row, col)
+                    if item:
                         status_val = self.table.item(row, 8).text() if self.table.item(row, 8) else ""
                         item.setBackground(QBrush(self._status_color(status_val)))
 
     def _on_thumbnail_clicked(self, row, col, file_info):
-        # Sinkronkan seleksi di tabel dan update properties_widget
         filepath = file_info.get('filepath', '')
         if not filepath:
             return
@@ -887,6 +926,18 @@ class ImageTableWidget(QWidget):
                     row_data = [row[0]] + list(row[1:7]) + [row[7] if len(row) > 7 else ""] + [str(title_length), str(tag_count)]
                     self._properties_widget.set_properties(row_data)
                     break
+
+    def _update_thumbnail_checklist_style(self):
+        checked_filepaths = []
+        for row in range(self.table.rowCount()):
+            checkbox_item = self.table.item(row, 0)
+            filepath_item = self.table.item(row, 1)
+            if checkbox_item and checkbox_item.checkState() == Qt.Checked and filepath_item:
+                filepath = filepath_item.data(Qt.UserRole)
+                if not filepath:
+                    filepath = filepath_item.text()
+                checked_filepaths.append(filepath)
+        self.grid_manager.set_checked_filepaths(checked_filepaths)
 
     def delete_selected(self):
         selected = self.table.selectionModel().selectedRows()
