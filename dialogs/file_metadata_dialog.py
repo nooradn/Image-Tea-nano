@@ -248,4 +248,11 @@ class FileMetadataDialog(QDialog):
                     row_data = [row[0]] + list(row[1:7]) + [row[7] if len(row) > 7 else ""] + [str(title_length), str(tag_count)]
                     self._properties_widget.set_properties(row_data)
                     break
+        # Refresh table and thumbnails after saving metadata
+        parent = self.parent()
+        if parent is not None:
+            if hasattr(parent, "refresh_table"):
+                parent.refresh_table()
+            elif hasattr(parent, "table") and hasattr(parent.table, "refresh_table"):
+                parent.table.refresh_table()
         self.accept()

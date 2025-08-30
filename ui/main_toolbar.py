@@ -78,6 +78,15 @@ def create_toolbar_button_with_label(icon_normal, icon_hover, text, tooltip, tri
     action.setDefaultWidget(btn_widget)
     return action
 
+def relaunch_app(window):
+    python_exe = sys.executable
+    args = [python_exe] + sys.argv
+    try:
+        subprocess.Popen(args)
+    except Exception as e:
+        print(f"Failed to relaunch: {e}")
+    window.close()
+
 def setup_main_toolbar(window: QWidget):
     toolbar = QToolBar("Main Toolbar", window)
     toolbar.setMovable(False)
@@ -219,6 +228,16 @@ def setup_main_toolbar(window: QWidget):
 
     add_vertical_separator(toolbar)
 
+    # Group: Relaunch + Update
+    relaunch_action = create_toolbar_button_with_label(
+        make_icon('fa6s.rotate-right', icon_color),
+        make_icon('fa6s.rotate-right', icon_color_hover),
+        "Relaunch",
+        "Relaunch aplikasi",
+        lambda: relaunch_app(window),
+        window, icon_size)
+    toolbar.addAction(relaunch_action)
+
     update_now_action = create_toolbar_button_with_label(
         make_icon('fa6s.download', icon_color),
         make_icon('fa6s.download', icon_color_hover),
@@ -227,6 +246,8 @@ def setup_main_toolbar(window: QWidget):
         lambda: run_updater(window),
         window, icon_size)
     toolbar.addAction(update_now_action)
+
+    add_vertical_separator(toolbar)
 
     donate_action = create_toolbar_button_with_label(
         make_icon('fa6s.circle-dollar-to-slot', icon_color),

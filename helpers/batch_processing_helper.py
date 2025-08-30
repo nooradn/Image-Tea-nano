@@ -369,6 +369,16 @@ def _run_next_batch(window):
     table_widget = window.table.table
     for row in batch:
         filepath = row[1]
+        # Update status in _all_rows_cache to "processing" for this filepath
+        for i, cache_row in enumerate(window.table._all_rows_cache):
+            if cache_row[1] == filepath:
+                cache_row_list = list(cache_row)
+                if len(cache_row_list) > 6:
+                    cache_row_list[6] = "processing"
+                    window.table._all_rows_cache[i] = tuple(cache_row_list)
+                break
+        # Update status in database to "processing"
+        window.db.update_file_status(filepath, "processing")
         for row_idx in range(table_widget.rowCount()):
             item = table_widget.item(row_idx, 1)
             if item and item.data(Qt.UserRole) == filepath:
