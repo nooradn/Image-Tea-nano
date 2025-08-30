@@ -4,11 +4,19 @@ from PySide6.QtWidgets import (
     QPushButton, QToolTip, QTabWidget, QScrollArea, QFrame, QLayout
 )
 from PySide6.QtCore import Qt, Signal, QPoint, QTimer, QRect, QSize, QPoint as QtQPoint, QEvent
-from PySide6.QtGui import QColor, QBrush, QAction, QGuiApplication, QPixmap
+from PySide6.QtGui import QColor, QBrush, QAction, QGuiApplication, QPixmap, QImage
 from dialogs.file_metadata_dialog import FileMetadataDialog
 from dialogs.donation_dialog import DonateDialog, is_donation_optout_today
 import qtawesome as qta
 import os
+
+try:
+    from PIL import Image
+    PILLOW_FORMATS = set()
+    for ext, fmt in Image.registered_extensions().items():
+        PILLOW_FORMATS.add(ext.lower())
+except ImportError:
+    PILLOW_FORMATS = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.webp', '.eps', '.svg', '.pdf'}
 
 class FlowLayout(QLayout):
     def __init__(self, parent=None, margin=0, spacing=-1):
@@ -106,6 +114,7 @@ class GridManager:
         self._pixmap_cache = {}
         self._status_color_func = None
         self._checked_filepaths = set()
+        self._preview_cache = {}
 
     def set_status_color_func(self, func):
         self._status_color_func = func
@@ -200,32 +209,28 @@ class GridManager:
         return container
 
     def _set_image(self, label, image_path, status=''):
-        if image_path in self._pixmap_cache:
-            pixmap = self._pixmap_cache[image_path]
-            if pixmap:
-                label.setPixmap(pixmap)
-            else:
-                label.setText("Cannot load\nimage")
+        parent_widget = label.parent()
+        preview_func = None
+        while parent_widget is not None:
+            if hasattr(parent_widget, "_get_preview_pixmap"):
+                preview_func = parent_widget._get_preview_pixmap
+                break
+            parent_widget = parent_widget.parent()
+        pixmap = None
+        if preview_func:
+            pixmap = preview_func(image_path, self.image_size)
         else:
-            try:
+            if image_path in self._pixmap_cache:
+                pixmap = self._pixmap_cache[image_path]
+            else:
                 pixmap = QPixmap(image_path)
                 if not pixmap.isNull():
-                    pixmap = pixmap.scaled(
-                        self.image_size, self.image_size,
-                        Qt.KeepAspectRatio,
-                        Qt.SmoothTransformation
-                    )
+                    pixmap = pixmap.scaled(self.image_size, self.image_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                     self._pixmap_cache[image_path] = pixmap
-                    label.setPixmap(pixmap)
-                else:
-                    self._pixmap_cache[image_path] = None
-                    label.setText("Cannot load\nimage")
-                    print(f"Failed to load image: {image_path}")
-            except Exception as e:
-                self._pixmap_cache[image_path] = None
-                label.setText("Error")
-                print(f"Error loading image: {image_path} - {e}")
-        # Set border color according to status
+        if pixmap and not pixmap.isNull():
+            label.setPixmap(pixmap)
+        else:
+            label.setText("Cannot preview image")
         color = None
         if self._status_color_func:
             color = self._status_color_func(status)
@@ -1042,18 +1047,11 @@ class ImageTableWidget(QWidget):
         thumb.setFixedSize(150, 150)
         thumb.setAlignment(Qt.AlignCenter)
         filepath = row[1]
-        pixmap = None
-        if filepath in grid_manager._pixmap_cache:
-            pixmap = grid_manager._pixmap_cache[filepath]
-        else:
-            pixmap_raw = QPixmap(filepath)
-            if not pixmap_raw.isNull():
-                pixmap = pixmap_raw.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                grid_manager._pixmap_cache[filepath] = pixmap
+        pixmap = self._get_preview_pixmap(filepath, 150)
         if pixmap and not pixmap.isNull():
             thumb.setPixmap(pixmap)
         else:
-            thumb.setText("No\nImage")
+            thumb.setText("Cannot preview image")
         card_hbox.addWidget(thumb)
         vbox = QVBoxLayout()
         vbox.setSpacing(2)
@@ -1121,20 +1119,13 @@ class ImageTableWidget(QWidget):
 
     def _update_details_card(self, card, row, grid_manager):
         filepath = row[1]
-        pixmap = None
-        if filepath in grid_manager._pixmap_cache:
-            pixmap = grid_manager._pixmap_cache[filepath]
-        else:
-            pixmap_raw = QPixmap(filepath)
-            if not pixmap_raw.isNull():
-                pixmap = pixmap_raw.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                grid_manager._pixmap_cache[filepath] = pixmap
+        pixmap = self._get_preview_pixmap(filepath, 150)
         if pixmap and not pixmap.isNull():
             card._details_thumb.setPixmap(pixmap)
             card._details_thumb.setText("")
         else:
             card._details_thumb.setPixmap(QPixmap())
-            card._details_thumb.setText("No\nImage")
+            card._details_thumb.setText("Cannot preview image")
         filename = row[2]
         title = row[3] if len(row) > 3 and row[3] is not None else ""
         desc = row[4] if len(row) > 4 and row[4] is not None else ""
@@ -1176,3 +1167,85 @@ class ImageTableWidget(QWidget):
         card._details_label_cat_secondary.setWordWrap(True)
         card._details_label_cat_adobe.setText(f"Adobe Stock Category: {adobe_val}")
         card._details_label_cat_adobe.setWordWrap(True)
+
+    def _get_preview_pixmap(self, filepath, target_size):
+        if not filepath or not os.path.exists(filepath):
+            return None
+        ext = os.path.splitext(filepath)[1].lower()
+        video_exts = {'.mp4', '.mov', '.avi', '.mkv', '.wmv', '.flv', '.webm', '.m4v'}
+        if filepath in getattr(self, "_preview_cache", {}):
+            pixmap = self._preview_cache[filepath]
+            if pixmap and not pixmap.isNull():
+                return pixmap.scaled(target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        if not hasattr(self, "_preview_cache"):
+            self._preview_cache = {}
+        try:
+            if ext in video_exts:
+                try:
+                    import cv2
+                    cap = cv2.VideoCapture(filepath)
+                    ret, frame = cap.read()
+                    cap.release()
+                    if ret and frame is not None:
+                        import numpy as np
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        h, w, ch = frame_rgb.shape
+                        bytes_per_line = ch * w
+                        qimg = QImage(frame_rgb.data, w, h, bytes_per_line, QImage.Format_RGB888)
+                        pixmap = QPixmap.fromImage(qimg)
+                        pixmap = pixmap.scaled(target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                        self._preview_cache[filepath] = pixmap
+                        return pixmap
+                except Exception as e:
+                    print(f"Video preview error: {e}")
+            elif ext in {'.svg', '.eps', '.pdf'}:
+                try:
+                    from helpers.image_compression_helper import ensure_temp_folder, convert_eps_pdf_to_jpg, convert_svg_to_jpg, get_compression_quality
+                    temp_folder = ensure_temp_folder()
+                    quality = get_compression_quality()
+                    filename = os.path.splitext(os.path.basename(filepath))[0] + "_preview.jpg"
+                    temp_jpg_path = os.path.join(temp_folder, filename)
+                    if not os.path.exists(temp_jpg_path):
+                        if ext == '.svg':
+                            temp_jpg = convert_svg_to_jpg(filepath, temp_jpg_path, quality)
+                        elif ext in ('.eps', '.pdf'):
+                            temp_jpg = convert_eps_pdf_to_jpg(filepath, temp_jpg_path, quality)
+                    else:
+                        temp_jpg = temp_jpg_path
+                    if temp_jpg and os.path.exists(temp_jpg):
+                        pixmap = QPixmap(temp_jpg)
+                        if not pixmap.isNull():
+                            pixmap = pixmap.scaled(target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                            self._preview_cache[filepath] = pixmap
+                            return pixmap
+                except Exception as e:
+                    print(f"Vector preview error: {e}")
+            elif ext in PILLOW_FORMATS:
+                pixmap = QPixmap(filepath)
+                if not pixmap.isNull():
+                    pixmap = pixmap.scaled(target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    self._preview_cache[filepath] = pixmap
+                    return pixmap
+                else:
+                    try:
+                        from PIL import Image
+                        with Image.open(filepath) as img:
+                            img = img.convert("RGBA")
+                            data = img.tobytes("raw", "RGBA")
+                            qimg = QImage(data, img.width, img.height, QImage.Format_RGBA8888)
+                            pixmap = QPixmap.fromImage(qimg)
+                            pixmap = pixmap.scaled(target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                            self._preview_cache[filepath] = pixmap
+                            return pixmap
+                    except Exception as e:
+                        print(f"Pillow preview error: {e}")
+            else:
+                pixmap = QPixmap(filepath)
+                if not pixmap.isNull():
+                    pixmap = pixmap.scaled(target_size, target_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    self._preview_cache[filepath] = pixmap
+                    return pixmap
+        except Exception as e:
+            print(f"Preview error: {e}")
+        self._preview_cache[filepath] = None
+        return None
