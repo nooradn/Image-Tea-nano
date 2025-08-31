@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 import qtawesome as qta
 from config import BASE_PATH
+import re
 
 class ReadDocumentationDialog(QDialog):
     def __init__(self, parent=None):
@@ -107,6 +108,10 @@ class ReadDocumentationDialog(QDialog):
             return "English"
         return "Bahasa Indonesia"
 
+    def natural_sort_key(self, s):
+        # Split string into list of int and str for natural sorting
+        return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+
     def populate_tree(self):
         self.tree.clear()
         self.all_md_files = []
@@ -129,7 +134,7 @@ class ReadDocumentationDialog(QDialog):
 
     def add_children(self, folder_path, parent_item):
         try:
-            entries = sorted(os.listdir(folder_path))
+            entries = os.listdir(folder_path)
         except Exception as e:
             print(f"Error reading directory {folder_path}: {e}")
             return
@@ -141,6 +146,9 @@ class ReadDocumentationDialog(QDialog):
                 dirs.append((entry, full_path))
             elif entry.lower().endswith(".md"):
                 files.append((entry, full_path))
+        # Sort files and dirs using natural sort
+        files.sort(key=lambda x: self.natural_sort_key(x[0]))
+        dirs.sort(key=lambda x: self.natural_sort_key(x[0]))
         for entry, full_path in files:
             display_name = os.path.splitext(entry)[0].replace('_', ' ').replace('-', ' ').title()
             file_item = QTreeWidgetItem([display_name])
@@ -219,6 +227,8 @@ class ReadDocumentationDialog(QDialog):
                     matches.append((display_name, file_path, content))
             except Exception as e:
                 print(f"Error reading {file_path}: {e}")
+        # Sort matches using natural sort
+        matches.sort(key=lambda x: self.natural_sort_key(os.path.basename(x[1])))
         self.tree.clear()
         search_root = QTreeWidgetItem([f"Search Results for '{keyword}'"])
         search_root.setData(0, Qt.UserRole, None)
@@ -247,7 +257,6 @@ class ReadDocumentationDialog(QDialog):
                 with open(file_path, "r", encoding="utf-8") as f:
                     md_text = f.read()
                 self.viewer.setSearchPaths([self.res_images_path])
-                import re
                 pattern = re.compile(re.escape(keyword), re.IGNORECASE)
                 highlighted_md = pattern.sub(lambda m: f"<span style='color:#2ecc40'>{m.group(0)}</span>", md_text)
                 self.viewer.setMarkdown(highlighted_md)
