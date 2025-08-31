@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout, QCheckBox, QLabel, QGridLayo
 from PySide6.QtCore import Qt
 import json
 import os
+import sys
 from config import BASE_PATH
 from helpers.csv_exporter import export_csv_for_platforms
 import qtawesome as qta
@@ -110,6 +111,10 @@ class CSVExporterDialog(QDialog):
         except Exception:
             pass
 
+    def open_folder_windows(self, folder_path):
+        if sys.platform.startswith("win"):
+            os.startfile(folder_path)
+
     def export_csv(self):
         selected = [p for p, cb in self.checkbox_map.items() if cb.isChecked()]
         output_path = self.output_lineedit.text()
@@ -131,4 +136,5 @@ class CSVExporterDialog(QDialog):
             progress.setValue(value)
         export_csv_for_platforms(selected, output_path, progress_callback)
         progress.setValue(total_files)
+        self.open_folder_windows(output_path)
         self.accept()
