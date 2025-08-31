@@ -26,7 +26,8 @@ class CSVExporterDialog(QDialog):
             "Shutterstock",
             "iStock",
             "123RF",
-            "Vecteezy"
+            "Vecteezy",
+            "Pond5"
         ]
 
         grid_widget = QWidget()
