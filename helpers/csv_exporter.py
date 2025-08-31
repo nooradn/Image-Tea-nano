@@ -103,6 +103,14 @@ def _pond5_format(file):
     editorial = ""
     return f'"{filename}","{title}","{description}","{keywords}","{city}","{region}","{country}","{specifysource}","{modelreleased}","{propertyreleased}","{release}","{copyright_owner}","{price}","{editorial}"'
 
+def _depositphotos_format(file):
+    filename = file[2]
+    description = file[4] if file[4] is not None else ""
+    keywords = file[5] if file[5] is not None else ""
+    nudity = "no"
+    editorial = "no"
+    return f'"{filename}","{description}","{keywords}","{nudity}","{editorial}"'
+
 def export_csv_for_platforms(platforms, output_path=None, progress_callback=None):
     print(f"[csv_exporter] Exporting CSV for platforms: {platforms}")
     print(f"[csv_exporter] Output path: {output_path}")
@@ -236,3 +244,21 @@ def export_csv_for_platforms(platforms, output_path=None, progress_callback=None
                 print(f"[csv_exporter] Pond5 CSV exported to: {csv_path}")
             except Exception as e:
                 print(f"[csv_exporter] Error exporting Pond5 CSV: {e}")
+    if "Depositphotos" in platforms and output_path:
+        rows = []
+        header = '"Filename","description","Keywords","Nudity","Editorial"'
+        for file in files:
+            rows.append(_depositphotos_format(file))
+            if progress_callback:
+                progress_callback()
+        if rows:
+            csv_filename = generate_export_filename("Depositphotos", output_path)
+            csv_path = os.path.join(output_path, csv_filename)
+            try:
+                with open(csv_path, "w", encoding="utf-8") as f:
+                    f.write(header + "\n")
+                    for row in rows:
+                        f.write(row + "\n")
+                print(f"[csv_exporter] Depositphotos CSV exported to: {csv_path}")
+            except Exception as e:
+                print(f"[csv_exporter] Error exporting Depositphotos CSV: {e}")
