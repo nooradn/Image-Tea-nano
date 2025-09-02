@@ -179,10 +179,15 @@ def write_metadata_pyexiv2(file_path, title, description, tag_list):
 
 def read_metadata_pyexiv2(file_path):
 	try:
+		print(f"[pyexiv2 READ START] {file_path}")
 		metadata = pyexiv2.Image(file_path)
+		print(f"[pyexiv2 READ] Image object created for {file_path}")
 		xmp = metadata.read_xmp()
+		print(f"[pyexiv2 READ] XMP read for {file_path}")
 		iptc = metadata.read_iptc()
+		print(f"[pyexiv2 READ] IPTC read for {file_path}")
 		exif = metadata.read_exif()
+		print(f"[pyexiv2 READ] EXIF read for {file_path}")
 
 		title = _extract_xmp_value(xmp.get('Xmp.dc.title')) if 'Xmp.dc.title' in xmp else None
 		description = _extract_xmp_value(xmp.get('Xmp.dc.description')) if 'Xmp.dc.description' in xmp else None

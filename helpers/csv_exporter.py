@@ -1,10 +1,13 @@
 from database.db_operation import ImageTeaDB
 import os
 import datetime
+import json
+from config import BASE_PATH
 
-def generate_export_filename(platform, output_path):
+def generate_export_filename(output_path):
+    """Generate a unique filename for CSV export with timestamp."""
     today = datetime.datetime.now()
-    base_name = f"{platform}_Image_Tea_Metadata_{today.year}_{today.strftime('%B')}_{today.day:02d}_"
+    base_name = f"Image_Tea_Metadata_{today.year}_{today.strftime('%B')}_{today.day:02d}_"
     idx = 1
     while True:
         filename = f"{base_name}{idx:03d}.csv"
@@ -13,252 +16,109 @@ def generate_export_filename(platform, output_path):
             return filename
         idx += 1
 
-def _freepik_format(file):
-    filename = file[2]
-    title = file[3] if file[3] is not None else ""
-    tags = file[5] if file[5] is not None else ""
-    prompt = ""
-    model = ""
-    return f'"{filename}";"{title}";"{tags}";"{prompt}";"{model}"'
+def load_csv_config():
+    """Load CSV configuration settings."""
+    config_path = os.path.join(BASE_PATH, "configs", "csv_config.json")
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {"export_format": "unified", "include_headers": True, "encoding": "utf-8"}
 
-def _adobe_stock_format(file, adobe_map, category_mapping):
-    filename = file[2]
-    title = file[3] if file[3] is not None else ""
-    tags = file[5] if file[5] is not None else ""
+def format_csv_value(value):
+    """Format a value for CSV output, handling nulls and escaping quotes."""
+    if value is None:
+        return ""
+    # Escape quotes by doubling them and wrap in quotes if contains comma or quotes
+    str_value = str(value)
+    if '"' in str_value:
+        str_value = str_value.replace('"', '""')
+    if ',' in str_value or '"' in str_value or '\n' in str_value:
+        return f'"{str_value}"'
+    return str_value
+
+def format_unified_row(file, shutterstock_map, category_mapping):
+    """Format a file record according to the unified SQL definition."""
     file_id = file[0]
-    adobe_cat_id = None
-    for mapping in category_mapping:
-        if mapping['file_id'] == file_id and mapping['platform'] == 'adobe_stock':
-            adobe_cat_id = mapping['category_id']
-            break
-    category_text = str(adobe_cat_id) if adobe_cat_id is not None else ""
-    return f'{filename},"{title}","{tags}","{category_text}",'
-
-def _shutterstock_format(file, shutterstock_map, category_mapping):
-    filename = file[2]
+    filename = file[2] if file[2] is not None else ""
+    title = file[3] if file[3] is not None else ""
     description = file[4] if file[4] is not None else ""
-    tags = file[5] if file[5] is not None else ""
-    file_id = file[0]
-    primary = None
-    secondary = None
+    keywords = file[5] if file[5] is not None else ""
+    
+    # Get Shutterstock category text
+    ss_category = ""
+    shutterstock_cats = []
     for mapping in category_mapping:
         if mapping['file_id'] == file_id and mapping['platform'] == 'shutterstock':
-            if mapping['category_name'].endswith('(primary)'):
-                primary = mapping['category_id']
-            elif mapping['category_name'].endswith('(secondary)'):
-                secondary = mapping['category_id']
-    categories = ""
-    if primary and secondary:
-        categories = f"{shutterstock_map.get(str(primary), '')},{shutterstock_map.get(str(secondary), '')}"
-    elif primary:
-        categories = shutterstock_map.get(str(primary), '')
-    elif secondary:
-        categories = shutterstock_map.get(str(secondary), '')
-    editorial = "no"
-    mature_content = "no"
-    illustration = "yes"
-    return f'{filename},"{description}","{tags}","{categories}",{editorial},{mature_content},{illustration}'
+            category_id = mapping['category_id']
+            category_text = shutterstock_map.get(str(category_id), '')
+            if category_text:
+                shutterstock_cats.append(category_text)
+    if shutterstock_cats:
+        ss_category = ", ".join(shutterstock_cats)
+    
+    # Get Adobe Stock category code (integer)
+    as_code = ""
+    for mapping in category_mapping:
+        if mapping['file_id'] == file_id and mapping['platform'] == 'adobe_stock':
+            as_code = str(mapping['category_id']) if mapping['category_id'] is not None else ""
+            break
+    
+    # Format all values for CSV
+    return ",".join([
+        format_csv_value(filename),
+        format_csv_value(title),
+        format_csv_value(description),
+        format_csv_value(keywords),
+        format_csv_value(ss_category),
+        format_csv_value(as_code)
+    ])
 
-def _123rf_format(file):
-    filename = file[2]
-    title = file[3] if file[3] is not None else ""
-    description = file[4] if file[4] is not None else ""
-    keywords = file[5] if file[5] is not None else ""
-    country = ""
-    return f'"{filename}","{title}","{description}","{keywords}","{country}"'
-
-def _vecteezy_format(file):
-    filename = file[2]
-    title = file[3] if file[3] is not None else ""
-    description = file[4] if file[4] is not None else ""
-    keywords = file[5] if file[5] is not None else ""
-    license_type = "pro"
-    return f'{filename},"{title}","{description}","{keywords}",{license_type}'
-
-def _istock_format(file):
-    filename = file[2]
-    today = datetime.datetime.now()
-    created_date = today.strftime("%m/%d/%Y")
-    description = file[4] if file[4] is not None else ""
-    country = ""
-    brief_code = ""
-    title = file[3] if file[3] is not None else ""
-    keywords = file[5] if file[5] is not None else ""
-    return f'{filename},{created_date},"{description}","{country}","{brief_code}","{title}","""{keywords}"""'
-
-def _pond5_format(file):
-    filename = file[2]
-    title = file[3] if file[3] is not None else ""
-    description = file[4] if file[4] is not None else ""
-    keywords = file[5] if file[5] is not None else ""
-    city = ""
-    region = ""
-    country = ""
-    specifysource = ""
-    modelreleased = ""
-    propertyreleased = ""
-    release = ""
-    copyright_owner = ""
-    price = ""
-    editorial = ""
-    return f'"{filename}","{title}","{description}","{keywords}","{city}","{region}","{country}","{specifysource}","{modelreleased}","{propertyreleased}","{release}","{copyright_owner}","{price}","{editorial}"'
-
-def _depositphotos_format(file):
-    filename = file[2]
-    description = file[4] if file[4] is not None else ""
-    keywords = file[5] if file[5] is not None else ""
-    nudity = "no"
-    editorial = "no"
-    return f'"{filename}","{description}","{keywords}","{nudity}","{editorial}"'
-
-def export_csv_for_platforms(platforms, output_path=None, progress_callback=None):
-    print(f"[csv_exporter] Exporting CSV for platforms: {platforms}")
-    print(f"[csv_exporter] Output path: {output_path}")
-    db = ImageTeaDB()
-    files = db.get_all_files()
-    shutterstock_map, adobe_map = db.get_category_maps()
-    category_mapping = db.get_category_mapping()
-    if "Freepik" in platforms and output_path:
+def export_csv(output_path=None, progress_callback=None):
+    """Export metadata to CSV using the unified format definition."""
+    print(f"[csv_exporter] Exporting CSV to: {output_path}")
+    
+    if not output_path:
+        print(f"[csv_exporter] Error: No output path specified")
+        return False
+    
+    try:
+        db = ImageTeaDB()
+        files = db.get_all_files()
+        shutterstock_map, adobe_map = db.get_category_maps()
+        category_mapping = db.get_category_mapping()
+        config = load_csv_config()
+        
+        if not files:
+            print(f"[csv_exporter] No files found to export")
+            return False
+        
         rows = []
-        header = 'File name;Title;Keywords;Prompt;Model'
+        
+        # Add header if configured
+        if config.get("include_headers", True):
+            header = "file_name,title,description,keywords,ss_category,as_code"
+            rows.append(header)
+        
+        # Format each file according to the unified definition
         for file in files:
-            rows.append(_freepik_format(file))
+            row = format_unified_row(file, shutterstock_map, category_mapping)
+            rows.append(row)
             if progress_callback:
                 progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("Freepik", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] Freepik CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting Freepik CSV: {e}")
-    if "Adobe Stock" in platforms and output_path:
-        rows = []
-        header = "Filename,Title,Keywords,Category,Releases"
-        for file in files:
-            rows.append(_adobe_stock_format(file, adobe_map, category_mapping))
-            if progress_callback:
-                progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("Adobe_Stock", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] Adobe Stock CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting Adobe Stock CSV: {e}")
-    if "Shutterstock" in platforms and output_path:
-        rows = []
-        header = "Filename,Description,Keywords,Categories,Editorial,Mature content,illustration"
-        for file in files:
-            rows.append(_shutterstock_format(file, shutterstock_map, category_mapping))
-            if progress_callback:
-                progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("Shutterstock", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] Shutterstock CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting Shutterstock CSV: {e}")
-    if "123RF" in platforms and output_path:
-        rows = []
-        header = '"oldfilename","123rf_filename","description","keywords","country"'
-        for file in files:
-            rows.append(_123rf_format(file))
-            if progress_callback:
-                progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("123rf", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] 123rf CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting 123rf CSV: {e}")
-    if "Vecteezy" in platforms and output_path:
-        rows = []
-        header = "Filename,Title,Description,Keywords,License"
-        for file in files:
-            rows.append(_vecteezy_format(file))
-            if progress_callback:
-                progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("Vecteezy", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] Vecteezy CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting Vecteezy CSV: {e}")
-    if "iStock" in platforms and output_path:
-        rows = []
-        header = "file name,created date,description,country,brief code,title,keywords"
-        for file in files:
-            rows.append(_istock_format(file))
-            if progress_callback:
-                progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("iStock", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] iStock CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting iStock CSV: {e}")
-    if "Pond5" in platforms and output_path:
-        rows = []
-        header = '"OriginalFilename","Title","Description","Keywords","City","Region","Country","Specifysource","Modelreleased","Propertyreleased","Release","Copyright","Price","Editorial"'
-        for file in files:
-            rows.append(_pond5_format(file))
-            if progress_callback:
-                progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("Pond5", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] Pond5 CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting Pond5 CSV: {e}")
-    if "Depositphotos" in platforms and output_path:
-        rows = []
-        header = '"Filename","description","Keywords","Nudity","Editorial"'
-        for file in files:
-            rows.append(_depositphotos_format(file))
-            if progress_callback:
-                progress_callback()
-        if rows:
-            csv_filename = generate_export_filename("Depositphotos", output_path)
-            csv_path = os.path.join(output_path, csv_filename)
-            try:
-                with open(csv_path, "w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for row in rows:
-                        f.write(row + "\n")
-                print(f"[csv_exporter] Depositphotos CSV exported to: {csv_path}")
-            except Exception as e:
-                print(f"[csv_exporter] Error exporting Depositphotos CSV: {e}")
+        
+        # Generate filename and write CSV
+        csv_filename = generate_export_filename(output_path)
+        csv_path = os.path.join(output_path, csv_filename)
+        
+        encoding = config.get("encoding", "utf-8")
+        with open(csv_path, "w", encoding=encoding, newline='') as f:
+            for row in rows:
+                f.write(row + "\n")
+        
+        print(f"[csv_exporter] CSV exported successfully to: {csv_path}")
+        return True
+        
+    except Exception as e:
+        print(f"[csv_exporter] Error exporting CSV: {e}")
+        return False

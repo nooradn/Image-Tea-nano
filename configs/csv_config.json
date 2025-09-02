@@ -1,10 +1,5 @@
 {
-  "Freepik": true,
-  "Adobe Stock": true,
-  "Shutterstock": true,
-  "iStock": true,
-  "123RF": true,
-  "Vecteezy": true,
-  "Pond5": true,
-  "Depositphotos": true
+  "export_format": "unified",
+  "include_headers": true,
+  "encoding": "utf-8"
 }
